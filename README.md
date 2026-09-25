@@ -32,11 +32,12 @@ With a real Postgres instead: set `DATABASE_URL` in `.env` (copy from
 | `npm run verify` | verify:fast + build |
 | `npm run verify:full` | verify (E2E suite not added yet) |
 
-### Self-hosting (groundwork)
+### Self-hosting
 
 `docker compose up` runs Postgres, applies migrations once via the `migrate`
 target, then serves the app on http://localhost:3000 (health: `/api/health`).
-The full self-hosting guide lands with the self-hosting slice.
+The full guide — environment reference, email setup, HTTPS proxy, backups and
+upgrades — is [docs/self-hosting.md](docs/self-hosting.md).
 
 ## Read this first
 
