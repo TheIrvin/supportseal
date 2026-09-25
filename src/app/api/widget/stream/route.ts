@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
     referer: request.headers.get("referer"),
     serviceOrigin: request.nextUrl.origin,
     serviceIsProduction: process.env.NODE_ENV === "production",
+    testToken: request.nextUrl.searchParams.get("testToken"),
+    productId: product.id,
   });
   if (!allowed) return new Response("forbidden", { status: 403 });
 

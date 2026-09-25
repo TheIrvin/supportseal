@@ -2,6 +2,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { prisma } from "@/lib/prisma";
 import { listProducts } from "@/lib/products";
 import { getAvailability, requireWorkspace } from "@/lib/workspace";
+import { computeChecklist } from "@/lib/onboarding";
 import { setAvailabilityAction } from "./actions";
 
 /**
@@ -18,7 +19,7 @@ export async function Shell({
 }) {
   const ctx = await requireWorkspace();
 
-  const [products, counts, availability] = await Promise.all([
+  const [products, counts, availability, checklist] = await Promise.all([
     listProducts(ctx.workspace.id),
     prisma.conversation.groupBy({
       by: ["productId"],
@@ -26,6 +27,7 @@ export async function Shell({
       _count: { _all: true },
     }),
     getAvailability(ctx.workspace.id),
+    computeChecklist(ctx.workspace.id),
   ]);
 
   const countByProduct = new Map(counts.map((c) => [c.productId, c._count._all]));
@@ -45,6 +47,7 @@ export async function Shell({
           primaryColor: p.primaryColor,
           openCount: countByProduct.get(p.id) ?? 0,
         }))}
+      checklist={checklist.doneCount < checklist.total ? checklist : null}
     >
       {children}
     </AppShell>

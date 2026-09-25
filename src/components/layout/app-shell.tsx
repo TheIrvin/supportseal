@@ -15,6 +15,7 @@ function Shell({
   availability,
   onAvailabilityChange,
   mode = "page",
+  checklist,
   children,
 }: {
   user: ShellUser;
@@ -23,6 +24,7 @@ function Shell({
   availability: "LIVE" | "AWAY";
   onAvailabilityChange: (next: "LIVE" | "AWAY") => void;
   mode?: "page" | "fill";
+  checklist?: { items: Array<{ id: string; title: string; done: boolean }>; doneCount: number; total: number } | null;
   children: React.ReactNode;
 }) {
   const { collapsed, mobileOpen, setMobileOpen } = useLayout();
@@ -34,6 +36,7 @@ function Shell({
         role={role}
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        checklist={checklist}
       />
       <div
         className={cn(

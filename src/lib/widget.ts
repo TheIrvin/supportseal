@@ -2,6 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 
 import { Prisma } from "@/generated/prisma/client";
 
+import { verifyWidgetTestToken } from "@/lib/onboarding";
+
 import { notifyConversationEvent } from "@/lib/events";
 
 import {
@@ -103,7 +105,27 @@ export function isWidgetOriginAllowed(input: {
   referer: string | null;
   serviceOrigin: string;
   serviceIsProduction: boolean;
+  testToken?: string | null;
+  productId?: string;
 }): boolean {
+  // Signed test token (design D8): the SupportSeal-hosted test page may load
+  // this Product's widget for 30 minutes without an allowlist entry. The
+  // referer must still be the service origin, and the token grants nothing
+  // beyond a normal visitor session.
+  if (input.testToken && input.productId) {
+    const refererIsService =
+      !input.referer ||
+      (() => {
+        try {
+          return new URL(input.referer).origin === input.serviceOrigin;
+        } catch {
+          return false;
+        }
+      })();
+    if (refererIsService && verifyWidgetTestToken(input.testToken, input.productId)) {
+      return true;
+    }
+  }
   let declaredHostname: string | null = null;
   if (input.hostParam) {
     try {

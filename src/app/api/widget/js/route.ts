@@ -125,8 +125,10 @@ const LOADER_JS = String.raw`
     frame = document.createElement('iframe');
     frame.className = 'panel';
     frame.title = config.name + ' support chat';
+    var testToken = script.getAttribute('data-test-token') || '';
     frame.src = serviceOrigin + '/widget?key=' + encodeURIComponent(key) +
       '&host=' + encodeURIComponent(window.location.origin) +
+      (testToken ? '&testToken=' + encodeURIComponent(testToken) : '') +
       (previewMode
         ? '&preview=1&name=' + encodeURIComponent(config.name) +
           '&color=' + encodeURIComponent(config.color) +

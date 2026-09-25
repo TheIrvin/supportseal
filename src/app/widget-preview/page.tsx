@@ -21,11 +21,34 @@ export const dynamic = "force-dynamic";
 export default async function WidgetPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ key?: string; availability?: string; embed?: string }>;
+  searchParams: Promise<{ key?: string; availability?: string; embed?: string; previewOnly?: string; name?: string; color?: string }>;
 }) {
-  const { key, availability, embed } = await searchParams;
+  const { key, availability, embed, previewOnly, name, color } = await searchParams;
   const product = key ? await loadWidgetProduct(key) : null;
   const away = availability === "AWAY";
+  if (previewOnly === "1") {
+    // Wizard live preview: ad-hoc name/colour, no Product, preview mode.
+    const displayName = (name ?? "Your Product").slice(0, 60);
+    const displayColor = /^#[0-9a-f]{6}$/i.test(color ?? "") ? color!.toLowerCase() : "#2563eb";
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-body-bg p-6">
+        <div className="w-full max-w-md rounded-lg border border-border bg-surface p-8 text-center shadow-card">
+          <p className="text-xs font-medium uppercase tracking-widest text-muted">Live preview</p>
+          <h1 className="mt-2 text-2xl font-semibold text-heading">{displayName}</h1>
+          <p className="mt-2 text-sm text-muted">The launcher below uses your colour and name.</p>
+        </div>
+        <script
+          async
+          src="/widget.js"
+          data-key="preview"
+          data-preview="1"
+          data-name={displayName}
+          data-color={displayColor}
+          data-availability={away ? "AWAY" : "LIVE"}
+        />
+      </main>
+    );
+  }
 
   if (!product) {
     return (

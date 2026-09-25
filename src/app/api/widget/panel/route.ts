@@ -139,6 +139,7 @@ const PANEL_HTML = `<!doctype html>
 (function () {
   var params = new URLSearchParams(window.location.search);
   var key = params.get('key') || '';
+  var testToken = params.get('testToken') || '';
   var hostOrigin = params.get('host') || '';
   var previewMode = params.get('preview') === '1';
   var hostPath = '/';
@@ -230,7 +231,7 @@ const PANEL_HTML = `<!doctype html>
     return l > 0.35 ? '#000' : '#fff';
   }
   function apiUrl(path) {
-    return path + '?key=' + encodeURIComponent(key) + '&host=' + encodeURIComponent(hostOrigin);
+    return path + '?key=' + encodeURIComponent(key) + '&host=' + encodeURIComponent(hostOrigin) + (testToken ? '&testToken=' + encodeURIComponent(testToken) : '');
   }
   function pageUrl() {
     try { return new URL(hostOrigin).origin + hostPath; } catch (e) { return hostOrigin + hostPath; }

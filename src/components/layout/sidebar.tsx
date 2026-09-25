@@ -148,11 +148,13 @@ export function Sidebar({
   role,
   mobileOpen,
   onClose,
+  checklist,
 }: {
   products: SidebarProduct[];
   role: "ADMIN" | "AGENT";
   mobileOpen: boolean;
   onClose: () => void;
+  checklist?: { items: Array<{ id: string; title: string; done: boolean }>; doneCount: number; total: number } | null;
 }) {
   const { collapsed } = useLayout();
   const pathname = usePathname();
@@ -179,6 +181,39 @@ export function Sidebar({
           <Logo collapsed={collapsed} />
         </div>
         <div className="flex-1 overflow-y-auto">
+          {checklist && role === "ADMIN" ? (
+            <div className={cn("px-2 pb-3", collapsed && "lg:px-1.5")}>
+              <Link
+                href="/onboarding"
+                onClick={onClose}
+                aria-label={`Setup ${checklist.doneCount} of ${checklist.total} complete`}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md border border-border bg-surface-2 px-3 py-2 text-[0.875rem] text-body transition-colors hover:bg-hover hover:text-heading",
+                  collapsed && "lg:justify-center lg:px-0",
+                )}
+              >
+                <span className="relative flex size-5 items-center justify-center">
+                  <svg viewBox="0 0 20 20" className="size-5" aria-hidden>
+                    <circle cx="10" cy="10" r="8.5" fill="none" stroke="var(--vx-border-strong)" strokeWidth="2" />
+                    <circle
+                      cx="10"
+                      cy="10"
+                      r="8.5"
+                      fill="none"
+                      stroke="var(--vx-primary)"
+                      strokeWidth="2"
+                      strokeDasharray={`${(checklist.doneCount / checklist.total) * 53.4} 53.4`}
+                      transform="rotate(-90 10 10)"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <span className={cn("truncate", collapsed && "lg:hidden")}>
+                  Setup {checklist.doneCount}/{checklist.total}
+                </span>
+              </Link>
+            </div>
+          ) : null}
           <div className={cn("px-2 pb-2", collapsed && "lg:px-1.5")}>
             <ProductList
               products={products}
