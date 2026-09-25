@@ -102,6 +102,7 @@ model Workspace {
   tags        Tag[]
   savedReplies SavedReply[]
   attachments Attachment[]
+  emailDeliveries EmailDelivery[]
 
   @@map("workspaces")
 }
@@ -132,7 +133,7 @@ model Invite {
   workspaceId String
   email       String
   role        MembershipRole
-  token       String         @unique
+  tokenHash   String         @unique
   invitedById String
   expiresAt   DateTime
   acceptedAt  DateTime?
@@ -164,6 +165,7 @@ model Product {
   conversations Conversation[]
   chatVisitors ChatVisitor[]
   attachments Attachment[]
+  emailDeliveries EmailDelivery[]
 
   @@index([workspaceId])
   @@map("products")
@@ -362,6 +364,9 @@ model EmailDelivery {
   subject           String?
   reason            String?
   createdAt         DateTime          @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([direction, productId, providerMessageId])
   @@index([conversationId])

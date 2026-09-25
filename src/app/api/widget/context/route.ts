@@ -9,7 +9,7 @@ import {
   sessionOriginMatches,
   widgetRequestOriginOk,
   setVisitorIdentityAndContext,
-  visitorCookieName,
+  visitorTokenFromRequest,
 } from "@/lib/widget";
 import { rateLimitWidgetIp } from "@/lib/widget-rate-limit";
 
@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
-  const token = request.cookies.get(visitorCookieName(product.id))?.value;
+  const token = visitorTokenFromRequest(request, product.id);
   const visitor = await resolveVisitorSession(product, token);
   if (!visitor) return NextResponse.json({ error: "no_session" }, { status: 401 });
   if (!sessionOriginMatches(visitor, hostParam)) {

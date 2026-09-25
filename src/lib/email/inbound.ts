@@ -343,7 +343,7 @@ export async function processInboundEmail(input: {
       select: { email: true },
     });
     if (visitor?.email) known.add(visitor.email.toLowerCase());
-    if (!known.has(sender.email)) {
+    if (!known.has(sender.email.toLowerCase())) {
       await recordDelivery("REJECTED", null, "reply-token sender does not match conversation participants");
       return { outcome: "rejected", reason: "sender not a conversation participant", bounce: false };
     }
@@ -401,7 +401,10 @@ export async function processInboundEmail(input: {
     });
   }
 
-  if (!createdConversation) {
+  // Recovery path: `existing` is set when a prior attempt recorded the
+  // delivery but crashed before creating the message — never re-insert
+  // (the unique index would throw) and just proceed to the message.
+  if (!createdConversation && !existing) {
     await recordDelivery("RECEIVED", conversation.id);
   }
 

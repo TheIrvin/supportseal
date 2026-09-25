@@ -65,17 +65,30 @@ export function verifyStripeSignature(input: {
   toleranceSeconds?: number;
 }): boolean {
   if (!input.header) return false;
-  const parts = Object.fromEntries(
-    input.header.split(",").map((part) => part.split("=").map((s) => s.trim()) as [string, string]),
-  );
-  const timestamp = parts.t;
-  const signature = parts.v1;
-  if (!timestamp || !signature) return false;
-  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
-  if (!Number.isFinite(age) || age > (input.toleranceSeconds ?? 300)) return false;
-
-  const expected = createHmac("sha256", input.secret).update(`${timestamp}.${input.payload}`).digest("hex");
-  const a = Buffer.from(expected, "hex");
-  const b = Buffer.from(signature, "hex");
-  return a.length === b.length && timingSafeEqual(a, b);
+  const entries = input.header.split(",").map((part) => {
+    const eq = part.indexOf("=");
+    return eq > 0 ? [part.slice(0, eq).trim(), part.slice(eq + 1).trim()] : null;
+  });
+  const map = new Map<string, string[]>();
+  for (const entry of entries) {
+    if (!entry) continue;
+    const [key, value] = entry;
+    map.set(key, [...(map.get(key) ?? []), value]);
+  }
+  const timestamps = map.get("t") ?? [];
+  const signatures = map.get("v1") ?? [];
+  if (timestamps.length === 0 || signatures.length === 0) return false;
+  // Stripe may send multiple v1 entries during secret rotation: accept any.
+  return timestamps.some((timestamp) => {
+    const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+    if (!Number.isFinite(age) || age > (input.toleranceSeconds ?? 300)) return false;
+    const expected = createHmac("sha256", input.secret)
+      .update(`${timestamp}.${input.payload}`)
+      .digest("hex");
+    const a = Buffer.from(expected, "hex");
+    return signatures.some((signature) => {
+      const b = Buffer.from(signature, "hex");
+      return a.length === b.length && timingSafeEqual(a, b);
+    });
+  });
 }

@@ -160,6 +160,34 @@ export function visitorCookieName(productId: string): string {
   return `ss_visitor_${productId}`;
 }
 
+/**
+ * Visitor token transport: the cookie first, but third-party cookie blockers
+ * (Safari ITP) drop it inside the embedded panel iframe — the panel then
+ * presents the token via the x-ss-visitor-token header (from its partitioned
+ * sessionStorage) or, for EventSource, the t= query parameter.
+ */
+export function visitorTokenFromRequest(
+  request: { headers: Headers; nextUrl: URL },
+  productId: string,
+): string | undefined {
+  return (
+    getCookieValue(request.headers.get("cookie"), visitorCookieName(productId)) ??
+    (request.headers.get("x-ss-visitor-token")?.trim() ||
+      request.nextUrl.searchParams.get("t")?.trim() ||
+      undefined)
+  );
+}
+
+function getCookieValue(cookieHeader: string | null, name: string): string | undefined {
+  if (!cookieHeader) return undefined;
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq <= 0) continue;
+    if (part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+  }
+  return undefined;
+}
+
 export function hashVisitorToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }

@@ -8,7 +8,7 @@ import {
   resolveVisitorSession,
   serviceOriginFrom,
   sessionOriginMatches,
-  visitorCookieName,
+  visitorTokenFromRequest,
 } from "@/lib/widget";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   });
   if (!allowed) return new Response("forbidden", { status: 403 });
 
-  const token = request.cookies.get(visitorCookieName(product.id))?.value;
+  const token = visitorTokenFromRequest(request, product.id);
   const visitor = await resolveVisitorSession(product, token);
   if (!visitor || !visitor.conversationId) {
     return new Response("no session", { status: 401 });
@@ -95,6 +95,11 @@ export async function GET(request: NextRequest) {
             },
             orderBy: { createdAt: "asc" },
             take: 100,
+            include: {
+              attachments: {
+                select: { id: true, filename: true, contentType: true, size: true },
+              },
+            },
           });
           const fresh = candidates.filter((m) => !seenIds.includes(m.id));
           if (fresh.length > 0) {
@@ -111,6 +116,12 @@ export async function GET(request: NextRequest) {
                 kind: m.kind,
                 body: m.body,
                 createdAt: m.createdAt.toISOString(),
+                attachments: m.attachments.map((a) => ({
+                  id: a.id,
+                  filename: a.filename,
+                  contentType: a.contentType,
+                  size: a.size,
+                })),
               })),
             );
           }

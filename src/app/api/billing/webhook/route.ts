@@ -30,8 +30,6 @@ export async function POST(request: NextRequest) {
 
   const event = JSON.parse(payload) as StripeEvent;
   if (processed.has(event.id)) return NextResponse.json({ received: true });
-  if (processed.size > 2000) processed.clear();
-  processed.add(event.id);
 
   const object = event.data?.object ?? {};
   const workspaceId = object.metadata?.workspaceId;
@@ -51,10 +49,14 @@ export async function POST(request: NextRequest) {
     }
     if (target) {
       // Let failures bubble (500) so Stripe retries — a charged customer
-      // must never be silently stuck on the wrong plan.
+      // must never be silently stuck on the wrong plan. Mark the event
+      // processed ONLY after the update succeeds.
       await prisma.workspace.update({ where: { id: workspaceId }, data: { plan: target } });
     }
   }
+
+  if (processed.size > 2000) processed.clear();
+  processed.add(event.id);
 
   return NextResponse.json({ received: true });
 }

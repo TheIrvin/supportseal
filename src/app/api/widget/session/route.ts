@@ -13,6 +13,7 @@ import {
   loadWidgetProduct,
   resolveVisitorSession,
   visitorCookieName,
+  visitorTokenFromRequest,
   visitorListMessages,
 } from "@/lib/widget";
 
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
-  const existingToken = request.cookies.get(visitorCookieName(product.id))?.value;
+  const existingToken = visitorTokenFromRequest(request, product.id);
   const existing = await resolveVisitorSession(product, existingToken);
   if (existing && !sessionOriginMatches(existing, hostParam)) {
     // The cookie was issued for a different origin: refuse to continue it.
@@ -61,6 +62,10 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({
     name: product.name,
     color: product.primaryColor,
+    // The token is echoed once so the panel can persist it in its
+    // partitioned sessionStorage — the fallback when third-party cookies
+    // (the primary transport) are blocked, e.g. Safari ITP.
+    token,
     session: { email: null, name: null },
     availability,
     thread: { conversationId: null, messages: [], status: "OPEN" },
@@ -99,7 +104,7 @@ export async function GET(request: NextRequest) {
     domains: productRow.domains.map((d) => d.domain),
   };
 
-  const token = request.cookies.get(visitorCookieName(product.id))?.value;
+  const token = visitorTokenFromRequest(request, product.id);
   const session = await resolveVisitorSession(product, token);
   if (!session) return NextResponse.json({ error: "no_session" }, { status: 401 });
 

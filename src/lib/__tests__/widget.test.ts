@@ -202,6 +202,17 @@ describe("widget sessions and messages", () => {
     expect(contact.email).toBe("jane@example.com");
   });
 
+  it("session tokens work without cookies (third-party-cookie fallback)", async () => {
+    const product = (await loadWidgetProduct(productKey))!;
+    const { token, session } = await createVisitorSession(product, "app.pmtoolkit.dev");
+    void session;
+    // resolveVisitorSession takes the raw token — the routes feed it from
+    // cookie OR x-ss-visitor-token OR t= (visitorTokenFromRequest).
+    const resolved = await resolveVisitorSession(product, token);
+    expect(resolved).not.toBeNull();
+    expect(await resolveVisitorSession(product, "garbage")).toBeNull();
+  });
+
   it("availability is workspace-wide", async () => {
     expect(await getAvailabilityForProduct(ctx.workspace.id)).toBe("LIVE");
     await setAvailabilityForTest(db, ctx.workspace.id, "AWAY");

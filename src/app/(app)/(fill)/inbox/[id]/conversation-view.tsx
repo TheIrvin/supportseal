@@ -117,7 +117,8 @@ export function ConversationView({
     const onConversation = (event: MessageEvent<string>) => {
       try {
         const data = JSON.parse(event.data) as { conversationId?: string };
-        if (data.conversationId !== conversation.id) return;
+        // "*" = cross-process refresh tick; refresh the open thread too.
+        if (data.conversationId !== "*" && data.conversationId !== conversation.id) return;
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => router.refresh(), 300);
       } catch {
@@ -134,6 +135,14 @@ export function ConversationView({
   async function uploadFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     setUploading(true);
+    try {
+      await uploadFilesInner(files);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function uploadFilesInner(files: FileList) {
     for (const file of Array.from(files)) {
       const form = new FormData();
       form.append("file", file);
@@ -148,7 +157,6 @@ export function ConversationView({
         toast.error(data?.error ?? "Upload failed.");
       }
     }
-    setUploading(false);
   }
 
   async function send() {

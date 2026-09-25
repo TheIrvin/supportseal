@@ -133,12 +133,19 @@ describe("invites", () => {
     expect(wrongEmail.ok).toBe(false);
 
     const invitedUser = await createTestUser(db.prisma, { email: "new@example.com" });
+    const plainToken = (created as { ok: true; token: string }).token;
     const accepted = await acceptInvite({
-      token: (created as { ok: true; token: string }).token,
+      token: plainToken,
       userId: invitedUser.id,
       email: invitedUser.email,
     });
     expect(accepted.ok).toBe(true);
+
+    // Tokens are stored hashed: the plain form must not appear in the table.
+    const row = await db.prisma.invite.findFirstOrThrow({ where: { email: "new@example.com" } });
+    expect(row.tokenHash).toBeTruthy();
+    expect(row.tokenHash).not.toBe(plainToken);
+    expect(row.tokenHash).toHaveLength(64); // sha256 hex
 
     const members = await listMembers(workspaceId);
     expect(members.map((m) => m.user.email)).toEqual(
@@ -163,7 +170,7 @@ describe("invites", () => {
     const token = (created as { ok: true; token: string }).token;
 
     await db.prisma.invite.update({
-      where: { token },
+      where: { tokenHash: (await import("node:crypto")).createHash("sha256").update(token).digest("hex") },
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
     const expired = await getInviteByToken(token);

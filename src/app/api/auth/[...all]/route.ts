@@ -15,10 +15,29 @@ async function handle(request: NextRequest) {
   ) {
     const workspaceCount = await prisma.workspace.count();
     if (workspaceCount > 0) {
-      return NextResponse.json(
-        { code: "user-creation-disabled", message: "Registration is closed on this installation." },
-        { status: 422 },
-      );
+      // Invited teammates can still create an account: self-hosted closes
+      // PUBLIC registration, not invite acceptance.
+      const body = (await request
+        .clone()
+        .json()
+        .catch(() => null)) as { email?: string } | null;
+      const email = body?.email?.trim().toLowerCase();
+      const invited = email
+        ? await prisma.invite.findFirst({
+            where: {
+              email,
+              acceptedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+            select: { id: true },
+          })
+        : null;
+      if (!invited) {
+        return NextResponse.json(
+          { code: "user-creation-disabled", message: "Registration is closed on this installation." },
+          { status: 422 },
+        );
+      }
     }
   }
   const auth = await getAuth();

@@ -200,7 +200,7 @@ const PANEL_HTML = `<!doctype html>
       files.forEach(function (file) {
         var body = new FormData();
         body.append('file', file);
-        fetch(apiUrl('/api/widget/attachments'), { method: 'POST', credentials: 'include', body: body })
+        apiFetch('/api/widget/attachments', { method: 'POST', body: body })
           .then(function (r) { return r.json(); })
           .then(function (data) {
             if (data.attachment) { pendingAttachments.push(data.attachment); renderChips(); }
@@ -232,6 +232,26 @@ const PANEL_HTML = `<!doctype html>
   }
   function apiUrl(path) {
     return path + '?key=' + encodeURIComponent(key) + '&host=' + encodeURIComponent(hostOrigin) + (testToken ? '&testToken=' + encodeURIComponent(testToken) : '');
+  }
+
+  // Visitor token fallback: third-party cookie blockers (Safari ITP) drop
+  // the widget cookie inside the embedded panel. Keep the session token in
+  // this iframe's (partitioned) sessionStorage and present it via header on
+  // fetches and via t= on the EventSource stream. Cookie stays primary.
+  var tokenKey = 'ss_token_' + key;
+  function storedToken() {
+    try { return sessionStorage.getItem(tokenKey) || ''; } catch (e) { return ''; }
+  }
+  function saveToken(value) {
+    try { sessionStorage.setItem(tokenKey, value); } catch (e) { /* storage blocked: cookie path only */ }
+  }
+  function apiFetch(path, options) {
+    options = options || {};
+    options.credentials = 'include';
+    options.headers = Object.assign({}, options.headers || {});
+    var token = storedToken();
+    if (token) options.headers['x-ss-visitor-token'] = token;
+    return fetch(apiUrl(path), options);
   }
   function pageUrl() {
     try { return new URL(hostOrigin).origin + hostPath; } catch (e) { return hostOrigin + hostPath; }
@@ -342,8 +362,8 @@ const PANEL_HTML = `<!doctype html>
         }, 300);
       });
     }
-    return fetch(apiUrl('/api/widget/messages'), {
-      method: 'PUT', credentials: 'include',
+    return apiFetch('/api/widget/messages', {
+      method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: email })
     }).then(function (r) { return r.json(); }).then(function (data) {
@@ -368,6 +388,12 @@ const PANEL_HTML = `<!doctype html>
     }
   }
 
+  function persistToken(data) {
+    // Only a newly issued token is stored; session echo for an existing
+    // visitor carries no token and must not clobber the stored one.
+    if (data && data.token) saveToken(data.token);
+  }
+
   function boot() {
     if (previewMode) {
       booted = true;
@@ -379,9 +405,10 @@ const PANEL_HTML = `<!doctype html>
       render();
       return Promise.resolve();
     }
-    return fetch(apiUrl('/api/widget/session'), { method: 'POST', credentials: 'include' })
+    return apiFetch('/api/widget/session', { method: 'POST' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (data) {
+        persistToken(data);
         applyConfig(data);
         state.email = data.session && data.session.email;
         state.conversationId = data.thread && data.thread.conversationId;
@@ -395,7 +422,7 @@ const PANEL_HTML = `<!doctype html>
 
   function poll() {
     if (previewMode || document.hidden) { reportUnread(); return; }
-    fetch(apiUrl('/api/widget/messages'), { credentials: 'include' })
+    apiFetch('/api/widget/messages', {})
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data || !data.thread) return;
@@ -441,8 +468,8 @@ const PANEL_HTML = `<!doctype html>
       }, 900);
       return;
     }
-    fetch(apiUrl('/api/widget/messages'), {
-      method: 'POST', credentials: 'include',
+    apiFetch('/api/widget/messages', {
+      method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ body: body, pageUrl: pageUrl(), attachmentIds: attachmentIds })
     })
@@ -500,8 +527,8 @@ const PANEL_HTML = `<!doctype html>
         return;
       }
       input.dataset.awayMessage = '';
-      return fetch(apiUrl('/api/widget/messages'), {
-        method: 'POST', credentials: 'include',
+      return apiFetch('/api/widget/messages', {
+        method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ body: message, pageUrl: pageUrl() })
       }).then(function (r) { return r.json(); }).then(function (data) {
@@ -536,8 +563,8 @@ const PANEL_HTML = `<!doctype html>
     if (kind === 'identify') body.identify = payload;
     if (kind === 'context') body.context = payload;
     devChain = devChain.then(function () {
-      return fetch(apiUrl('/api/widget/context'), {
-        method: 'PUT', credentials: 'include',
+      return apiFetch('/api/widget/context', {
+        method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body)
       });

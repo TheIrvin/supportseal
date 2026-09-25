@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 import { redirect } from "next/navigation";
 
@@ -151,7 +151,8 @@ export async function createInvite(input: {
       workspaceId: input.workspaceId,
       email,
       role: input.role,
-      token,
+      // Store only the hash: a database leak must not expose usable invites.
+      tokenHash: createHash("sha256").update(token).digest("hex"),
       invitedById: input.actorUserId,
       expiresAt: new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
     },
@@ -201,7 +202,7 @@ export async function revokeInvite(input: {
 
 export async function getInviteByToken(token: string) {
   const invite = await prisma.invite.findUnique({
-    where: { token },
+    where: { tokenHash: createHash("sha256").update(token).digest("hex") },
     include: { workspace: true },
   });
   if (!invite) return null;

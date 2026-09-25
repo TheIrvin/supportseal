@@ -32,7 +32,7 @@ export async function GET(
     const { loadWidgetProduct, resolveVisitorSession, visitorCookieName } = await import("@/lib/widget");
     const product = await loadWidgetProduct(key);
     if (product) {
-      const token = request.cookies.get(visitorCookieName(product.id))?.value;
+      const token = request.headers.get("x-ss-visitor-token")?.trim() || request.cookies.get(visitorCookieName(product.id))?.value;
       const visitor = await resolveVisitorSession(product, token);
       visitorId = visitor?.visitorId ?? null;
     }
@@ -50,12 +50,16 @@ export async function GET(
 
   const inline = access.contentType.startsWith("image/");
   const disposition = inline ? "inline" : "attachment";
-  const safeName = access.filename.replace(/["\\\r\n]/gu, "_");
+  // RFC 6266: ASCII fallback + RFC 5987 encoded original for non-ASCII names.
+  const asciiName = access.filename.replace(/[^\x20-\x7e]/gu, "_").replace(/["\\;\r\n]/gu, "_");
+  const encodedName = encodeURIComponent(access.filename)
+    .replace(/['()]/gu, (c) => "%" + c.charCodeAt(0).toString(16))
+    .replace(/\*/gu, "%2A");
   return new NextResponse(Buffer.from(data), {
     headers: {
       "content-type": access.contentType,
       "content-length": String(data.byteLength),
-      "content-disposition": `${disposition}; filename="${safeName}"`,
+      "content-disposition": `${disposition}; filename="${asciiName}"; filename*=UTF-8''${encodedName}`,
       "x-content-type-options": "nosniff",
       "cache-control": "private, no-store",
     },

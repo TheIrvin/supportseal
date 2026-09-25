@@ -82,7 +82,7 @@ describe("checklist derivation", () => {
     });
     await prisma.product.create({ data: { workspaceId: workspace.id, name: "Beta", widgetPublicKey: "pk_ob2" } });
     await prisma.invite.create({
-      data: { workspaceId: workspace.id, email: "agent@example.com", role: "AGENT", token: "t".repeat(32), invitedById: user.id, expiresAt: new Date(Date.now() + 60000) },
+      data: { workspaceId: workspace.id, email: "agent@example.com", role: "AGENT", tokenHash: "t".repeat(64), invitedById: user.id, expiresAt: new Date(Date.now() + 60000) },
     });
 
     state = await computeChecklist(workspace.id);

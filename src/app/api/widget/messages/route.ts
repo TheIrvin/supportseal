@@ -11,7 +11,7 @@ import {
   widgetRequestOriginOk,
   setVisitorEmail,
   touchVisitor,
-  visitorCookieName,
+  visitorTokenFromRequest,
   visitorListMessages,
   visitorSendMessage,
 } from "@/lib/widget";
@@ -37,7 +37,7 @@ async function guard(request: NextRequest) {
   });
   if (!allowed) return { error: NextResponse.json({ error: "origin_not_allowed" }, { status: 403 }) };
 
-  const token = request.cookies.get(visitorCookieName(product.id))?.value;
+  const token = visitorTokenFromRequest(request, product.id);
   const visitor = await resolveVisitorSession(product, token);
   if (visitor && !sessionOriginMatches(visitor, hostParam)) {
     return { error: NextResponse.json({ error: "origin_not_allowed" }, { status: 403 }) };
