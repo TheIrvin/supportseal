@@ -43,7 +43,7 @@ export default function RegisterPage() {
         <p className="mt-1 mb-6 text-muted">
           One account, one Workspace, every product you build
         </p>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4" method="post" onSubmit={handleSubmit}>
           <div>
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" autoComplete="name" required maxLength={80} />

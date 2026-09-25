@@ -48,7 +48,7 @@ export function LoginForm() {
         </div>
         <h4 className="text-[1.375rem] font-medium text-heading">Welcome to {brand.name}</h4>
         <p className="mt-1 mb-6 text-muted">Sign in to your Workspace</p>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4" method="post" onSubmit={handleSubmit}>
           <div>
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" autoComplete="email" required />
