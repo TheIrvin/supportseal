@@ -9,6 +9,7 @@ import {
   IconLock,
   IconMessage2,
   IconLayoutSidebarRight,
+  IconPaperclip,
 } from "@tabler/icons-react";
 
 import { cn } from "@/lib/cn";
@@ -23,8 +24,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
 
+import { Spinner } from "@/components/ui/spinner";
+
 import { ContextSection } from "./context-section";
 import { toast } from "sonner";
+import { formatFileSize } from "@/lib/format";
 import { visitorLabel } from "../list-pane";
 import { addTagAction, removeTagAction, sendMessageAction, setStatusAction } from "../actions";
 
@@ -34,6 +38,7 @@ type Message = {
   body: string;
   createdAt: string;
   authorName: string | null;
+  attachments?: Array<{ id: string; filename: string; contentType: string; size: number }>;
 };
 
 export type ConversationViewData = {
@@ -85,6 +90,11 @@ export function ConversationView({
   const [pending, startTransition] = useTransition();
   const [mode, setMode] = useState<"REPLY" | "NOTE">("REPLY");
   const [body, setBody] = useState("");
+  const [attachments, setAttachments] = useState<
+    Array<{ id: string; filename: string; size: number }>
+  >([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
@@ -119,14 +129,35 @@ export function ConversationView({
     };
   }, [conversation.id, router]);
 
+  async function uploadFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    for (const file of Array.from(files)) {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("conversationId", conversation.id);
+      const response = await fetch("/api/inbox/attachments", { method: "POST", body: form });
+      const data = (await response.json().catch(() => null)) as
+        | { attachment?: { id: string; filename: string; size: number }; error?: string }
+        | null;
+      if (data?.attachment) {
+        setAttachments((current) => [...current, data.attachment!]);
+      } else {
+        toast.error(data?.error ?? "Upload failed.");
+      }
+    }
+    setUploading(false);
+  }
+
   async function send() {
     const text = body.trim();
-    if (!text || sending) return;
+    if ((!text && attachments.length === 0) || sending) return;
     setSending(true);
     const result = await sendMessageAction({
       conversationId: conversation.id,
-      body: text,
+      body: text || "(attachment)",
       kind: mode === "NOTE" ? "NOTE" : "AGENT",
+      attachmentIds: attachments.map((a) => a.id),
     });
     setSending(false);
     if (result.error) {
@@ -134,6 +165,7 @@ export function ConversationView({
       return;
     }
     setBody("");
+    setAttachments([]);
     startTransition(() => router.refresh());
   }
 
@@ -284,6 +316,27 @@ export function ConversationView({
                 Internal note — never sent to the customer
               </span>
             ) : null}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              hidden
+              onChange={(event) => {
+                void uploadFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
+            <Button
+              variant="text"
+              color="secondary"
+              size="xs"
+              iconOnly
+              aria-label="Attach files"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? <Spinner className="size-4" /> : <IconPaperclip className="size-4" />}
+            </Button>
             {savedReplies.length > 0 && mode === "REPLY" ? (
               <Popover>
                 <PopoverTrigger asChild>
@@ -311,6 +364,29 @@ export function ConversationView({
               </Popover>
             ) : null}
           </div>
+          {attachments.length > 0 ? (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {attachments.map((attachment, index) => (
+                <span
+                  key={attachment.id}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-heading"
+                >
+                  {attachment.filename}
+                  <span className="text-muted">{formatFileSize(attachment.size)}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${attachment.filename}`}
+                    className="text-muted hover:text-danger"
+                    onClick={() =>
+                      setAttachments((current) => current.filter((_, i) => i !== index))
+                    }
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
           <textarea
             value={body}
             onChange={(event) => setBody(event.target.value)}
@@ -337,7 +413,7 @@ export function ConversationView({
               className="ms-auto"
               size="sm"
               onClick={() => void send()}
-              disabled={sending || !body.trim()}
+              disabled={sending || uploading || (!body.trim() && attachments.length === 0)}
             >
               {sending ? "Sending…" : mode === "NOTE" ? "Add note" : "Send"}
             </Button>
@@ -414,6 +490,39 @@ function MessageBubble({ message }: { message: Message }) {
           <p className="text-xs font-medium text-primary">{message.authorName ?? "Agent"}</p>
         ) : null}
         <p className="whitespace-pre-wrap text-sm text-heading">{message.body}</p>
+        {message.attachments && message.attachments.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {message.attachments.map((attachment) =>
+              attachment.contentType.startsWith("image/") ? (
+                <a
+                  key={attachment.id}
+                  href={`/api/attachments/${attachment.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/attachments/${attachment.id}`}
+                    alt={attachment.filename}
+                    className="max-h-40 rounded-md border border-border"
+                  />
+                </a>
+              ) : (
+                <a
+                  key={attachment.id}
+                  href={`/api/attachments/${attachment.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-xs text-heading hover:bg-hover"
+                >
+                  <IconPaperclip className="size-3.5" />
+                  {attachment.filename}
+                  <span className="text-muted">{formatFileSize(attachment.size)}</span>
+                </a>
+              ),
+            )}
+          </div>
+        ) : null}
         <p className="mt-1 text-right text-[0.6875rem] text-muted">
           {format(new Date(message.createdAt), "p")}
         </p>
@@ -512,6 +621,34 @@ function ContextPanel({
             ))}
           </datalist>
         </div>
+      </section>
+
+      <section>
+        <h3 className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted">
+          Attachments
+        </h3>
+        {conversation.messages.every((m) => !m.attachments || m.attachments.length === 0) ? (
+          <p className="mt-1.5 text-xs text-muted">None</p>
+        ) : (
+          <ul className="mt-1.5 space-y-1.5">
+            {conversation.messages
+              .flatMap((m) => m.attachments ?? [])
+              .map((attachment) => (
+                <li key={attachment.id}>
+                  <a
+                    href={`/api/attachments/${attachment.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 break-all text-sm text-primary hover:underline"
+                  >
+                    <IconPaperclip className="size-3.5 shrink-0" />
+                    {attachment.filename}
+                    <span className="text-xs text-muted">{formatFileSize(attachment.size)}</span>
+                  </a>
+                </li>
+              ))}
+          </ul>
+        )}
       </section>
 
       <section>

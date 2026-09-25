@@ -95,6 +95,7 @@ model Workspace {
   conversations Conversation[]
   tags        Tag[]
   savedReplies SavedReply[]
+  attachments Attachment[]
 
   @@map("workspaces")
 }
@@ -155,6 +156,7 @@ model Product {
   domains   ProductDomain[]
   conversations Conversation[]
   chatVisitors ChatVisitor[]
+  attachments Attachment[]
 
   @@index([workspaceId])
   @@map("products")
@@ -267,6 +269,7 @@ model Message {
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   author       User?        @relation("MessageAuthor", fields: [agentUserId], references: [id], onDelete: SetNull)
+  attachments  Attachment[]
 
   @@index([conversationId, createdAt])
   @@map("messages")
@@ -296,6 +299,29 @@ model ConversationTag {
 
   @@unique([conversationId, tagId])
   @@map("conversation_tags")
+}
+
+model Attachment {
+  id             String    @id @default(uuid())
+  workspaceId    String
+  conversationId String?
+  productId      String
+  messageId      String?
+  uploadedByUserId String?
+  visitorId      String?
+  filename       String
+  contentType    String
+  size           Int
+  storageKey     String    @unique
+  createdAt      DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  message   Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([conversationId])
+  @@map("attachments")
 }
 
 model SavedReply {

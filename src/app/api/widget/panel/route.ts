@@ -127,8 +127,13 @@ const PANEL_HTML = `<!doctype html>
     <button class="btn" id="awaySend" type="submit">Send message</button>
   </form>
   <div id="composer" style="display:none">
-    <textarea id="input" rows="1" placeholder="Write a message…" aria-label="Write a message"></textarea>
-    <button id="send" aria-label="Send message"></button>
+    <div id="chips" style="display:none;flex-wrap:wrap;gap:6px;padding:8px 16px 0"></div>
+    <div style="display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #DCE5E1;align-items:flex-end">
+      <input type="file" id="fileInput" multiple hidden>
+      <button id="attach" aria-label="Attach a file" style="background:none;border:none;cursor:pointer;padding:8px;color:#43544D"></button>
+      <textarea id="input" rows="1" placeholder="Write a message…" aria-label="Write a message"></textarea>
+      <button id="send" aria-label="Send message"></button>
+    </div>
   </div>
 <script>
 (function () {
@@ -141,6 +146,16 @@ const PANEL_HTML = `<!doctype html>
   var inkOnAccent = '#fff';
   var config = null;
   var state = { messages: [], email: null, conversationId: null };
+  function attachmentHtml(list, kind) {
+    if (!list || list.length === 0) return '';
+    return list.map(function (a) {
+      var url = '/api/attachments/' + a.id + '?key=' + encodeURIComponent(key);
+      if (a.contentType && a.contentType.indexOf('image/') === 0) {
+        return '<a href="' + url + '" target="_blank" rel="noopener" style="display:block;margin-top:6px"><img src="' + url + '" alt="' + a.filename.replace(/"/g, '&quot;') + '" style="max-width:200px;max-height:160px;border-radius:8px;display:block;border:1px solid #DCE5E1"></a>';
+      }
+      return '<a href="' + url + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;border:1px solid #DCE5E1;border-radius:8px;padding:6px 10px;font-size:12px;color:#15261F;text-decoration:none">\ud83d\udcc4 ' + a.filename.replace(/</g, '&lt;') + ' (' + formatSize(a.size) + ')</a>';
+    }).join('');
+  }
   var lastCount = 0;
   var pollTimer = null;
   var hidden = true;
@@ -149,6 +164,57 @@ const PANEL_HTML = `<!doctype html>
   var input = document.getElementById('input');
   var sendBtn = document.getElementById('send');
   var awayForm = document.getElementById('away');
+  var attachBtn = document.getElementById('attach');
+  var fileInput = document.getElementById('fileInput');
+  var chipsEl = document.getElementById('chips');
+  var pendingAttachments = [];
+  if (attachBtn) attachBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+
+  function renderChips() {
+    if (!chipsEl) return;
+    chipsEl.innerHTML = '';
+    chipsEl.style.display = pendingAttachments.length ? 'flex' : 'none';
+    pendingAttachments.forEach(function (a, index) {
+      var chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;border:1px solid #DCE5E1;border-radius:8px;padding:3px 8px;font-size:12px;color:#15261F';
+      chip.innerHTML = '<span></span><button type="button" aria-label="Remove attachment" style="background:none;border:none;cursor:pointer;color:#5F6F69;padding:0;line-height:1">\u00d7</button>';
+      chip.firstChild.textContent = a.filename + ' (' + formatSize(a.size) + ')';
+      chip.querySelector('button').addEventListener('click', function () {
+        pendingAttachments.splice(index, 1);
+        renderChips();
+      });
+      chipsEl.appendChild(chip);
+    });
+  }
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+  if (attachBtn && fileInput) {
+    attachBtn.addEventListener('click', function () { fileInput.click(); });
+    fileInput.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(fileInput.files);
+      fileInput.value = '';
+      files.forEach(function (file) {
+        var body = new FormData();
+        body.append('file', file);
+        fetch(apiUrl('/api/widget/attachments'), { method: 'POST', credentials: 'include', body: body })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.attachment) { pendingAttachments.push(data.attachment); renderChips(); }
+            else {
+              var hint = document.createElement('p');
+              hint.className = 'sysline';
+              hint.textContent = data.error || 'Upload failed.';
+              thread.appendChild(hint);
+              setTimeout(function () { hint.remove(); }, 3000);
+            }
+          })
+          .catch(function () {});
+      });
+    });
+  }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -217,6 +283,9 @@ const PANEL_HTML = `<!doctype html>
       var body = document.createElement('div');
       body.textContent = m.body;
       el.appendChild(body);
+      var files = document.createElement('div');
+      files.innerHTML = attachmentHtml(m.attachments, m.kind);
+      if (files.firstChild) el.appendChild(files);
       thread.appendChild(el);
     });
     if (state.email) {
@@ -353,10 +422,14 @@ const PANEL_HTML = `<!doctype html>
 
   function send() {
     var body = input.value.trim();
-    if (!body) return;
+    if (!body && pendingAttachments.length === 0) return;
+    if (!body) body = '(attachment)';
     input.value = '';
     input.style.height = 'auto';
     sendBtn.disabled = true;
+    var attachmentIds = pendingAttachments.map(function (a) { return a.id; });
+    pendingAttachments = [];
+    renderChips();
     if (previewMode) {
       sendBtn.disabled = false;
       state.messages.push({ id: 'p' + Date.now(), kind: 'CUSTOMER', body: body, createdAt: new Date().toISOString() });
@@ -370,7 +443,7 @@ const PANEL_HTML = `<!doctype html>
     fetch(apiUrl('/api/widget/messages'), {
       method: 'POST', credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: body, pageUrl: pageUrl() })
+      body: JSON.stringify({ body: body, pageUrl: pageUrl(), attachmentIds: attachmentIds })
     })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
       .then(function (result) {

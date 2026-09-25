@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = (await request.json().catch(() => null)) as
-    | { body?: string; pageUrl?: string }
+    | { body?: string; pageUrl?: string; attachmentIds?: string[] }
     | null;
   if (!payload?.body) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     visitor,
     body: payload.body,
     pageUrl: payload.pageUrl ?? null,
+    attachmentIds: payload.attachmentIds,
   });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 

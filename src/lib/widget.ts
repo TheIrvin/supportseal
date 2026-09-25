@@ -244,6 +244,7 @@ export async function visitorSendMessage(input: {
   visitor: VisitorSession;
   body: string;
   pageUrl?: string | null;
+  attachmentIds?: string[];
 }): Promise<{ ok: true; conversationId: string } | { ok: false; error: string }> {
   const body = input.body.trim().slice(0, 5000);
   if (!body) return { ok: false, error: "Message is empty." };
@@ -287,6 +288,7 @@ export async function visitorSendMessage(input: {
     conversationId,
     body,
     source: { kind: "visitor", visitorId: input.visitor.visitorId },
+    attachmentIds: input.attachmentIds,
   });
   if (!message.ok) return message;
 

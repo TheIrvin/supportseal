@@ -21,6 +21,7 @@ export async function sendMessageAction(input: {
   conversationId: string;
   body: string;
   kind: string;
+  attachmentIds?: string[];
 }): Promise<{ error?: string }> {
   if (!isOneOf(input.kind, MESSAGE_KINDS)) {
     return { error: "Invalid message kind." };
@@ -31,6 +32,7 @@ export async function sendMessageAction(input: {
     conversationId: input.conversationId,
     body: input.body,
     kind: input.kind,
+    attachmentIds: input.attachmentIds,
   });
   if (!result.ok) return { error: result.error };
   revalidatePath(`/inbox/${input.conversationId}`);

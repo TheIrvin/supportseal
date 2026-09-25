@@ -1,4 +1,5 @@
 import { notifyConversationEvent } from "@/lib/events";
+import { linkAttachmentToMessage } from "@/lib/attachments";
 import { prisma } from "@/lib/prisma";
 import type { WorkspaceContext } from "@/lib/workspace";
 
@@ -99,6 +100,7 @@ export async function addCustomerMessage(input: {
   conversationId: string;
   body: string;
   source: CustomerMessageSource;
+  attachmentIds?: string[];
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const body = input.body.trim();
   if (!body || body.length > MAX_BODY_LENGTH) {
@@ -107,8 +109,8 @@ export async function addCustomerMessage(input: {
   const conversation = await loadConversationForWorkspace(input.workspaceId, input.conversationId);
   if (!conversation) return { ok: false, error: "Conversation not found." };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.message.create({
+  const messageId = await prisma.$transaction(async (tx) => {
+    const message = await tx.message.create({
       data: {
         conversationId: conversation.id,
         kind: "CUSTOMER",
@@ -123,7 +125,16 @@ export async function addCustomerMessage(input: {
         closedAt: conversation.status === "CLOSED" ? null : undefined,
       },
     });
+    return message.id;
   });
+  if (input.attachmentIds && input.attachmentIds.length > 0) {
+    await linkAttachmentToMessage({
+      workspaceId: input.workspaceId,
+      attachmentIds: input.attachmentIds,
+      conversationId: conversation.id,
+      messageId,
+    });
+  }
   notifyConversationEvent({
     conversationId: conversation.id,
     workspaceId: conversation.workspaceId,
@@ -138,6 +149,7 @@ export async function addAgentMessage(input: {
   conversationId: string;
   body: string;
   kind?: "AGENT" | "NOTE";
+  attachmentIds?: string[];
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const body = input.body.trim();
   if (!body || body.length > MAX_BODY_LENGTH) {
@@ -150,8 +162,8 @@ export async function addAgentMessage(input: {
   );
   if (!conversation) return { ok: false, error: "Conversation not found." };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.message.create({
+  const messageId = await prisma.$transaction(async (tx) => {
+    const message = await tx.message.create({
       data: {
         conversationId: conversation.id,
         kind,
@@ -159,18 +171,27 @@ export async function addAgentMessage(input: {
         agentUserId: input.ctx.user.id,
       },
     });
-    if (kind === "AGENT") {
-      await tx.conversation.update({
-        where: { id: conversation.id },
-        data: {
-          lastMessageAt: new Date(),
-          status: "PENDING",
-          closedAt: null,
-          firstAgentReplyAt: conversation.firstAgentReplyAt ?? new Date(),
-        },
-      });
-    }
+    return message.id;
   });
+  if (input.attachmentIds && input.attachmentIds.length > 0) {
+    await linkAttachmentToMessage({
+      workspaceId: input.ctx.workspace.id,
+      attachmentIds: input.attachmentIds,
+      conversationId: conversation.id,
+      messageId,
+    });
+  }
+  if (kind === "AGENT") {
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        lastMessageAt: new Date(),
+        status: "PENDING",
+        closedAt: null,
+        firstAgentReplyAt: conversation.firstAgentReplyAt ?? new Date(),
+      },
+    });
+  }
   notifyConversationEvent({
     conversationId: conversation.id,
     workspaceId: conversation.workspaceId,
@@ -297,7 +318,12 @@ export async function getConversationDetail(input: {
       },
       messages: {
         orderBy: { createdAt: "asc" },
-        include: { author: { select: { id: true, name: true } } },
+        include: {
+          author: { select: { id: true, name: true } },
+          attachments: {
+            select: { id: true, filename: true, contentType: true, size: true },
+          },
+        },
       },
     },
   });

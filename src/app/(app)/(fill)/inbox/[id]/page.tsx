@@ -49,6 +49,12 @@ export default async function ConversationPage({
           body: message.body,
           createdAt: message.createdAt.toISOString(),
           authorName: message.author?.name ?? null,
+          attachments: message.attachments.map((a) => ({
+            id: a.id,
+            filename: a.filename,
+            contentType: a.contentType,
+            size: a.size,
+          })),
         })),
       }}
       availableTags={tags}
