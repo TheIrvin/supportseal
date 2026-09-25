@@ -240,6 +240,8 @@ model Conversation {
   channel            ConversationChannel
   status             ConversationStatus  @default(OPEN)
   subject            String?
+  emailMessageId     String?
+  emailReplyToken    String?             @unique
   lastMessageAt      DateTime            @default(now())
   firstAgentReplyAt  DateTime?
   closedAt           DateTime?
@@ -256,6 +258,7 @@ model Conversation {
   @@index([workspaceId, status, lastMessageAt])
   @@index([workspaceId, productId])
   @@index([contactId])
+  @@index([emailMessageId])
   @@map("conversations")
 }
 
@@ -322,6 +325,39 @@ model Attachment {
   @@index([workspaceId])
   @@index([conversationId])
   @@map("attachments")
+}
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum EmailDeliveryStatus {
+  RECEIVED
+  IGNORED
+  SENT
+  FAILED
+  REJECTED
+}
+
+model EmailDelivery {
+  id                String            @id @default(uuid())
+  workspaceId       String
+  productId         String
+  conversationId    String?
+  direction         EmailDirection
+  status            EmailDeliveryStatus
+  providerMessageId String?
+  fromAddress       String?
+  toAddress         String?
+  subject           String?
+  reason            String?
+  createdAt         DateTime          @default(now())
+
+  @@unique([direction, providerMessageId])
+  @@index([conversationId])
+  @@index([productId])
+  @@map("email_deliveries")
 }
 
 model SavedReply {
