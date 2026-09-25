@@ -26,6 +26,12 @@ export default defineConfig({
   },
   webServer: [
     {
+      command: "node tests/e2e/support-servers.mjs",
+      url: "http://localhost:3101/healthz",
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
       command: "E2E_MODE=selfhosted E2E_PORT=3200 node tests/e2e/bootstrap.mjs",
       url: "http://localhost:3200/api/health",
       reuseExistingServer: false,

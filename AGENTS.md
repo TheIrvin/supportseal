@@ -28,7 +28,7 @@ docs/open-questions.md — never guess an answer to an open question.
 | --- | --- |
 | `npm run verify:fast` | lint + typecheck + unit/integration tests |
 | `npm run verify` | verify:fast + build |
-| `npm run verify:full` | = verify (E2E suite not added yet) |
+| `npm run verify:full` | verify + Playwright E2E (hosted + self-hosted) |
 
 - Single test file: `npm run test:run -- src/lib/__tests__/brand.test.ts`.
 - Integration tests run on in-memory PGlite (no external database needed).
@@ -95,9 +95,14 @@ docs/open-questions.md — never guess an answer to an open question.
 | --- | --- |
 | `npm run verify:fast` | lint + typecheck + unit/integration tests |
 | `npm run verify` | verify:fast + build |
-| `npm run verify:full` | = verify (E2E suite not added yet) |
+| `npm run verify:full` | verify + Playwright E2E (hosted + self-hosted) |
 
-- Browser verification is mandatory for every important user-facing flow
+- E2E (`npm run test:e2e`) boots its own `next dev` servers on ports 3100 (hosted)
+  and 3200 (self-hosted) against throwaway PGlite databases; it needs
+  `npx playwright install chromium` once and free ports 3100/3101/3200/1025.
+  On hosts where the pinned Chromium cannot run, set
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to a working build.
+- Browser verification is mandatory
   once the app exists; unit tests alone are not acceptance. Reference
   procedures: the V1 end-to-end flow (Initial.md §52) and the two-Workspace
   cross-tenant sanity test (Initial.md §63). Cross-Workspace access

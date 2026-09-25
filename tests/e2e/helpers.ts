@@ -6,6 +6,11 @@ export const APP_ORIGIN = process.env.E2E_APP_URL || "http://localhost:3100";
 export const SUPPORT_ORIGIN = "http://localhost:3101";
 export const HOST_PAGE = `${SUPPORT_ORIGIN}/?app=${encodeURIComponent(APP_ORIGIN)}`;
 
+/** Widget host page for a specific app origin (self-hosted suite uses 3200). */
+export function hostPageFor(appOrigin: string): string {
+  return `${SUPPORT_ORIGIN}/?app=${encodeURIComponent(appOrigin)}`;
+}
+
 export type Fixtures = {
   beta: {
     workspace: { id: string; name: string };
