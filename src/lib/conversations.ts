@@ -1,3 +1,4 @@
+import { notifyConversationEvent } from "@/lib/events";
 import { prisma } from "@/lib/prisma";
 import type { WorkspaceContext } from "@/lib/workspace";
 
@@ -123,6 +124,11 @@ export async function addCustomerMessage(input: {
       },
     });
   });
+  notifyConversationEvent({
+    conversationId: conversation.id,
+    workspaceId: conversation.workspaceId,
+    kind: "message",
+  });
   return { ok: true };
 }
 
@@ -158,12 +164,17 @@ export async function addAgentMessage(input: {
         where: { id: conversation.id },
         data: {
           lastMessageAt: new Date(),
-          status: conversation.status === "CLOSED" ? "PENDING" : "PENDING",
+          status: "PENDING",
           closedAt: null,
           firstAgentReplyAt: conversation.firstAgentReplyAt ?? new Date(),
         },
       });
     }
+  });
+  notifyConversationEvent({
+    conversationId: conversation.id,
+    workspaceId: conversation.workspaceId,
+    kind: "message",
   });
   return { ok: true };
 }
@@ -185,6 +196,11 @@ export async function setConversationStatus(input: {
       status: input.status,
       closedAt: input.status === "CLOSED" ? new Date() : null,
     },
+  });
+  notifyConversationEvent({
+    conversationId: conversation.id,
+    workspaceId: conversation.workspaceId,
+    kind: "status",
   });
   return { ok: true };
 }

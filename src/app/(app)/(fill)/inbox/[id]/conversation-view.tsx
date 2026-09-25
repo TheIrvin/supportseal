@@ -97,6 +97,28 @@ export function ConversationView({
 
   const contactLabel = useMemo(() => visitorLabel(conversation.contact), [conversation.contact]);
 
+  // Realtime: server-rendered thread stays fresh when this conversation
+  // changes (new messages, status changes by other agents).
+  useEffect(() => {
+    const source = new EventSource("/api/inbox/stream");
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onConversation = (event: MessageEvent<string>) => {
+      try {
+        const data = JSON.parse(event.data) as { conversationId?: string };
+        if (data.conversationId !== conversation.id) return;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => router.refresh(), 300);
+      } catch {
+        // ignore malformed frames
+      }
+    };
+    source.addEventListener("conversation", onConversation as EventListener);
+    return () => {
+      source.close();
+      if (timer) clearTimeout(timer);
+    };
+  }, [conversation.id, router]);
+
   async function send() {
     const text = body.trim();
     if (!text || sending) return;

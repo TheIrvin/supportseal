@@ -332,7 +332,7 @@ const PANEL_HTML = `<!doctype html>
         var prev = state.messages;
         var incoming = data.thread.messages || [];
         var changed = prev.length !== incoming.length ||
-          (prev.length > 0 && prev[prev.length - 1].id !== incoming[incoming.length - 1].id);
+          (incoming.length > 0 && !prev.some(function (m) { return m.id === incoming[incoming.length - 1].id; }));
         if (changed) {
           state.messages = incoming;
           state.conversationId = data.thread.conversationId;
@@ -378,6 +378,9 @@ const PANEL_HTML = `<!doctype html>
         if (result.ok && result.data.thread) {
           state.messages = result.data.thread.messages || [];
           render();
+          // The stream needs an existing conversation; if we started on
+          // polling (no conversation yet), upgrade now.
+          if (!streamActive && !previewMode) startStream();
         } else {
           input.value = body;
           if (result.data.error === 'rate_limited') {
@@ -477,8 +480,43 @@ const PANEL_HTML = `<!doctype html>
 
   document.addEventListener('visibilitychange', function () { hidden = document.hidden; });
 
-  boot();
-  pollTimer = setInterval(poll, 4000);
+  boot().then(function () {
+    startStream();
+  });
+
+  var streamRetries = 0;
+  var streamActive = false;
+  function startStream() {
+    if (previewMode) { if (!pollTimer) pollTimer = setInterval(poll, 4000); return; }
+    var after = state.messages.length
+      ? state.messages[state.messages.length - 1].createdAt
+      : new Date().toISOString();
+    var source = new EventSource(apiUrl('/api/widget/stream') + '&after=' + encodeURIComponent(after));
+    streamActive = true;
+    source.addEventListener('ready', function () { streamRetries = 0; });
+    source.addEventListener('messages', function (event) {
+      try {
+        var incoming = JSON.parse(event.data);
+        incoming.forEach(function (m) {
+          if (!state.messages.some(function (x) { return x.id === m.id; })) state.messages.push(m);
+        });
+        if (state.messages.length > 0) {
+          state.messages.sort(function (a, b) { return a.createdAt < b.createdAt ? -1 : 1; });
+        }
+        if (!hidden) render();
+        reportUnread();
+      } catch (e) { /* malformed frame: fall through to polling safety */ }
+    });
+    source.onerror = function () {
+      streamRetries += 1;
+      if (source.readyState === EventSource.CLOSED) {
+        source.close();
+        streamActive = false;
+        // Bounded polling fallback (ADR-0003) when the stream cannot hold.
+        if (!pollTimer) pollTimer = setInterval(poll, 4000);
+      }
+    };
+  }
 })();
 </script>
 </body>

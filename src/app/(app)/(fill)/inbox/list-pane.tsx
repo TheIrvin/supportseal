@@ -107,6 +107,26 @@ export function ListPane() {
     return () => abortRef.current?.abort();
   }, [fetchList, pathname]);
 
+  // Realtime: refetch the list (debounced) when a conversation in this
+  // Workspace changes (ADR-0003 SSE; refetch-on-event keeps it correct even
+  // across processes).
+  const fetchListRef = useRef(fetchList);
+  useEffect(() => {
+    fetchListRef.current = fetchList;
+  }, [fetchList]);
+  useEffect(() => {
+    const source = new EventSource("/api/inbox/stream");
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    source.addEventListener("conversation", () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void fetchListRef.current(), 400);
+    });
+    return () => {
+      source.close();
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
   async function loadMore() {
     if (!data?.nextCursor || loadingMore) return;
     setLoadingMore(true);
