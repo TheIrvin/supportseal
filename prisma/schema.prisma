@@ -168,13 +168,15 @@ model ChatVisitor {
   tokenHash      String    @unique
   email          String?
   name           String?
+  externalUserId String?
   conversationId String?
   createdConversationAt DateTime?
   createdAt      DateTime  @default(now())
   lastSeenAt     DateTime  @default(now())
   devContext     Json?
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([productId])
   @@map("chat_visitors")
@@ -247,6 +249,7 @@ model Conversation {
   contact   Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
   messages  Message[]
   tags      ConversationTag[]
+  chatVisitors ChatVisitor[]
 
   @@index([workspaceId, status, lastMessageAt])
   @@index([workspaceId, productId])

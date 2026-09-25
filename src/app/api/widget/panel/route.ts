@@ -290,8 +290,17 @@ const PANEL_HTML = `<!doctype html>
     });
   }
 
+  function flushDevQueue() {
+    booted = true;
+    while (devQueue.length) {
+      var item = devQueue.shift();
+      pushDeveloperData(item[0], item[1]);
+    }
+  }
+
   function boot() {
     if (previewMode) {
+      booted = true;
       applyConfig({
         name: params.get('name') || 'Support',
         color: params.get('color') || '#2563eb',
@@ -309,6 +318,7 @@ const PANEL_HTML = `<!doctype html>
         state.messages = (data.thread && data.thread.messages) || [];
         lastCount = state.messages.length;
         render();
+        flushDevQueue();
       })
       .catch(function () { document.getElementById('banner').style.display = 'block'; });
   }
@@ -432,11 +442,37 @@ const PANEL_HTML = `<!doctype html>
     boot();
   });
 
+  var booted = false;
+  var devQueue = [];
+  function pushDeveloperData(kind, payload) {
+    // identify()/context() can arrive before the session exists; queue until
+    // boot resolves so nothing is dropped (FR-CTX-01).
+    if (!booted) {
+      devQueue.push([kind, payload]);
+      return;
+    }
+    var body = {};
+    if (kind === 'identify') body.identify = payload;
+    if (kind === 'context') body.context = payload;
+    fetch(apiUrl('/api/widget/context'), {
+      method: 'PUT', credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      if (data && data.email) { state.email = data.email; render(); }
+    }).catch(function () { /* silent: developer data is best-effort */ });
+  }
+
   window.addEventListener('message', function (event) {
+    // The loader runs in the host page, so event.origin is the host origin.
+    // Only accept messages from our direct parent (the loader's iframe tag).
+    if (event.source !== window.parent) return;
     var data = event.data || {};
     if (data.type === 'ss:page' && typeof data.path === 'string') hostPath = data.path;
     if (data.type === 'ss:open') { hidden = false; lastCount = state.messages.length; input.focus(); }
     if (data.type === 'ss:close') hidden = true;
+    if (data.type === 'ss:identify') pushDeveloperData('identify', data.payload);
+    if (data.type === 'ss:context') pushDeveloperData('context', data.payload);
   });
 
   document.addEventListener('visibilitychange', function () { hidden = document.hidden; });

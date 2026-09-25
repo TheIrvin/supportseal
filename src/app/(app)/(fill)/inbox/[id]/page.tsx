@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { getConversationDetail, listTags } from "@/lib/conversations";
+import { orderContextForDisplay } from "@/lib/dev-context";
 import { listSavedReplies } from "@/lib/saved-replies";
 import { requireWorkspace } from "@/lib/workspace";
 import { ConversationView } from "./conversation-view";
@@ -52,6 +53,20 @@ export default async function ConversationPage({
       }}
       availableTags={tags}
       savedReplies={savedReplies.map((r) => ({ id: r.id, name: r.name, body: r.body }))}
+      devContext={{
+        identifiedUserId: conversation.chatVisitors[0]?.externalUserId ?? null,
+        entries: orderContextForDisplay(
+          (conversation.chatVisitors[0]?.devContext as Record<string, unknown> | null) ?? {},
+        ).map((entry) => ({
+          key: entry.key,
+          value:
+            typeof entry.value === "object" && entry.value !== null
+              ? JSON.stringify(entry.value)
+              : String(entry.value ?? ""),
+          updatedAt: ((conversation.chatVisitors[0]?.devContext as Record<string, unknown> | null)
+            ?.updatedAt as string | undefined) ?? null,
+        })),
+      }}
     />
   );
 }

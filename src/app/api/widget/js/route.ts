@@ -133,7 +133,11 @@ const LOADER_JS = String.raw`
           '&availability=' + encodeURIComponent(config.availability)
         : '');
     frame.setAttribute('allow', 'clipboard-write');
-    frame.addEventListener('load', notifyPage);
+    frame.addEventListener('load', function () {
+      panelReady = true;
+      notifyPage();
+      flushApi();
+    });
     root.appendChild(frame);
 
     document.body.appendChild(hostEl);
@@ -214,6 +218,37 @@ const LOADER_JS = String.raw`
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
+  // --- Developer context API (FR-CTX-01): window.SupportSeal -------------
+  // identify()/context() are queued until the panel exists, then forwarded.
+  var apiQueue = [];
+  var panelReady = false;
+  function enqueue(type, payload) {
+    apiQueue.push({ type: type, payload: payload });
+    flushApi();
+  }
+  function flushApi() {
+    // Only post once the panel document has loaded: earlier postMessages hit
+    // about:blank (origin "null") and are silently dropped.
+    if (!panelReady || !frame || !frame.contentWindow) return;
+    while (apiQueue.length) {
+      var item = apiQueue.shift();
+      frame.contentWindow.postMessage({ type: 'ss:' + item.type, payload: item.payload }, serviceOrigin);
+    }
+  }
+  var publicApi = {
+    identify: function (payload) { enqueue('identify', payload || {}); },
+    context: function (payload) { enqueue('context', payload || {}); },
+  };
+  var existing = window.SupportSealWidget || {};
+  var pending = (existing && Array.isArray(existing.q)) ? existing.q : [];
+  window.SupportSealWidget = publicApi;
+  for (var i = 0; i < pending.length; i++) {
+    try {
+      var call = pending[i];
+      if (call && call[0] === 'identify') publicApi.identify(call[1]);
+      if (call && call[0] === 'context') publicApi.context(call[1]);
+    } catch (e) { /* untrusted queue entries never break the widget */ }
+  }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadConfig);
   } else {

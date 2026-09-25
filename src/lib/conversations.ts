@@ -274,6 +274,11 @@ export async function getConversationDetail(input: {
       product: { select: { id: true, name: true, primaryColor: true, archivedAt: true } },
       contact: true,
       tags: { include: { tag: true } },
+      chatVisitors: {
+        orderBy: { lastSeenAt: "desc" },
+        take: 1,
+        select: { devContext: true, externalUserId: true },
+      },
       messages: {
         orderBy: { createdAt: "asc" },
         include: { author: { select: { id: true, name: true } } },

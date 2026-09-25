@@ -1,5 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
 
+import { Prisma } from "@/generated/prisma/client";
+
+import {
+  mergeDevContext,
+  type VisitorIdentity,
+} from "@/lib/dev-context";
 import { prisma } from "@/lib/prisma";
 import {
   addCustomerMessage,
@@ -283,10 +289,19 @@ export async function visitorSendMessage(input: {
   if (!message.ok) return message;
 
   if (input.pageUrl) {
-    // Recorded on the visitor record for the context panel (developer-context slice extends this).
+    // Merge the recorded page URL into the stored context without clobbering
+    // developer-supplied identify()/context() data.
+    const visitorRow = await prisma.chatVisitor.findUnique({
+      where: { id: input.visitor.visitorId },
+      select: { devContext: true },
+    });
     await prisma.chatVisitor.update({
       where: { id: input.visitor.visitorId },
-      data: { devContext: { pageUrl: input.pageUrl.slice(0, 300), updatedAt: new Date().toISOString() } },
+      data: {
+        devContext: mergeDevContext(visitorRow?.devContext, {
+          pageUrl: input.pageUrl.slice(0, 300),
+        }) as Prisma.InputJsonValue,
+      },
     });
   }
 
@@ -325,6 +340,42 @@ export async function visitorListMessages(input: {
         createdAt: m.createdAt.toISOString(),
       })),
   };
+}
+
+/**
+ * identify()/context() persistence (FR-CTX-01/02). Identity fields update the
+ * visitor (and the contact email like the capture card); context is validated,
+ * bounded and merged into the stored JSON. Nothing here trusts the payload.
+ */
+export async function setVisitorIdentityAndContext(input: {
+  visitor: VisitorSession;
+  identity?: VisitorIdentity;
+  context?: Record<string, unknown>;
+}): Promise<{ ok: true; email: string | null } | { ok: false; error: string }> {
+  const visitor = await prisma.chatVisitor.findUnique({ where: { id: input.visitor.visitorId } });
+  if (!visitor) return { ok: false, error: "Session not found." };
+
+  const data: {
+    name?: string;
+    externalUserId?: string;
+    devContext?: Prisma.InputJsonValue;
+  } = {};
+  let emailResult: { ok: true; email: string } | { ok: false; error: string } | null = null;
+
+  if (input.identity?.name) data.name = input.identity.name;
+  if (input.identity?.userId) data.externalUserId = input.identity.userId;
+  if (input.identity?.email && input.identity.email !== visitor.email) {
+    emailResult = await setVisitorEmail({ visitor: input.visitor, email: input.identity.email });
+    if (!emailResult.ok) return emailResult;
+  }
+  if (input.context && Object.keys(input.context).length > 0) {
+    data.devContext = mergeDevContext(visitor.devContext, input.context) as Prisma.InputJsonValue;
+  }
+
+  if (Object.keys(data).length > 0) {
+    await prisma.chatVisitor.update({ where: { id: visitor.id }, data });
+  }
+  return { ok: true, email: emailResult?.ok ? emailResult.email : visitor.email };
 }
 
 export async function getAvailabilityForProduct(workspaceId: string): Promise<"LIVE" | "AWAY"> {

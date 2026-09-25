@@ -22,6 +22,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
+
+import { ContextSection } from "./context-section";
 import { toast } from "sonner";
 import { visitorLabel } from "../list-pane";
 import { addTagAction, removeTagAction, sendMessageAction, setStatusAction } from "../actions";
@@ -47,6 +49,11 @@ export type ConversationViewData = {
   messages: Message[];
 };
 
+export type DevContextProp = {
+  identifiedUserId: string | null;
+  entries: Array<{ key: string; value: string; updatedAt: string | null }>;
+};
+
 const STATUS_META = {
   OPEN: { label: "Open", color: "primary" as const },
   PENDING: { label: "Pending", color: "warning" as const },
@@ -67,10 +74,12 @@ export function ConversationView({
   conversation,
   availableTags,
   savedReplies,
+  devContext,
 }: {
   conversation: ConversationViewData;
   availableTags: { id: string; name: string }[];
   savedReplies: { id: string; name: string; body: string }[];
+  devContext: DevContextProp;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -320,6 +329,7 @@ export function ConversationView({
           conversation={conversation}
           contactLabel={contactLabel}
           availableTags={availableTags}
+          devContext={devContext}
         />
       </aside>
 
@@ -338,6 +348,7 @@ export function ConversationView({
               conversation={conversation}
               contactLabel={contactLabel}
               availableTags={availableTags}
+              devContext={devContext}
             />
           </div>
         </div>
@@ -393,10 +404,12 @@ function ContextPanel({
   conversation,
   contactLabel,
   availableTags,
+  devContext,
 }: {
   conversation: ConversationViewData;
   contactLabel: string;
   availableTags: { id: string; name: string }[];
+  devContext: DevContextProp;
 }) {
   const router = useRouter();
   const [tagName, setTagName] = useState("");
@@ -421,7 +434,18 @@ function ContextPanel({
         ) : (
           <p className="text-sm text-muted">Anonymous visitor</p>
         )}
+        {devContext.identifiedUserId ? (
+          <p className="mt-1 text-xs text-muted">
+            Identified by {conversation.product.name} as user{" "}
+            <code className="font-mono">{devContext.identifiedUserId}</code>
+          </p>
+        ) : null}
       </section>
+
+      <ContextSection
+        productName={conversation.product.name}
+        entries={devContext.entries}
+      />
 
       <section>
         <h3 className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted">Tags</h3>

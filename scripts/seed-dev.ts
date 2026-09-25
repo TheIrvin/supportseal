@@ -97,7 +97,8 @@ async function main() {
         status,
       },
     });
-    let last = new Date();
+    // Backdate so seeded threads sort below fresh real conversations.
+    let last = new Date(Date.now() - (45 + messages.length * 7) * 60 * 1000);
     for (const [kind, body] of messages) {
       last = new Date(last.getTime() + 1000 * 60 * 7);
       await prisma.message.create({
