@@ -1,7 +1,6 @@
 # SupportSeal
 
-**SupportSeal** is the working name (the final product name is undecided —
-Initial.md §58) for an open-source customer support platform for people who
+**SupportSeal** is an open-source customer support platform for people who
 build several independent products: one unified inbox, a chat widget and
 first-class support email per Product, deliberate developer/application
 context, and a choice between managed hosting and genuine self-hosting from
@@ -40,5 +39,6 @@ decision; see [docs/architecture.md](docs/architecture.md).
 
 ## Licence
 
-AGPLv3 is the intended licence ([docs/PRD.md](docs/PRD.md)). No LICENSE file
-exists yet — tracked in [docs/open-questions.md](docs/open-questions.md).
+AGPLv3 — see [LICENSE](LICENSE). The UI kit derives from
+[vauxey-theme](https://github.com/pietervw/vauxey-theme) (original components,
+no licensing restrictions); PixInvent/Vuexy source is never copied.

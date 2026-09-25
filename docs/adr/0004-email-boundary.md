@@ -1,6 +1,6 @@
 # ADR 0004 — Provider-neutral email boundary
 
-Status: Accepted boundary; first provider pending comparison
+Status: Accepted boundary; first provider comparison tracked as [pietervw/supportseal#4](https://github.com/pietervw/supportseal/issues/4)
 Date: 2026-09-25
 
 ## Decision

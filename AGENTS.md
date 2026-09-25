@@ -30,12 +30,14 @@ docs/open-questions.md — never guess an answer to an open question.
 ## Important invariants and safety constraints
 
 - Workspace isolation is a security boundary: every tenant-aware operation
-  must prove Workspace ownership (Initial.md §30, ADR-0001).
-- Never copy Vuexy/PixInvent source, assets or components into this AGPL
-  repository; the redistribution licence is not established (Initial.md §19,
-  docs/open-questions.md).
-- AGPLv3 is the intended licence but no LICENSE file exists yet
-  (docs/open-questions.md). Keep proprietary code out.
+  must prove Workspace ownership (Initial.md §30, ADR-0001). A self-hosted
+  deployment serves exactly one Workspace; additional Workspaces are blocked.
+- The UI kit derives from vauxey-theme (original components, no licensing
+  restrictions — docs/repository-discovery.md). Never copy Vuexy/PixInvent
+  source, assets or components into this AGPL repository.
+- Licence is AGPLv3 (LICENSE at the root).
+- SupportSeal is the product name; use the central configurable brand name
+  (application config), never scattered hard-coded names.
 
 ## Model routing and cost (Initial.md §42–47)
 
@@ -97,8 +99,8 @@ docs/open-questions.md — never guess an answer to an open question.
   side (Initial.md, "Durable project documents").
 - Commit `0594e5a` ("Update print statement from 'Hello' to 'Goodbye'")
   actually adds all of Initial.md — misleading label in history.
-- The final product name is undecided (Initial.md §58): do not scatter a
-  new temporary name through docs, code or filenames.
+- Deferred specs live as GitHub issues on pietervw/supportseal
+  (docs/open-questions.md has the pointers).
 
 ## Definition of done
 

@@ -1,6 +1,6 @@
 # ADR 0003 — Durable messages and event-stream delivery
 
-Status: Proposed; validate with two processes and a reverse proxy
+Status: Proposed; validation spike (two processes and a reverse proxy) tracked as [pietervw/supportseal#2](https://github.com/pietervw/supportseal/issues/2)
 Date: 2026-09-25
 
 ## Decision

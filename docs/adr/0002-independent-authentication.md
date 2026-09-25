@@ -1,6 +1,6 @@
 # ADR 0002 — Independent authentication
 
-Status: Accepted constraint; implementation library pending validation
+Status: Accepted constraint; implementation library pending validation — tracked as [pietervw/supportseal#5](https://github.com/pietervw/supportseal/issues/5)
 Date: 2026-09-25
 
 ## Decision
