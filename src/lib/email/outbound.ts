@@ -18,6 +18,7 @@ export type OutboundMessage = {
   productName: string;
   inReplyToHeader: string | null;
   referencesHeader: string | null;
+  attachments?: Array<{ filename: string; contentType: string; content: Buffer }>;
 };
 
 export function inboundDomain(): string {
@@ -27,6 +28,28 @@ export function inboundDomain(): string {
 export function managedSender(): string {
   const local = process.env.OUTBOUND_EMAIL_LOCAL?.trim() || "no-reply";
   return `${local}@${inboundDomain()}`;
+}
+
+function joinReason(a?: string, b?: string): string | undefined {
+  return [a, b].filter(Boolean).join("; ") || undefined;
+}
+
+/**
+ * Sanitise a display name for a quoted RFC 5322 phrase. Address-structural
+ * characters (quotes, angle brackets, commas, semicolons) are removed so the
+ * value can never break out of the quoted phrase regardless of how any
+ * intermediary parses it (From-header injection).
+ */
+function escapeDisplayName(name: string): string {
+  // Allowlist: keep only characters that cannot form an address or break
+  // the quoted phrase; everything else (including @) becomes a space.
+  return (
+    name
+      .replace(/[^a-zA-Z0-9 .\-'&()\/+#!?*]/gu, " ")
+      .replace(/\s+/gu, " ")
+      .trim()
+      .slice(0, 60) || "Support"
+  );
 }
 
 const globalForTransport = globalThis as unknown as { __supportsealTransport?: Transporter };
@@ -56,8 +79,16 @@ export async function sendReplyEmail(input: {
   conversationId: string;
   agentMessageId: string;
   message: OutboundMessage;
+  note?: string;
 }): Promise<SendResult> {
-  const sender = `"${input.message.productName} Support" <${managedSender()}>`;
+  // Idempotency: one outbound delivery per agent message.
+  const alreadySent = await prisma.emailDelivery.findUnique({
+    where: { agentMessageId: input.agentMessageId },
+  });
+  if (alreadySent?.status === "SENT") {
+    return { ok: true, providerMessageId: alreadySent.providerMessageId, delivered: true };
+  }
+  const sender = `"${escapeDisplayName(`${input.message.productName} Support`)}" <${managedSender()}>`;
   const headers: Record<string, string> = {};
   if (input.message.replyToken) {
     headers["Reply-To"] = `reply+${input.message.replyToken}@${inboundDomain()}`;
@@ -68,7 +99,7 @@ export async function sendReplyEmail(input: {
   const transport = getTransport();
   if (!transport) {
     // Dev / no-SMTP mode: record the send so the flow is auditable.
-    await recordDelivery(input, null, "SENT", "no SMTP configured — recorded only");
+    await recordDelivery(input, null, "SENT", joinReason("no SMTP configured — recorded only", input.note));
     return { ok: true, providerMessageId: null, delivered: false };
   }
 
@@ -79,12 +110,25 @@ export async function sendReplyEmail(input: {
       subject: input.message.subject,
       text: input.message.text,
       headers,
+      ...(input.message.attachments && input.message.attachments.length > 0
+        ? {
+            attachments: input.message.attachments.map((a) => ({
+              filename: a.filename,
+              contentType: a.contentType,
+              content: a.content,
+            })),
+          }
+        : {}),
     });
-    await recordDelivery(input, info.messageId ?? null, "SENT");
+    try {
+      await recordDelivery(input, info.messageId ?? null, "SENT", input.note, input.message.to);
+    } catch {
+      // The customer already has the mail; never report this as FAILED.
+    }
     return { ok: true, providerMessageId: info.messageId ?? null, delivered: true };
   } catch (error) {
     const reason = error instanceof Error ? error.message : "send failed";
-    await recordDelivery(input, null, "FAILED", reason);
+    await recordDelivery(input, null, "FAILED", reason, input.message.to).catch(() => undefined);
     return { ok: false, error: reason };
   }
 }
@@ -94,18 +138,22 @@ async function recordDelivery(
   providerMessageId: string | null,
   status: "SENT" | "FAILED",
   reason?: string,
+  toAddress?: string,
 ): Promise<void> {
-  await prisma.emailDelivery.create({
-    data: {
+  await prisma.emailDelivery.upsert({
+    where: { agentMessageId: input.agentMessageId },
+    create: {
       workspaceId: input.workspaceId,
       productId: input.productId,
       conversationId: input.conversationId,
       direction: "OUTBOUND",
       status,
       providerMessageId,
-      toAddress: null,
+      toAddress: toAddress ?? null,
       reason: reason ?? null,
+      agentMessageId: input.agentMessageId,
     },
+    update: { status, providerMessageId, reason: reason ?? null },
   });
 }
 

@@ -59,17 +59,56 @@ export async function deliverAgentReplyIfRouted(input: {
 
   const message = await prisma.message.findUnique({
     where: { id: input.messageId },
-    select: { body: true },
+    select: {
+      body: true,
+      attachments: { select: { id: true, filename: true, contentType: true, storageKey: true } },
+    },
   });
   if (!message) return { routed: decision, sent: false, error: "message not found" };
 
-  if (!conversation.emailReplyToken) {
-    await prisma.conversation.update({
-      where: { id: conversation.id },
-      data: { emailReplyToken: crypto.randomUUID().replace(/-/gu, "") },
+  // Resolve (and persist) the reply token BEFORE building the message so
+  // first-time emails carry the Reply-To header. Compare-and-set so two
+  // concurrent sends cannot persist different tokens.
+  let replyToken = conversation.emailReplyToken;
+  if (!replyToken) {
+    const candidate = crypto.randomUUID().replace(/-/gu, "").toLowerCase();
+    const updated = await prisma.conversation.updateMany({
+      where: { id: conversation.id, emailReplyToken: null },
+      data: { emailReplyToken: candidate },
     });
+    replyToken =
+      updated.count > 0
+        ? candidate
+        : (await prisma.conversation.findUniqueOrThrow({
+            where: { id: conversation.id },
+            select: { emailReplyToken: true },
+          })).emailReplyToken ?? candidate;
   }
 
+  // Attachment-only replies must reach the customer with their files.
+  const { getAttachmentStorage } = await import("@/lib/attachment-storage");
+  const mailAttachments: Array<{ filename: string; contentType: string; content: Buffer }> = [];
+  let missingAttachments = 0;
+  for (const attachment of message.attachments.slice(0, 10)) {
+    try {
+      const data = await getAttachmentStorage().get(attachment.storageKey);
+      mailAttachments.push({
+        filename: attachment.filename,
+        contentType: attachment.contentType,
+        content: Buffer.from(data),
+      });
+    } catch {
+      missingAttachments += 1; // storage miss: text goes out, note it
+    }
+  }
+
+  // Latest inbound Message-ID = the immediate parent customers reply to.
+  const latestInboundDelivery = await prisma.emailDelivery.findFirst({
+    where: { conversationId: conversation.id, direction: "INBOUND" },
+    orderBy: { createdAt: "desc" },
+    select: { providerMessageId: true },
+  });
+  const latestInboundId = latestInboundDelivery?.providerMessageId ?? null;
   const lastOutbound = await prisma.emailDelivery.findFirst({
     where: { conversationId: conversation.id, direction: "OUTBOUND", status: "SENT" },
     orderBy: { createdAt: "desc" },
@@ -81,16 +120,21 @@ export async function deliverAgentReplyIfRouted(input: {
     productId: conversation.product.id,
     conversationId: conversation.id,
     agentMessageId: input.messageId,
+    note: missingAttachments > 0 ? `${missingAttachments} attachment(s) missing from storage` : undefined,
     message: {
       to,
       subject: replySubject(conversation.subject, conversation.product.name),
       text: message.body,
-      replyToken: conversation.emailReplyToken,
+      replyToken,
+      attachments: mailAttachments,
       productName: conversation.product.name,
-      inReplyToHeader: conversation.emailMessageId ?? null,
-      referencesHeader: [conversation.emailMessageId, lastOutbound?.providerMessageId]
-        .filter((id): id is string => Boolean(id))
-        .join(" ") || null,
+      // Thread on the latest inbound Message-ID (immediate parent) with the
+      // root + latest outbound in References.
+      inReplyToHeader: latestInboundId ?? conversation.emailMessageId ?? null,
+      referencesHeader:
+        [conversation.emailMessageId, latestInboundId, lastOutbound?.providerMessageId]
+          .filter((id): id is string => Boolean(id))
+          .join(" ") || null,
     },
   });
 

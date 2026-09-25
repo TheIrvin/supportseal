@@ -94,7 +94,7 @@ beforeEach(async () => {
 
 describe("address + html parsing", () => {
   it("parses display-name addresses", () => {
-    expect(parseAddress("Sam Rivera <SAM@FastMail.dev>")).toEqual({ email: "sam@fastmail.dev", name: "Sam Rivera" });
+    expect(parseAddress("Sam Rivera <SAM@FastMail.dev>")).toEqual({ email: "SAM@fastmail.dev", name: "Sam Rivera" });
     expect(parseAddress("plain@example.com")).toEqual({ email: "plain@example.com", name: null });
     expect(parseAddress("not an address")).toBeNull();
     expect(parseAddress(null)).toBeNull();
@@ -151,6 +151,26 @@ describe("inbound processing (FR-EMAIL-01/03)", () => {
     expect(reply.conversationId).toBe(first.conversationId);
     expect(await db.prisma.conversation.count()).toBe(1);
     expect(await db.prisma.message.count()).toBe(2);
+  });
+
+  it("threads by References alone (no In-Reply-To)", async () => {
+    const first = await processInboundEmail({
+      email: email({ headers: { ...email().headers, messageId: "<refroot@sender>" } }),
+    });
+    if (first.outcome !== "created") throw new Error(JSON.stringify(first));
+    const reply = await processInboundEmail({
+      email: email({
+        text: "Threaded only via References.",
+        headers: {
+          ...email().headers,
+          messageId: "<refreply@sender>",
+          inReplyTo: null,
+          references: ["<other@sender>", "<refroot@sender>"],
+        },
+      }),
+    });
+    if (reply.outcome !== "created") throw new Error(JSON.stringify(reply));
+    expect(reply.conversationId).toBe(first.conversationId);
   });
 
   it("never threads by subject alone", async () => {
@@ -240,6 +260,38 @@ describe("inbound webhook route", () => {
   it("rejects missing or wrong secrets", async () => {
     const noSecret = await postInbound(jsonEmail(), "");
     expect(noSecret.status).toBe(401);
+  });
+
+  it("reads threading headers case-insensitively and from folded strings", async () => {
+    // Object shape with mixed-case keys.
+    await postInbound(
+      jsonEmail({ headers: { "Message-Id": "<case@sender>", "In-Reply-To": "<none@x>" } }),
+    );
+    expect(await db.prisma.conversation.count()).toBe(1);
+    const conversation = await db.prisma.conversation.findFirstOrThrow();
+    expect(conversation.emailMessageId).toBe("<case@sender>");
+
+    // Raw folded RFC 822 string shape.
+    const response = await postInbound(
+      jsonEmail({
+        headers: "Message-Id: <fold@sender>\r\nReferences: <case@sender>\r\n more-ids",
+      }),
+    );
+    expect(response.status).toBe(200);
+    // Folded references thread into the same conversation.
+    expect(await db.prisma.conversation.count()).toBe(1);
+    expect(await db.prisma.message.count()).toBe(2);
+  });
+
+  it("parses quoted display names containing commas", async () => {
+    const response = await postInbound(
+      jsonEmail({
+        from: '"Rivera, Sam" <sam@fastmail.dev>',
+        headers: { "Message-ID": "<quoted@sender>" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(await db.prisma.conversation.count()).toBe(1);
   });
 
   it("accepts the JSON bridge shape with the header secret", async () => {

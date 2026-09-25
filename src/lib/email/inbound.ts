@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
 import { addCustomerMessage, upsertContact } from "@/lib/conversations";
@@ -27,9 +27,9 @@ export function inboundSecret(): string | undefined {
 export function secretMatches(candidate: string | null | undefined): boolean {
   const expected = inboundSecret();
   if (!expected || !candidate) return false;
-  const a = Buffer.from(expected);
-  const b = Buffer.from(candidate);
-  return a.length === b.length && createHash("sha256").update(a).digest("hex") === createHash("sha256").update(b).digest("hex");
+  const a = createHash("sha256").update(expected).digest();
+  const b = createHash("sha256").update(candidate).digest();
+  return timingSafeEqual(a, b);
 }
 
 export type InboundAttachmentInput = {
@@ -62,26 +62,42 @@ export function parseAddress(raw: string | null | undefined): { email: string; n
   if (!raw) return null;
   const value = raw.trim();
   const bracket = /<([^<>]+)>/u.exec(value);
-  const email = (bracket ? bracket[1] : value).trim().toLowerCase();
+  const candidate = (bracket ? bracket[1] : value).trim();
+  // Lowercase only the domain: local parts (incl. reply tokens) are
+  // case-sensitive and must keep their stored casing.
+  const at = candidate.lastIndexOf("@");
+  if (at <= 0 || at === candidate.length - 1) return null;
+  const email = `${candidate.slice(0, at)}@${candidate.slice(at + 1).toLowerCase()}`;
   if (!EMAIL_PATTERN.test(email)) return null;
   const name = bracket ? value.slice(0, bracket.index).trim().replace(/^"|"$/gu, "") : null;
   return { email, name: name || null };
 }
 
+/** Split an address list on commas, ignoring commas inside quoted strings. */
 export function parseAddressList(raw: string | null | undefined): string[] {
   if (!raw) return [];
-  return raw
-    .split(",")
+  const parts: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (const char of raw) {
+    if (char === '"') inQuotes = !inQuotes;
+    if (char === "," && !inQuotes) {
+      parts.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  parts.push(current);
+  return parts
     .map((part) => parseAddress(part)?.email)
     .filter((email): email is string => Boolean(email));
 }
 
 export function splitMessageIds(raw: string | null | undefined): string[] {
   if (!raw) return [];
-  return raw
-    .split(/\s+/u)
-    .map((token) => token.trim().replace(/^<|>$/gu, ""))
-    .filter(Boolean);
+  // Keep the angle brackets: stored Message-Ids include them.
+  return raw.split(/\s+/u).map((token) => token.trim()).filter(Boolean);
 }
 
 /** Strip tags from an HTML part to obtain usable plain text. */
@@ -123,7 +139,9 @@ export function generateInboundLocalPart(): string {
 }
 
 export function replyTokenFor(): string {
-  return randomBytes(16).toString("base64url");
+  // Lowercase: some mail hops lowercase local parts; the token must
+  // survive that (finding: case-sensitive continuation).
+  return randomBytes(16).toString("base64url").toLowerCase();
 }
 
 async function findProductByRecipient(recipients: string[]) {
@@ -157,7 +175,7 @@ async function findProductByRecipient(recipients: string[]) {
 
 async function findConversationByHeaders(email: InboundEmail, productId: string, workspaceId: string) {
   const candidates = [
-    ...(email.headers.inReplyTo ? [email.headers.inReplyTo] : []),
+    ...splitMessageIds(email.headers.inReplyTo ?? null),
     ...email.headers.references,
   ].map((id) => id.trim());
   for (const candidate of candidates) {
@@ -181,6 +199,10 @@ async function findConversationByHeaders(email: InboundEmail, productId: string,
     }
   }
   return null;
+}
+
+function bodyPreview(email: InboundEmail): string {
+  return (email.text?.trim() || (email.html ? htmlToText(email.html) : "")).slice(0, 500);
 }
 
 function isAutoResponse(email: InboundEmail): boolean {
@@ -216,13 +238,33 @@ export async function processInboundEmail(input: {
   const { product } = match;
   const workspaceId = product.workspace.id;
 
-  const providerMessageId = email.headers.messageId ?? null;
-  if (providerMessageId) {
-    const existing = await prisma.emailDelivery.findUnique({
-      where: { direction_providerMessageId: { direction: "INBOUND", providerMessageId } },
-    });
-    if (existing) {
-      return { outcome: "duplicate", conversationId: existing.conversationId };
+  let providerMessageId = email.headers.messageId ?? null;
+  if (!providerMessageId) {
+    // No Message-ID: derive a deterministic one so provider retries stay
+    // idempotent (same from/to/subject/body).
+    providerMessageId = `<sha256-${createHash("sha256")
+      .update(`${sender.email}|${email.to.join(",")}|${email.subject ?? ""}|${bodyPreview(email)}`)
+      .digest("hex")}>`;
+  }
+  const existing = await prisma.emailDelivery.findUnique({
+    where: {
+      direction_productId_providerMessageId: {
+        direction: "INBOUND",
+        productId: product.id,
+        providerMessageId,
+      },
+    },
+  });
+  if (existing) {
+    // A prior attempt recorded RECEIVED but crashed before creating the
+    // message: recover by continuing instead of acking silently.
+    if (existing.conversationId) {
+      const orphan = await prisma.message.findFirst({
+        where: { conversationId: existing.conversationId },
+        select: { id: true },
+      });
+      if (orphan) return { outcome: "duplicate", conversationId: existing.conversationId };
+      // fall through: reprocess onto the orphan conversation
     }
   }
 
@@ -242,9 +284,13 @@ export async function processInboundEmail(input: {
           reason: reason?.slice(0, 250) ?? null,
         },
       });
-    } catch {
-      // unique race: another worker recorded this message id first
-      throw new InboundRejectError("duplicate", "Already processed.");
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "P2002") {
+        // Unique race: another worker recorded this message id first.
+        throw new InboundRejectError("duplicate", "Already processed.");
+      }
+      throw error;
     }
   };
 
@@ -261,22 +307,68 @@ export async function processInboundEmail(input: {
   // Resolve the conversation: reply token first, then validated threading headers.
   let conversation =
     match.kind === "reply" ? match.conversation : await findConversationByHeaders(email, product.id, workspaceId);
+  if (match.kind === "reply" && conversation) {
+    // The token is a shared secret; still require the sender to be a known
+    // participant (contact or visitor email) before posting as the customer.
+    const known = new Set(
+      [conversation.contactId ? await prisma.contact.findUnique({ where: { id: conversation.contactId }, select: { email: true } }) : null]
+        .filter(Boolean)
+        .map((c) => (c as { email: string | null }).email?.toLowerCase())
+        .filter(Boolean) as string[],
+    );
+    const visitor = await prisma.chatVisitor.findFirst({
+      where: { conversationId: conversation.id },
+      select: { email: true },
+    });
+    if (visitor?.email) known.add(visitor.email.toLowerCase());
+    if (!known.has(sender.email)) {
+      await recordDelivery("REJECTED", null, "reply-token sender does not match conversation participants");
+      return { outcome: "rejected", reason: "sender not a conversation participant", bounce: false };
+    }
+  }
+  // Recover a crashed prior attempt (RECEIVED recorded, message never created).
+  if (!conversation && existing?.conversationId) {
+    conversation = await prisma.conversation.findFirst({
+      where: { id: existing.conversationId, productId: product.id },
+    });
+  }
 
   const bodyText = (email.text?.trim() || (email.html ? htmlToText(email.html) : "")).slice(0, 20_000);
 
   let createdConversation = false;
   if (!conversation) {
     const contact = await upsertContact({ workspaceId, email: sender.email, name: sender.name });
-    conversation = await prisma.conversation.create({
-      data: {
-        workspaceId,
-        productId: product.id,
-        contactId: contact.id,
-        channel: "EMAIL",
-        subject: email.subject?.slice(0, 250) ?? null,
-        emailMessageId: providerMessageId,
-        emailReplyToken: replyTokenFor(),
-      },
+    // Conversation + RECEIVED delivery in one transaction: a concurrent
+    // duplicate webhook loses the unique race cleanly, without orphans.
+    conversation = await prisma.$transaction(async (tx) => {
+      const created = await tx.conversation.create({
+        data: {
+          workspaceId,
+          productId: product.id,
+          contactId: contact.id,
+          channel: "EMAIL",
+          subject: email.subject?.slice(0, 250) ?? null,
+          emailMessageId: providerMessageId,
+          emailReplyToken: replyTokenFor(),
+        },
+      });
+      await tx.emailDelivery.create({
+        data: {
+          workspaceId,
+          productId: product.id,
+          conversationId: created.id,
+          direction: "INBOUND",
+          status: "RECEIVED",
+          providerMessageId,
+          fromAddress: sender.email,
+          toAddress: email.to.join(", "),
+          subject: email.subject?.slice(0, 250) ?? null,
+        },
+      });
+      return created;
+    }).catch((error: { code?: string }) => {
+      if (error.code === "P2002") throw new InboundRejectError("duplicate", "Already processed.");
+      throw error;
     });
     createdConversation = true;
   } else if (providerMessageId && !conversation.emailMessageId) {
@@ -287,7 +379,9 @@ export async function processInboundEmail(input: {
     });
   }
 
-  await recordDelivery("RECEIVED", conversation.id);
+  if (!createdConversation) {
+    await recordDelivery("RECEIVED", conversation.id);
+  }
 
   const attachmentIds: string[] = [];
   const storedAttachments: Array<{ id: string; filename: string; contentType: string; size: number }> = [];

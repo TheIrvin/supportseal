@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { deliverAgentReplyIfRouted } from "@/lib/email/routing";
 
@@ -38,13 +39,16 @@ export async function sendMessageAction(input: {
   });
   if (!result.ok) return { error: result.error };
   if (input.kind === "AGENT") {
-    // Best-effort email continuation (routing rule D5); failures are
-    // recorded on the delivery and never block the chat thread.
-    await deliverAgentReplyIfRouted({
-      workspaceId: ctx.workspace.id,
-      conversationId: input.conversationId,
-      messageId: result.messageId,
-    }).catch(() => undefined);
+    const messageId = result.messageId;
+    const workspaceId = ctx.workspace.id;
+    const conversationId = input.conversationId;
+    // Best-effort email continuation (routing rule D5) after the response —
+    // SMTP latency never blocks the inbox. Failures are recorded on the
+    // delivery ledger and never block the chat thread.
+    after(async () => {
+      await deliverAgentReplyIfRouted({ workspaceId, conversationId, messageId }).catch(() => undefined);
+      revalidatePath(`/inbox/${conversationId}`);
+    });
   }
   revalidatePath(`/inbox/${input.conversationId}`);
   revalidatePath("/inbox");

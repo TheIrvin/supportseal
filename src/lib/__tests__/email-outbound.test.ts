@@ -13,17 +13,26 @@ let db: TestDb;
 let ctx: WorkspaceContext;
 let productId: string;
 
-type SentMail = Array<{ from: string; to: string; subject: string; headers: Record<string, string> }>;
+type SentMail = Array<{ from: string; to: string; subject: string; text: string; headers: Record<string, string> }>;
 let sent: SentMail = [];
+
+// Capture transport: no network, records every sendMail invocation.
+const captureTransport = {
+  sendMail(options: { from: string; to: string; subject: string; text: string; headers?: Record<string, string> }) {
+    sent.push({
+      from: options.from,
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      headers: options.headers ?? {},
+    });
+    return Promise.resolve({ messageId: "<out-1@managed>", response: "ok" });
+  },
+} as never;
 
 beforeAll(async () => {
   db = await startTestDb();
-  // Capture transport: no network, records every send.
-  setTransportForTest(
-    nodemailer.createTransport({
-      jsonTransport: true,
-    }) as never,
-  );
+  setTransportForTest(captureTransport);
 });
 
 afterAll(async () => {
@@ -122,12 +131,44 @@ describe("deliverAgentReplyIfRouted", () => {
     });
     expect(result.routed).toBe("email");
     expect(result.sent).toBe(true);
+    expect(sent.length).toBe(1);
+    const mail = sent[0];
+    // Managed sender, never the agent's name (design D4).
+    expect(mail.from).toContain("Alpha SaaS Support");
+    expect(mail.from).toContain("<no-reply@");
+    expect(mail.from).not.toContain("founder");
+    // Threading + reply-token routing.
+    expect(mail.headers["Reply-To"]).toContain("reply+reptoken123@");
+    expect(mail.headers["In-Reply-To"]).toBe("<root@sender>");
+    expect(mail.text).toContain("regenerated");
 
     const delivery = await db.prisma.emailDelivery.findFirstOrThrow({
       where: { direction: "OUTBOUND" },
     });
     expect(delivery.status).toBe("SENT");
     expect(delivery.conversationId).toBe(conversation.id);
+
+    // Idempotent: a second delivery attempt for the same message is a no-op.
+    await deliverAgentReplyIfRouted({
+      workspaceId: ctx.workspace.id,
+      conversationId: conversation.id,
+      messageId,
+    });
+    expect(sent.length).toBe(1);
+  });
+
+  it("escapes hostile product names in the From header", async () => {
+    await db.prisma.product.update({ where: { id: productId }, data: { name: 'Acme" <evil@attacker.com>, "Bob' } });
+    const { conversation, messageId } = await seedConversation("EMAIL", "kim@northstar.io", true);
+    await deliverAgentReplyIfRouted({
+      workspaceId: ctx.workspace.id,
+      conversationId: conversation.id,
+      messageId,
+    });
+    expect(sent.length).toBe(1);
+    // The display name must stay one quoted phrase; evil@ must not appear.
+    expect(sent[0].from).not.toContain("evil@attacker.com");
+    expect(sent[0].from).not.toContain("@attacker.com");
   });
 
   it("skips email for connected chat visitors", async () => {
@@ -150,6 +191,8 @@ describe("deliverAgentReplyIfRouted", () => {
     });
     expect(result.routed).toBe("email");
     expect(result.sent).toBe(true);
+    // First chat-to-email continuation mints the reply token (lowercase).
+    expect(sent[0].headers["Reply-To"]).toMatch(/reply\+[a-z0-9_]+@/);
   });
 
   it("records failures without throwing", async () => {
@@ -157,6 +200,7 @@ describe("deliverAgentReplyIfRouted", () => {
     const { setTransportForTest: swap } = await import("@/lib/email/outbound");
     const broken = nodemailer.createTransport({ port: 1, host: "127.0.0.1", connectionTimeout: 250 });
     swap(broken as never);
+    void captureTransport;
     const { conversation, messageId } = await seedConversation("EMAIL", "kim@northstar.io", true);
     const result = await deliverAgentReplyIfRouted({
       workspaceId: ctx.workspace.id,
@@ -180,4 +224,3 @@ describe("replySubject", () => {
   });
 });
 
-void sent;

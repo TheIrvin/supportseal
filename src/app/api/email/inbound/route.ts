@@ -70,13 +70,47 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
+function parseRawHeaders(value: string): Record<string, string> {
+  // SendGrid can post headers as a JSON string, or folded RFC 822 text;
+  // accept both so threading headers are never silently dropped.
+  const trimmed = value.trim();
+  if (trimmed.startsWith("{")) {
+    try {
+      return JSON.parse(trimmed) as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }
+  const map: Record<string, string> = {};
+  let lastName: string | null = null;
+  for (const line of trimmed.split(/\r?\n/u)) {
+    if (/^\s/u.test(line) && lastName) {
+      // folded continuation line
+      map[lastName] = `${map[lastName]} ${line.trim()}`;
+      continue;
+    }
+    const colon = line.indexOf(":");
+    if (colon > 0) {
+      lastName = line.slice(0, colon).trim();
+      map[lastName] = line.slice(colon + 1).trim();
+    }
+  }
+  return map;
+}
+
 function headersFromBody(body: Record<string, unknown>) {
-  // SendGrid posts full headers under "headers" (JSON object); bridges may
-  // pass individual charsets — accept both shapes.
-  const raw = (body.headers && typeof body.headers === "object" ? body.headers : {}) as Record<string, unknown>;
+  // SendGrid posts full headers under "headers" as an object or a JSON/RFC
+  // 822 string; bridges may pass headers as top-level fields. Accept all.
+  let raw: Record<string, unknown> = {};
+  if (body.headers && typeof body.headers === "string") raw = parseRawHeaders(body.headers);
+  else if (body.headers && typeof body.headers === "object") raw = body.headers as Record<string, unknown>;
+  // Normalize keys once: header names arrive in any casing
+  // (Message-Id, MESSAGE-ID, message-id…).
+  const normalized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) normalized[key.toLowerCase()] = value;
   const get = (...names: string[]) => {
     for (const name of names) {
-      const value = raw[name] ?? raw[name.toLowerCase()] ?? body[name];
+      const value = normalized[name.toLowerCase()] ?? body[name];
       if (typeof value === "string" && value.trim()) return value;
     }
     return null;
@@ -115,25 +149,23 @@ async function fromMultipart(request: NextRequest): Promise<InboundEmail> {
   if (!from) throw new Error("invalid from");
 
   const attachments: InboundEmail["attachments"] = [];
+  const MAX_FILES = 10;
+  const pushFile = async (value: File, fallbackName: string) => {
+    if (attachments.length >= MAX_FILES) return; // cap while collecting
+    attachments.push({
+      filename: value.name || fallbackName,
+      contentType: value.type || "application/octet-stream",
+      data: new Uint8Array(await value.arrayBuffer()),
+    });
+  };
   for (const value of form.getAll("attachments").values()) {
-    if (value instanceof File && value.size > 0) {
-      attachments.push({
-        filename: value.name || "attachment",
-        contentType: value.type || "application/octet-stream",
-        data: new Uint8Array(await value.arrayBuffer()),
-      });
-    }
+    if (value instanceof File && value.size > 0) await pushFile(value, "attachment");
   }
   // SendGrid also posts attachment info as attachment-info JSON + numbered
   // files (attachment1, attachment2, …) — collect those too.
   for (const [name, value] of form.entries()) {
-    const numbered = /^attachment\d+$/u.test(name);
-    if (numbered && value instanceof File && value.size > 0) {
-      attachments.push({
-        filename: value.name || name,
-        contentType: value.type || "application/octet-stream",
-        data: new Uint8Array(await value.arrayBuffer()),
-      });
+    if (/^attachment\d+$/u.test(name) && value instanceof File && value.size > 0) {
+      await pushFile(value, name);
     }
   }
 

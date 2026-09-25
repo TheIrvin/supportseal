@@ -348,13 +348,14 @@ model EmailDelivery {
   direction         EmailDirection
   status            EmailDeliveryStatus
   providerMessageId String?
+  agentMessageId    String?           @unique
   fromAddress       String?
   toAddress         String?
   subject           String?
   reason            String?
   createdAt         DateTime          @default(now())
 
-  @@unique([direction, providerMessageId])
+  @@unique([direction, productId, providerMessageId])
   @@index([conversationId])
   @@index([productId])
   @@map("email_deliveries")
