@@ -147,15 +147,32 @@ const PANEL_HTML = `<!doctype html>
   var inkOnAccent = '#fff';
   var config = null;
   var state = { messages: [], email: null, conversationId: null };
-  function attachmentHtml(list, kind) {
-    if (!list || list.length === 0) return '';
-    return list.map(function (a) {
+  // Attachment tiles are built with DOM APIs + textContent so untrusted
+  // filenames can never enter an HTML context (defence-in-depth on top of
+  // the server-side filename allowlist).
+  function attachmentNodes(list) {
+    var nodes = [];
+    if (!list) return nodes;
+    list.forEach(function (a) {
       var url = '/api/attachments/' + a.id + '?key=' + encodeURIComponent(key);
+      var link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener';
       if (a.contentType && a.contentType.indexOf('image/') === 0) {
-        return '<a href="' + url + '" target="_blank" rel="noopener" style="display:block;margin-top:6px"><img src="' + url + '" alt="' + a.filename.replace(/"/g, '&quot;') + '" style="max-width:200px;max-height:160px;border-radius:8px;display:block;border:1px solid #DCE5E1"></a>';
+        link.style.cssText = 'display:block;margin-top:6px';
+        var img = document.createElement('img');
+        img.src = url;
+        img.alt = a.filename;
+        img.style.cssText = 'max-width:200px;max-height:160px;border-radius:8px;display:block;border:1px solid #DCE5E1';
+        link.appendChild(img);
+      } else {
+        link.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-top:6px;border:1px solid #DCE5E1;border-radius:8px;padding:6px 10px;font-size:12px;color:#15261F;text-decoration:none';
+        link.textContent = '\ud83d\udcc4 ' + a.filename + ' (' + formatSize(a.size) + ')';
       }
-      return '<a href="' + url + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;border:1px solid #DCE5E1;border-radius:8px;padding:6px 10px;font-size:12px;color:#15261F;text-decoration:none">\ud83d\udcc4 ' + a.filename.replace(/</g, '&lt;') + ' (' + formatSize(a.size) + ')</a>';
-    }).join('');
+      nodes.push(link);
+    });
+    return nodes;
   }
   var lastCount = 0;
   var pollTimer = null;
@@ -304,9 +321,12 @@ const PANEL_HTML = `<!doctype html>
       var body = document.createElement('div');
       body.textContent = m.body;
       el.appendChild(body);
-      var files = document.createElement('div');
-      files.innerHTML = attachmentHtml(m.attachments, m.kind);
-      if (files.firstChild) el.appendChild(files);
+      var attachmentNodesForMessage = attachmentNodes(m.attachments);
+      if (attachmentNodesForMessage.length > 0) {
+        var files = document.createElement('div');
+        attachmentNodesForMessage.forEach(function (node) { files.appendChild(node); });
+        el.appendChild(files);
+      }
       thread.appendChild(el);
     });
     if (state.email) {

@@ -401,6 +401,12 @@ export async function visitorListMessages(input: {
         kind: m.kind,
         body: m.body,
         createdAt: m.createdAt.toISOString(),
+        attachments: m.attachments.map((a) => ({
+          id: a.id,
+          filename: a.filename,
+          contentType: a.contentType,
+          size: a.size,
+        })),
       })),
   };
 }
