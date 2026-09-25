@@ -4,7 +4,7 @@ This is the initial technical direction for the behaviours in [FRD.md](FRD.md). 
 
 ## Shape and boundaries
 
-Build one modular application with a small independently bundled browser widget. The application owns the Workspace, Product, Contact, Conversation, Message, Attachment, email, usage and billing modules. The widget communicates with public Product-scoped endpoints; it never receives privileged server credentials or the dashboard bundle. Hosted mode serves many Workspaces; self-hosted mode serves one Workspace in V1 ([ADR-0001](adr/0001-shared-codebase-and-tenancy.md); multi-Workspace self-hosting is an open question), using the same Workspace-aware schema and authorisation path.
+Build one modular application with a small independently bundled browser widget. The application owns the Workspace, Product, Contact, Conversation, Message, Attachment, email, usage and billing modules. The widget communicates with public Product-scoped endpoints; it never receives privileged server credentials or the dashboard bundle. Hosted mode serves many Workspaces; self-hosted mode serves exactly one Workspace and blocks creating more ([ADR-0001](adr/0001-shared-codebase-and-tenancy.md)), using the same Workspace-aware schema and authorisation path.
 
 Next.js/TypeScript with PostgreSQL and Prisma is a reasonable starting stack based on [repository discovery](repository-discovery.md). Deployment must run outside a proprietary platform; test the actual long-lived request and background-job requirements before committing to a host. Use ordinary database migrations and a recoverable file store, local for simple self-hosting and S3-compatible for managed storage. Add no Redis or separate search engine without measured need.
 

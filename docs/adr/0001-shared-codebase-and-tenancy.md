@@ -5,7 +5,7 @@ Date: 2026-09-25
 
 ## Decision
 
-Build a modular monolith and a separately bundled widget. Hosted SaaS and self-hosted installs share the same application code and Workspace-aware database model; a self-hosted deployment represents one Workspace in V1 (whether additional Workspaces are blocked, merely untested or supported is tracked in [../open-questions.md](../open-questions.md)). Every tenant-owned query and mutation verifies Workspace ownership and role, with relational constraints and cross-tenant tests as additional safeguards.
+Build a modular monolith and a separately bundled widget. Hosted SaaS and self-hosted installs share the same application code and Workspace-aware database model; a self-hosted deployment represents exactly one Workspace, and creating additional Workspaces is blocked (Pete, 2026-09-25); the schema stays multi-Workspace capable. Every tenant-owned query and mutation verifies Workspace ownership and role, with relational constraints and cross-tenant tests as additional safeguards.
 
 ## Why
 

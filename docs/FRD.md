@@ -36,7 +36,7 @@ This file specifies observable behaviour, not framework, provider or database ch
 
 ## Hosting, usage and safety
 
-- **FR-HOST-01** The same core workflows run in hosted and self-hosted modes. A self-hosted installation represents one Workspace with multiple Products and agents and operates without hosted billing, hosted APIs or external telemetry (multi-Workspace self-hosting: [open-questions.md](open-questions.md)). Installation, backup and upgrade steps are documented.
+- **FR-HOST-01** The same core workflows run in hosted and self-hosted modes. A self-hosted installation represents exactly one Workspace, with multiple Products and agents; creating additional Workspaces is blocked. It operates without hosted billing, hosted APIs or external telemetry. Installation, backup and upgrade steps are documented.
 - **FR-USE-01** Hosted billing counts a Conversation once ever, when it is first opened, in the billing period in which it opened; message count does not matter. Replies, reopening (including in a later billing period) and chat-to-email continuation of the same Conversation never add another counted Conversation. Usage is auditable by Workspace and period.
 - **FR-USE-02** Exceeding the hosted allowance does not abruptly reject new support messages during a documented grace period. Admins see usage and upgrade options; the system neither silently upgrades nor loses customer messages.
 - **FR-SEC-01** Every read, write, search, widget action and attachment request enforces Workspace/Product ownership and the caller's role or visitor session. Cross-Workspace access fails even with a valid ID from another Workspace.

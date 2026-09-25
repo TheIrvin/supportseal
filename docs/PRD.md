@@ -25,7 +25,7 @@ One support desk for everything you build: live chat and support email for each 
 
 ## V1 boundary
 
-V1 comprises Workspace and Admin/Agent access; multiple Products and domain-controlled widgets; a unified searchable inbox; anonymous live chat and email-based away replies; inbound and outbound Product support email; developer identify/context APIs; Conversation status, notes, tags and saved replies; attachments; onboarding; hosted usage/billing; and a deployable self-hosted edition. The same core support features are available in either hosting mode. Items Initial.md also attaches to V1/launch — the marketing site, analytics, draft legal documents and demo seeding — sit outside this boundary pending the scope decision in [open-questions.md](open-questions.md). See [FRD.md](FRD.md) for behaviour and [architecture.md](architecture.md) for implementation direction.
+V1 comprises Workspace and Admin/Agent access; multiple Products and domain-controlled widgets; a unified searchable inbox; anonymous live chat and email-based away replies; inbound and outbound Product support email; developer identify/context APIs; Conversation status, notes, tags and saved replies; attachments; onboarding; hosted usage/billing; and a deployable self-hosted edition. The same core support features are available in either hosting mode. Items Initial.md also attaches to V1/launch — the marketing site, analytics, draft legal documents and demo seeding — are out of V1 (Pete, 2026-09-25). See [FRD.md](FRD.md) for behaviour and [architecture.md](architecture.md) for implementation direction.
 
 ## Journeys and proof
 

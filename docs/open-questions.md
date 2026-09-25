@@ -49,12 +49,10 @@ documents" section — scopes V1 without them ([PRD.md](PRD.md) "V1 boundary"),
 and the marketing site appears in neither its V1 boundary nor its "Later and
 outside scope" list.
 
-Options:
-
-- a) Extend the PRD V1 boundary to include all four items.
-- b) Reclassify them as launch-readiness work outside the V1 product boundary
-  (tracked in a separate checklist document).
-- c) Descope them from V1 (requires an explicit correction to Initial.md).
+**Resolved (Pete, 2026-09-25):** V1 scope is the PRD's V1 boundary as
+written. The marketing site, Umami analytics, draft legal documents and
+demo data are out of V1. Recorded in [PRD.md](PRD.md) "V1 boundary".
+Initial.md itself is unchanged; the PRD wins on this conflict.
 
 ## 2. Billable Conversation lifecycle
 
@@ -76,8 +74,11 @@ represent one Workspace". The docs now uniformly say a self-hosted deployment
 represents one Workspace in V1, but none states whether additional Workspaces
 are blocked, merely untested, or supported.
 
-Options: enforced single-Workspace / permitted but unsupported / fully
-supported (schema stays multi-Workspace capable per Initial.md §16 either way).
+**Resolved (Pete, 2026-09-25):** enforced single-Workspace. A self-hosted
+installation blocks creating additional Workspaces; the schema stays
+multi-Workspace capable (Initial.md §16). Recorded in FR-HOST-01
+([FRD.md](FRD.md)), [architecture.md](architecture.md) and
+[ADR-0001](adr/0001-shared-codebase-and-tenancy.md).
 
 ## 4. Vuexy theme repository
 
@@ -91,14 +92,21 @@ source/licence to inspect? This must be answered — and the licence conclusion
 documented — before any theme code or assets are copied into the AGPL
 repository.
 
+**Resolved (Pete, 2026-09-25):** `pietervw/vauxey-theme` is the theme
+repository, with no licensing restrictions. Its original components, tokens
+and helpers may be copied into SupportSeal; PixInvent/Vuexy source still
+must not be. How it is used is in [design/](design/) (baseline commit
+`46e0cc7`). AGENTS.md's guardrail wording still needs a matching follow-up
+edit.
+
 ## 5. AGPLv3 LICENSE file
 
 [PRD.md](PRD.md) commits to "Publish the core under AGPLv3", but no LICENSE
 file exists, so GitHub shows the repository as unlicensed. Adding a licence is
 a legal/visibility action, so it stays Pete's call.
 
-Options: add the AGPLv3 LICENSE now / add it with the first code PR / defer
-until question 4 (Vuexy) is resolved.
+Options: add the AGPLv3 LICENSE now / add it with the first code PR. (The
+earlier option of waiting for question 4 no longer applies; it is resolved.)
 
 ## 6. Product name
 
