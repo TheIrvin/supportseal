@@ -1,6 +1,7 @@
 # ADR 0001 — Shared application and Workspace isolation
 
 Status: Accepted direction
+Date: 2026-09-25
 
 ## Decision
 

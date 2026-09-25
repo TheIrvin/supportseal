@@ -1,6 +1,7 @@
 # ADR 0002 — Independent authentication
 
 Status: Accepted constraint; implementation library pending validation
+Date: 2026-09-25
 
 ## Decision
 

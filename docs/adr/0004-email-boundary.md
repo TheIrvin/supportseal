@@ -1,6 +1,7 @@
 # ADR 0004 — Provider-neutral email boundary
 
 Status: Accepted boundary; first provider pending comparison
+Date: 2026-09-25
 
 ## Decision
 

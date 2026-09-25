@@ -1,6 +1,7 @@
 # ADR 0003 — Durable messages and event-stream delivery
 
 Status: Proposed; validate with two processes and a reverse proxy
+Date: 2026-09-25
 
 ## Decision
 

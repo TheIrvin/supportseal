@@ -2,7 +2,7 @@
 
 ## Scope of inspection
 
-The target repository, [`pietervw/supportseal`](https://github.com/pietervw/supportseal), currently has `Initial.md` and `.gitignore`; no app stack is established. Representative existing projects inspected for conventions: [`auditseal`](https://github.com/pietervw/auditseal), [`engineering-comments-register`](https://github.com/pietervw/engineering-comments-register), [`schoolreports-multi`](https://github.com/pietervw/schoolreports-multi), [`checkid`](https://github.com/pietervw/checkid), [`vauxey-theme`](https://github.com/pietervw/vauxey-theme) and [`coding-agent-template`](https://github.com/pietervw/coding-agent-template). This is a focused sample, not a claim that every mapped repository was audited.
+The target repository, [`pietervw/supportseal`](https://github.com/pietervw/supportseal), contained only `Initial.md` and `.gitignore` at inspection (2026-09-25, before this docs/ set was added in the same PR); no app stack is established yet. Representative existing projects inspected for conventions: [`auditseal`](https://github.com/pietervw/auditseal), [`engineering-comments-register`](https://github.com/pietervw/engineering-comments-register), [`schoolreports-multi`](https://github.com/pietervw/schoolreports-multi), [`checkid`](https://github.com/pietervw/checkid), [`vauxey-theme`](https://github.com/pietervw/vauxey-theme) and [`coding-agent-template`](https://github.com/pietervw/coding-agent-template). This is a focused sample, not a claim that every mapped repository was audited.
 
 ## Reusable patterns observed
 
