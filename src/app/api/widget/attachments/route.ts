@@ -5,7 +5,9 @@ import {
   isWidgetOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
+  serviceOriginFrom,
   sessionOriginMatches,
+  widgetRequestOriginOk,
   visitorCookieName,
 } from "@/lib/widget";
 import { rateLimitWidgetIp } from "@/lib/widget-rate-limit";
@@ -14,6 +16,9 @@ export const dynamic = "force-dynamic";
 
 /** Visitor attachment upload (FR-FILE-01): multipart, session gated. */
 export async function POST(request: NextRequest) {
+  if (!widgetRequestOriginOk(request.headers.get("origin"), serviceOriginFrom(request.headers, request.nextUrl.origin))) {
+    return NextResponse.json({ error: "origin_not_allowed" }, { status: 403 });
+  }
   const key = request.nextUrl.searchParams.get("key") ?? "";
   const hostParam = request.nextUrl.searchParams.get("host");
   const product = await loadWidgetProduct(key);
@@ -23,7 +28,7 @@ export async function POST(request: NextRequest) {
     productDomains: product.domains,
     hostParam,
     referer: request.headers.get("referer"),
-    serviceOrigin: request.nextUrl.origin,
+    serviceOrigin: serviceOriginFrom(request.headers, request.nextUrl.origin),
     serviceIsProduction: process.env.NODE_ENV === "production",
     testToken: request.nextUrl.searchParams.get("testToken"),
     productId: product.id,

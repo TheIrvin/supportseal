@@ -7,6 +7,7 @@ import { addAgentMessage } from "@/lib/conversations";
 import { getAvailabilityForProduct, setAvailabilityForTest } from "@/test/widget-helpers";
 import {
   createVisitorSession,
+  widgetRequestOriginOk,
   isOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
@@ -60,6 +61,16 @@ beforeEach(async () => {
   if (!product.ok) throw new Error(product.error);
   productKey = product.product.widgetPublicKey;
   productId = product.product.id;
+});
+
+describe("widgetRequestOriginOk (CSRF)", () => {
+  it("allows absent Origin, the service origin, and rejects foreign/malformed", () => {
+    expect(widgetRequestOriginOk(null, "https://support.example.com")).toBe(true);
+    expect(widgetRequestOriginOk("https://support.example.com", "https://support.example.com")).toBe(true);
+    expect(widgetRequestOriginOk("https://evil.example", "https://support.example.com")).toBe(false);
+    expect(widgetRequestOriginOk("https://support.example.com.evil.io", "https://support.example.com")).toBe(false);
+    expect(widgetRequestOriginOk("not a url", "https://support.example.com")).toBe(false);
+  });
 });
 
 describe("isOriginAllowed", () => {

@@ -6,6 +6,7 @@ import {
   isWidgetOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
+  serviceOriginFrom,
   sessionOriginMatches,
   visitorCookieName,
 } from "@/lib/widget";
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     productDomains: product.domains,
     hostParam,
     referer: request.headers.get("referer"),
-    serviceOrigin: request.nextUrl.origin,
+    serviceOrigin: serviceOriginFrom(request.headers, request.nextUrl.origin),
     serviceIsProduction: process.env.NODE_ENV === "production",
     testToken: request.nextUrl.searchParams.get("testToken"),
     productId: product.id,

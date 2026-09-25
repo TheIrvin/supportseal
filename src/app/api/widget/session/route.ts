@@ -9,6 +9,7 @@ import {
   declaredHostname,
   getAvailabilityForProduct,
   isWidgetOriginAllowed,
+  serviceOriginFrom,
   loadWidgetProduct,
   resolveVisitorSession,
   visitorCookieName,
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     productDomains: product.domains,
     hostParam,
     referer: request.headers.get("referer"),
-    serviceOrigin: request.nextUrl.origin,
+    serviceOrigin: serviceOriginFrom(request.headers, request.nextUrl.origin),
     serviceIsProduction: process.env.NODE_ENV === "production",
     testToken: request.nextUrl.searchParams.get("testToken"),
     productId: product.id,
@@ -66,11 +67,14 @@ export async function POST(request: NextRequest) {
   });
   response.cookies.set(visitorCookieName(product.id), token, {
     httpOnly: true,
-    // Lax is enough: the panel iframe and its API calls are same-origin
-    // (both served by SupportSeal), so cross-site requests never need the
-    // cookie — which is exactly the CSRF property we want.
-    sameSite: "lax",
+    // The panel iframe is served by SupportSeal but embedded in the
+    // customer's site, so its requests are third-party for the browser:
+    // the cookie must be None+Secure (Partitioned for CHIPS). CSRF is
+    // covered by the Origin-header check in widgetRequestOriginOk plus the
+    // per-session origin binding — not by SameSite.
+    sameSite: "none",
     secure: true,
+    partitioned: true,
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
   });

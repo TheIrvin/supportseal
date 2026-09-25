@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { loadWidgetProduct } from "@/lib/widget";
+import { loadWidgetProduct, serviceOriginFrom } from "@/lib/widget";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get("key") ?? "";
   const host = request.nextUrl.searchParams.get("host") ?? "";
   const product = await loadWidgetProduct(key);
-  const frameAncestors = buildFrameAncestors(product, request.nextUrl.origin);
+  const frameAncestors = buildFrameAncestors(product, serviceOriginFrom(request.headers, request.nextUrl.origin));
 
   const html = PANEL_HTML.replace("__KEY__", escapeAttr(key)).replace("__HOST__", escapeAttr(host));
   return new NextResponse(html, {

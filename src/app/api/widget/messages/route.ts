@@ -6,7 +6,9 @@ import {
   isWidgetOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
+  serviceOriginFrom,
   sessionOriginMatches,
+  widgetRequestOriginOk,
   setVisitorEmail,
   touchVisitor,
   visitorCookieName,
@@ -28,7 +30,7 @@ async function guard(request: NextRequest) {
     productDomains: product.domains,
     hostParam,
     referer: request.headers.get("referer"),
-    serviceOrigin: request.nextUrl.origin,
+    serviceOrigin: serviceOriginFrom(request.headers, request.nextUrl.origin),
     serviceIsProduction: process.env.NODE_ENV === "production",
     testToken: request.nextUrl.searchParams.get("testToken"),
     productId: product.id,
@@ -46,6 +48,9 @@ async function guard(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!widgetRequestOriginOk(request.headers.get("origin"), serviceOriginFrom(request.headers, request.nextUrl.origin))) {
+    return NextResponse.json({ error: "origin_not_allowed" }, { status: 403 });
+  }
   const guarded = await guard(request);
   if ("error" in guarded) return guarded.error;
   const { product, visitor } = guarded;
@@ -95,6 +100,9 @@ export async function GET(request: NextRequest) {
 
 /** Email capture (away form and live-chat capture card, FR-CHAT-04). */
 export async function PUT(request: NextRequest) {
+  if (!widgetRequestOriginOk(request.headers.get("origin"), serviceOriginFrom(request.headers, request.nextUrl.origin))) {
+    return NextResponse.json({ error: "origin_not_allowed" }, { status: 403 });
+  }
   const guarded = await guard(request);
   if ("error" in guarded) return guarded.error;
   const { visitor } = guarded;

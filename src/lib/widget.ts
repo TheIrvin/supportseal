@@ -420,6 +420,19 @@ export async function setVisitorIdentityAndContext(input: {
   return { ok: true, email: emailResult?.ok ? emailResult.email : visitor.email };
 }
 
+/**
+ * The service origin as the client addressed it: forwarded host (proxy) or
+ * Host header — NOT request.nextUrl.origin, which reflects the bind address
+ * (0.0.0.0) rather than the public host.
+ */
+export function serviceOriginFrom(headers: Headers, fallback: string): string {
+  const host = headers.get("x-forwarded-host")?.split(",")[0]?.trim() || headers.get("host");
+  if (!host) return fallback;
+  const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const proto = forwardedProto || (host.includes("localhost") || /^\d+\.\d+\.\d+\.\d+/u.test(host) ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
 export function declaredHostname(hostParam: string | null | undefined): string | null {
   if (!hostParam) return null;
   try {
@@ -442,6 +455,25 @@ export function sessionOriginMatches(
   const hostname = declaredHostname(hostParam);
   if (!session.originHostname) return true; // pre-binding sessions
   return hostname === session.originHostname;
+}
+
+/**
+ * CSRF defence for state-changing widget requests (POST/PUT): browsers
+ * always send Origin on cross-origin POSTs, and the panel iframe's own
+ * same-origin POSTs carry the service origin. Any other Origin is rejected.
+ * Absent Origin (non-browser clients) is allowed — the origin gate and
+ * session binding still apply.
+ */
+export function widgetRequestOriginOk(
+  originHeader: string | null,
+  serviceOrigin: string,
+): boolean {
+  if (!originHeader) return true;
+  try {
+    return new URL(originHeader).origin === serviceOrigin;
+  } catch {
+    return false;
+  }
 }
 
 export async function getAvailabilityForProduct(workspaceId: string): Promise<"LIVE" | "AWAY"> {
