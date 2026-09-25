@@ -43,8 +43,9 @@ breadcrumb.
 
 ### New Product (`/settings/products/new`)
 
-The same form as onboarding steps 2–3 on one page: name, colour (8 preset
-swatches as a `RadioGroup` plus custom hex, with advisory contrast warning
+The same form as onboarding steps 2–3 on one page: name, colour (the 8
+preset swatches from `brand.md`, which avoid SupportSeal mint, as a
+`RadioGroup` plus custom hex, with advisory contrast warning
 under 3:1 against white), domains, localhost switch, and a live widget
 preview in the right column on `≥ lg`. On create, go to the Product's
 **Widget** tab with a success toast, "Acme Analytics created. Add the
@@ -75,14 +76,20 @@ layouts/sticky/page.tsx`). Leaving with unsaved changes prompts a confirm
 - **Danger zone** (bordered `Card` `outline` `danger` at the bottom):
   - **Archive Product** (active only): `Dialog` explaining the effects:
     "The widget stops loading on your sites and no new conversations can
-    start. Existing conversations stay in the inbox." (FR-PROD-01). Button
-    "Archive". Afterwards, the page shows an `Alert` (`secondary`) "This
-    Product is archived" with an **Unarchive** button.
-  - **Delete Product** (FR-SEC-02): `Dialog` requiring the Product name to
-    be typed. It states the consequences plainly: all Conversations,
-    messages, attachments and the widget key are permanently deleted, and
-    this cannot be undone. If deletion runs asynchronously, the list shows
-    the Product as "Deleting…" until done.
+    start. Email sent to this Product's support address will bounce.
+    Existing conversations stay in the inbox as read-only until you
+    unarchive." (FR-PROD-01; bounce per Pete, read-only is a *default*).
+    Button "Archive". Afterwards, the page shows an `Alert` (`secondary`)
+    "This Product is archived" with an **Unarchive** button.
+  - **Delete Product** (FR-SEC-02; **Admins only**, per Pete, like all
+    Product settings): available **only for archived Products** (*default*:
+    archive first, then delete). For an active Product, the button is
+    disabled with the helper text "Archive this Product before deleting it."
+    The `Dialog` requires the Product name to be typed and states the
+    consequences plainly: all Conversations, messages, attachments and the
+    widget key are permanently deleted, and this cannot be undone. If
+    deletion runs asynchronously, the list shows the Product as "Deleting…"
+    until done.
 
 #### Widget
 
@@ -91,8 +98,12 @@ layouts/sticky/page.tsx`). Leaving with unsaved changes prompts a confirm
   allowed domains." (FR-CHAT-01).
 - **Public key**: read-only mono text with `CopyButton`.
 - **Allowed domains**: `TagInput` (`components/ui/tag-input.tsx`).
-  Entries normalise to hostnames; invalid entries are rejected inline. The
-  hint says whether subdomains are covered (per open point). Removing the
+  This single list is both FR-PROD-01's "domains" and its "domain
+  allowlist" (*default*). Entries normalise to hostnames; invalid entries
+  are rejected inline. Matching is by exact hostname: `example.com` does
+  not cover `app.example.com`. An explicit wildcard entry `*.example.com`
+  covers all subdomains but not the apex. Hint: "Add each hostname, or
+  *.example.com for all subdomains." Removing the
   last domain shows a warning `Alert`: "With no domains, the widget only
   works on localhost (if enabled)."
 - **Development**: `Switch` "Allow localhost" (FR-CHAT-01 explicit
@@ -100,7 +111,8 @@ layouts/sticky/page.tsx`). Leaving with unsaved changes prompts a confirm
   it."
 - **Preview**: the real widget in preview mode, toggling Live/Away
   (`RadioGroup` or small Tabs) so Admins can see both states in the Product
-  colour.
+  colour. This toggle only changes the preview. Real availability is one
+  Workspace-wide setting in the header (`app-shell.md`).
 
 #### Email (FR-EMAIL-01, FR-EMAIL-02)
 
@@ -117,7 +129,8 @@ layouts/sticky/page.tsx`). Leaving with unsaved changes prompts a confirm
     change. Provider-specific screenshots aren't needed.
 - **Outbound (read-only in V1)**: a preview of how replies arrive:
   "From: {Product} Support <{managed sender}>", "Reply-To: {threading
-  address}". Hint: "Replies are sent from SupportSeal's managed sender so
+  address}". The sender name is always "{Product} Support", never the
+  agent's name (*default*). Hint: "Replies are sent from SupportSeal's managed sender so
   customers see {Product}. Custom sending domains are coming later."
   (Initial.md §14; don't promise dates.) Self-hosted: shows the configured
   sender from instance configuration, or an `Alert` warning "Outbound email
@@ -137,6 +150,9 @@ layouts/sticky/page.tsx`). Leaving with unsaved changes prompts a confirm
   plain text." It also states the size/depth limits (FR-CTX-02).
 - An example rendering of the context panel, so developers see where the
   data appears.
+- A note that the widget records the page URL automatically (origin plus
+  path, without query string or fragment), and that the full URL can be
+  sent through `context()` if wanted.
 
 ## Components (vauxey-theme)
 
@@ -206,25 +222,26 @@ senders (V2) · widget key rotation · per-Product agents/teams or
 permissions · business-hours schedules · webhooks, integrations, API keys ·
 per-Product usage analytics · Product duplication/templates.
 
+## Decisions and defaults
+
+See `docs/open-questions.md`, "Design decisions (2026-09-25)".
+Pete's answers are marked (Pete); *defaults* are Pete-overridable.
+
+- **Archived email** (Pete): inbound email to an archived Product bounces.
+  *Default:* existing Conversations are read-only until unarchived.
+- **Delete permission** (Pete): only Admins delete Products (and
+  Conversations).
+- **Delete precondition**: *default:* a Product must be archived before it
+  can be deleted, plus typed-name confirmation.
+- **Domains vs allowlist**: *default:* one "Allowed domains" list, exact
+  hostname match, explicit `*.` wildcard for subdomains (not the apex).
+- **Availability** (Pete): Workspace-wide; not a Product setting.
+
 ## Open points
 
-- **Domains vs allowlist**: FR-PROD-01 lists "one or more domains" and a
-  "domain allowlist" separately. This design merges them into one
-  "Allowed domains" list. If they are distinct (e.g. marketing domains vs
-  embed origins), split the Widget tab into two lists. Whether
-  `example.com` also covers subdomains is undecided.
-- **Archive effects on email**: after archiving, is inbound mail to the
-  Product's forwarding address rejected, bounced or stored? And can agents
-  still reply to existing Conversations? The archive dialog copy depends
-  on both.
-- **Delete precondition**: this design lets any Product be deleted with a
-  typed confirmation. Requiring archive first is a safer alternative, but
-  it isn't specified.
 - **Support address field**: whether the customer's own support address is
   stored (for display, loop protection or future sending domains) is not
   specified.
-- **Availability per Product**: if Live/Away becomes per-Product (see
-  `app-shell.md`), it belongs in the Widget tab.
 - **Self-hosted outbound**: the exact configuration surface (environment
   variables vs admin UI) depends on the email provider comparison
   (ADR-0004); this tab only displays the result.

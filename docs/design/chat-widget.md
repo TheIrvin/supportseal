@@ -9,11 +9,14 @@ Initial.md §6, §9, §10, §55.
 **Theme baseline:** the widget must **not** import vauxey-theme React
 components, the dashboard bundle, Tailwind output or Public Sans
 (architecture.md; Initial.md §55 "Do not make the widget download the main
-application JavaScript bundle"). It reuses only token **values** from
-vauxey-theme `src/styles/tokens.css` @ `46e0cc7` (radius 0.375/0.5rem,
-`--vx-shadow-menu`, success/warning/danger hues, neutral heading/body/muted/
-border colours) as its own small CSS custom-property set, written in px so
-it ignores the host's root font size.
+application JavaScript bundle"). It reuses only token **values**, as its own
+small CSS custom-property set written in px so it ignores the host's root
+font size: the vauxey-theme radii (0.375/0.5rem → 6/8px) and the SupportSeal
+**light-mode** neutral and status values from `brand.md` (surface
+`#FFFFFF`, surface-2 `#EFF4F2`, heading `#15261F`, body `#43544D`, muted
+`#5F6F69`, control border `#7A8B85`, danger `#C42B2B`, success `#1E7B34`).
+The widget's accent is always the **Product** colour, never SupportSeal
+mint.
 
 ## Scope
 
@@ -103,9 +106,10 @@ preview mode used by onboarding and Product settings.
   differs from the dashboard on purpose). Attach button. Send button
   disabled when empty.
 - Messages: visitor bubbles right, in the Product colour with auto-contrast
-  text. Agent bubbles left, neutral (`#f3f2f5`-style surface). The sender
-  label is the Product name (see open point on agent names). Times on
-  groups. Day separators.
+  text. Agent bubbles left, neutral: `#EFF4F2` with `#15261F` text
+  (14.2:1), the SupportSeal light surface-2 and heading values from
+  `brand.md`. The sender label is "{Product} Support", never the agent's
+  name (*default*, see Decisions). Times on groups. Day separators.
 - **Email capture (optional, FR-CHAT-04)**: after the visitor's first
   message, if no email is known (and none came from `identify`), insert an
   inline card in the thread: "Get replies by email if you leave", with an
@@ -127,6 +131,9 @@ preview mode used by onboarding and Product settings.
   email." If no email is known, the email capture card appears and becomes
   required before the next message sends.
 - **Away → live**: the status line updates; no interruption.
+- Availability is one **Workspace-wide** setting (Pete, 2026-09-25), so all
+  of a Workspace's Product widgets switch together. The widget receives it
+  in its config and live updates.
 
 ### Resume (FR-CHAT-02)
 
@@ -135,6 +142,10 @@ preview mode used by onboarding and Product settings.
   launcher).
 - The session token is unguessable and scoped to the Product; it is never
   shown in the UI or URLs.
+- **Closed Conversation** (Pete, 2026-09-25): if the visitor's Conversation
+  was Closed, the thread still shows, and sending a message **reopens the
+  same Conversation**. No new Conversation is created, and there is no
+  "Start a new conversation" button in V1.
 
 ## Attachments (FR-FILE-01)
 
@@ -151,6 +162,15 @@ Identified name/email pre-fill the away form and suppress the email-capture
 card. The widget never reads browser storage, form values or cookies of the
 host page.
 
+**Automatic page URL** (Pete, 2026-09-25): the widget records the host
+page URL itself, with no developer call needed. It records the URL when a
+Conversation starts and with each visitor message, and on SPA navigation
+it tracks `pushState`/`popstate` so the latest page is current. *Default:*
+it records origin plus path only, with the query string and fragment
+stripped, because those often carry reset tokens, emails or other secrets
+(FR-SEC-02). Developers who want the full URL pass it via `context()`. The
+dashboard shows it as "Page" in the context panel.
+
 ## Preview mode
 
 For onboarding and Product settings, the same UI renders with a supplied
@@ -164,7 +184,7 @@ component, not a mock-up, so previews stay truthful.
 | --- | --- |
 | Config loading | Nothing visible (no launcher, no placeholder) |
 | Invalid key / origin not allowed (FR-CHAT-01) | Render nothing. Log one concise `console.warn` naming the cause and the Product settings location; never expose other Products or data |
-| Product archived | Render nothing (archiving prevents new interactions, FR-PROD-01); same console hint |
+| Product archived | Render nothing (archiving prevents new interactions, FR-PROD-01; inbound email to the Product bounces); same console hint |
 | Service unreachable at load | Retry with backoff (e.g. 2s, 10s, 30s) silently; show the launcher only once config loads |
 | Service fails while panel open | In-panel `alert`: "We can't reach support right now." with Retry. Unsent text is kept. If away mode applies, suggest "Leave your email and we'll reply later." |
 | Offline (`navigator.onLine` false) | Banner "You're offline. We'll send when you're back." Queued messages send on reconnect, deduplicated by client ID |
@@ -215,20 +235,28 @@ network capture (V2 / out) · multiple concurrent Conversations per visitor
 · conversation history list · emoji picker · message editing/deleting by
 visitors · languages other than English.
 
+## Decisions and defaults
+
+See `docs/open-questions.md`, "Design decisions (2026-09-25)".
+Pete's answers are marked (Pete); *defaults* are Pete-overridable.
+
+- **Availability** (Pete): Workspace-wide. Every Product widget in the
+  Workspace is live or away together.
+- **Closed Conversation** (Pete): a visitor message reopens it; no new
+  Conversation.
+- **Page URL** (Pete): recorded automatically. *Default:* origin plus path,
+  no query or fragment.
+- **Agent identity**: *default:* replies are labelled "{Product} Support";
+  agent names and avatars are not shown to visitors.
+- **Bundle budget**: *default:* loader script ≤ 5 KB gzip. Panel app (iframe)
+  ≤ 50 KB gzip JS for first open, excluding images and attachments. Report
+  both sizes in the widget PR; exceeding them needs an explicit
+  justification.
+- **Test page**: *default:* signed, single-Product, 30-minute test token
+  (`onboarding.md`).
+
 ## Open points
 
-- **Agent identity to visitors**: show the agent's name/initials on replies,
-  or only "{Product}"? This design defaults to Product name only.
-- **Closed Conversation on return**: if the visitor's Conversation is
-  Closed, does sending a message reopen it or start a new one? The widget
-  can show a "Start a new conversation" button either way once decided.
-- **Automatic page URL**: FR-CTX-01 lists "page" as context the app attaches
-  explicitly. Should the widget also record the current page URL
-  automatically (it is not browser storage or form data, FR-CTX-02)?
-- **Live/away source and scope**: manual Workspace toggle vs per-Product
-  (see `app-shell.md`). The widget only needs a boolean per Product.
-- **Bundle budget**: set a gzip size target for the loader and panel before
-  the widget PR (Initial.md §55 lists widget bundle size as critical).
 - **Isolation approach**: Shadow DOM launcher plus iframe panel is proposed
   pending the widget spike (storage partitioning, CSP on host sites that
   restrict `frame-src`).

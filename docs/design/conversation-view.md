@@ -47,10 +47,11 @@ and pane frame are in `support-inbox.md`.
   Closed (FR-INBOX-02). Next to it, a one-click primary action: "Close"
   when Open or Pending, "Reopen" when Closed. After a change, show a toast
   with Undo.
-- **Overflow `⋯`**: Copy conversation link, Copy Conversation ID, Delete
-  conversation (FR-SEC-02; role per open point). Delete uses a `Dialog`
+- **Overflow `⋯`**: Copy conversation link, Copy Conversation ID, and
+  Delete conversation (FR-SEC-02; **Admins only**, per Pete; Agents don't
+  see the item and the server rejects the request). Delete uses a `Dialog`
   (`components/ui/dialog.tsx`) confirmation that states attachments are
-  deleted too.
+  deleted too and that this cannot be undone.
 - **Context toggle `▯`**: shown at `< xl`; opens the context panel in a
   right `Sheet`.
 
@@ -113,11 +114,23 @@ and pane frame are in `support-inbox.md`.
   HTML server-side.
 - **Delivery line**: states where a reply goes, e.g. "Sends via chat" or
   "Sends via email to jane@example.com as '{Product} Support'"
-  (FR-EMAIL-02: managed sender that makes the Product clear). When both
-  channels are possible, the line becomes a small select. When neither is
-  possible (anonymous visitor who left without an email), show a `warning`
-  hint: "The visitor has left and gave no email. They'll see your reply if
-  they return to the chat."
+  (FR-EMAIL-02: managed sender that makes the Product clear). The channel
+  is preselected by the default rule below; when both channels are
+  possible, the line becomes a small select so the agent can override it.
+  When neither is possible (anonymous visitor who left without an email),
+  show a `warning` hint: "The visitor has left and gave no email. They'll
+  see your reply if they return to the chat."
+- **Reply channel rule** (*default*, see `docs/open-questions.md`):
+  - Email-started Conversation → email.
+  - Chat Conversation with the visitor's widget currently connected (a live
+    stream or heartbeat within the last 60s) → chat.
+  - Chat Conversation, visitor not connected, email known → email. The
+    reply is also stored in the chat thread, so the visitor sees it if they
+    return.
+  - Chat Conversation, visitor not connected, no email → chat only (the
+    warning above).
+- **Closed Conversation**: a hint above Send, "Sending reopens this
+  conversation" (Pete: a reply to a Closed Conversation reopens it).
 - **Send**: `Ctrl/⌘+Enter` sends; Enter inserts a newline. This avoids
   accidental email sends. The Send button is a split button
   (`components/ui/button.tsx` + `DropdownMenu`): **Send**, "Send and set
@@ -127,7 +140,9 @@ and pane frame are in `support-inbox.md`.
   (reuse the `components/layout/search-command.tsx` list styling) with
   title plus first-line preview. Selecting inserts the text at the cursor
   as editable text; it is never auto-sent. Empty state: "No saved replies
-  yet", with a link to manage them if the user is allowed to.
+  yet". Admins get a link to manage them; Agents see "Ask an admin to add
+  some" (*default:* only Admins create, edit and delete saved replies; all
+  roles insert them).
 - **Attachments**: paperclip button plus drag-and-drop onto the thread or
   composer (drop overlay with a dashed primary border, visual reference
   `components/ui/dropzone.tsx`, but a real upload without its demo copy).
@@ -166,7 +181,12 @@ text-muted`):
    - Admin link: clickable only when it is an absolute `https:`/`http:` URL.
      Show the hostname beside it, open with `target="_blank"
      rel="noopener noreferrer nofollow"`. Anything else renders as text.
-   - Page URL: text with copy; not auto-linked.
+   - Page URL: the widget records it automatically (Pete, 2026-09-25) as
+     origin plus path, with query string and fragment stripped (*default*;
+     `chat-widget.md`). Shown as "Page" (last page the visitor was on when
+     messaging), labelled "recorded by widget". A developer-supplied page
+     value from `context()` is shown as its own row. Text with copy; not
+     auto-linked.
    - Every value row has a copy affordance on hover/focus.
    - Empty: "No context sent. Use `identify()` and `context()` in your app
      to see account details here," with a link to Product settings →
@@ -205,12 +225,12 @@ text-muted`):
 | Not found / no access | One identical `EmptyState` "Conversation not found" with "Back to inbox". Don't distinguish "exists in another Workspace" (FR-SEC-01) |
 | Load error | `Alert` danger "Couldn't load this conversation" with Retry |
 | Empty thread (email with no body) | Card shows "(no text content)" and its attachments |
-| Closed | Header shows Closed. Composer stays available (see open point on reopening) |
-| Archived Product | `Alert` secondary above the composer: "{Product} is archived." Composer behaviour per open point |
+| Closed | Header shows Closed. Composer stays available with the hint "Sending reopens this conversation"; a customer reply also reopens it live (status control updates, toast "Reopened by customer reply") |
+| Archived Product | Composer replaced by an `Alert` secondary: "{Product} is archived. Incoming email bounces and new chats are blocked. Unarchive it to reply." Admins get an Unarchive button; Agents see "Ask an admin to unarchive it". Notes, tags and status changes still work (*default*) |
 | Realtime disconnected | Thin inline notice above the composer, "Reconnecting… your replies still send". Sending continues over HTTP |
 | Visitor email captured mid-chat | System line in the thread; Customer section updates live |
 | Outbound email failed | Failed message state with Retry and reason |
-| Deleted by another agent while open | Replace view with `EmptyState` "This conversation was deleted" |
+| Deleted by an Admin while open | Replace view with `EmptyState` "This conversation was deleted" |
 | Status changed by another agent | Status control updates live, with a quiet toast "Closed by Sam" |
 
 ## Responsive
@@ -252,22 +272,26 @@ Conversations · cross-Product Contact history (Initial.md §8) · custom
 sender domains (V2) · per-message reactions or edits · forwarding a
 Conversation.
 
+## Decisions and defaults
+
+See `docs/open-questions.md`, "Design decisions (2026-09-25)".
+Pete's answers are marked (Pete); *defaults* are Pete-overridable.
+
+- **Reopen** (Pete): a customer or agent reply to a Closed Conversation
+  reopens it; no new Conversation; not counted again for billing.
+- **Delete** (Pete): only Admins delete Conversations.
+- **Page URL** (Pete): recorded automatically by the widget. *Default:*
+  origin plus path only.
+- **Reply channel**: *default* rule in the Composer section.
+- **Agent name to customers**: *default:* customers see "{Product} Support"
+  in the widget and as the email sender name, never the agent's name. The
+  dashboard still shows which agent wrote each reply.
+- **Saved replies**: *default:* Admins manage, everyone inserts.
+- **Archived Product**: inbound email bounces (Pete). *Default:* the
+  composer is disabled until the Product is unarchived.
+
 ## Open points
 
-- **Reply channel rule**: when a chat visitor has supplied an email, when
-  does a reply go by email instead of chat (visitor disconnected? after a
-  timeout? agent choice)? This design shows the chosen channel and lets
-  the agent switch when both are possible.
-- **Reopen semantics**: does an agent reply or a customer reply reopen a
-  Closed Conversation automatically? Affects the status control and usage
-  counting (FR-USE-01 open question).
-- **Archived Product composer**: can agents still reply? (See
-  support-inbox open points.)
-- **Agent name to customers**: does the widget or email show the agent's
-  name, or only "{Product} Support"? Agent bubbles in the dashboard show
-  the agent name either way.
-- **Delete permission**: FR-SEC-02 requires deletion capability but doesn't
-  say whether Agents or only Admins may delete Conversations.
 - **Delivered/read availability**: depends on the realtime spike (ADR-0003)
   and email provider events (ADR-0004); the UI shows nothing until the
   service can establish the state.

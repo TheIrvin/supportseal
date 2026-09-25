@@ -175,14 +175,12 @@ Per-Product dashboards or analytics · Product groups/folders · drag-to-reorder
 or pinning · per-agent Product membership or visibility (everyone with
 Workspace access sees all Products, FR-PROD-02) · Product logos/avatars
 (V2) · Workspace switching (single Workspace per user; self-hosting is
-single-Workspace by decision) · multi-select Product filters.
+single-Workspace by decision) · multi-select Product filters · per-Product
+availability indicators (availability is Workspace-wide, per Pete
+2026-09-25; the header control in `app-shell.md` covers it).
 
 ## Open points
 
-- **Per-Product availability**: if Live/Away is decided per Product (see
-  `app-shell.md` open points), show a status dot on each sidebar entry and
-  put the toggle in the dropdown row. The design leaves room at the row's
-  right edge.
 - **Count meaning**: Open count is used because "unread" isn't a V1
   concept. If Pete wants "needs reply" counts instead, the data source
   changes but the UI doesn't.

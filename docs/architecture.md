@@ -12,7 +12,7 @@ Next.js/TypeScript with PostgreSQL and Prisma is a reasonable starting stack bas
 
 Make Workspace ownership explicit on tenant data; Product-owned records also carry Product identity. Use foreign keys and composite constraints where possible, request-scoped authorisation checks, and cross-Workspace integration tests. Public widget keys identify Products but confer no privileged access. Visitor sessions are unguessable, scoped to the Product/Conversation and protected against replay and enumeration. Agent access requires membership and role checks. Cross-Product Contact linking is internal and not shown by default.
 
-Persist Conversations, Messages and usage events as first-class records; use bounded JSON only for explicitly submitted developer context. A Conversation can contain chat and email messages. Count each Conversation once, when it is first opened, in the billing period in which it opened (FR-USE-01 in [FRD.md](FRD.md); activity in a later period is an open question — see [open-questions.md](open-questions.md)); preserve an auditable ledger and handle duplicate events idempotently. Status transitions, search and attachment access all go through the same ownership boundary.
+Persist Conversations, Messages and usage events as first-class records; use bounded JSON only for explicitly submitted developer context. A Conversation can contain chat and email messages. Count each Conversation once ever, when it is first opened, in the billing period in which it opened; reopening in a later period does not count again (FR-USE-01 in [FRD.md](FRD.md)). Preserve an auditable ledger and handle duplicate events idempotently. Status transitions, search and attachment access all go through the same ownership boundary.
 
 ## Delivery and integrations
 

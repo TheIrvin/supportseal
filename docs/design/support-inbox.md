@@ -107,6 +107,10 @@ navigated with Back.
     you or another agent) animates out; if it was open, it stays open in the
     thread pane.
   - Counts in tabs and the sidebar update from the same events.
+  - **Reopen** (Pete, 2026-09-25): a reply to a Closed Conversation, from
+    the customer (chat or email) or an agent, reopens that same Conversation
+    as Open; no new Conversation is created. In the list it leaves Closed
+    and appears at the top of Open like any other update.
 - **Status change from the list**: none in V1 beyond keyboard shortcuts on
   the selected row (below); status actions live in the Conversation header.
   After a status change the next row is selected, and a `sonner` toast
@@ -148,7 +152,7 @@ wide for a list pane.
 | Tab empty (Open) | "No open conversations." plus secondary text "New chats and emails will appear here." No celebratory illustration |
 | Tab empty (Pending / Closed) | "No pending conversations." / "No closed conversations." |
 | Search, no results | "No conversations match 'x' in {scope}." If scoped, add a button "Search all Products" |
-| Scoped to an archived Product | Normal list plus a one-line `Alert` (`secondary`): "This Product is archived. It no longer receives new conversations." |
+| Scoped to an archived Product | Normal list plus a one-line `Alert` (`secondary`): "This Product is archived. New chats are blocked, incoming email bounces, and existing conversations are read-only." |
 | List request failed | Inline `Alert` (`danger`) "Couldn't load conversations" with a Retry button. Keep previously loaded rows visible |
 | Load-more failed | Replace the footer button with "Couldn't load more · Retry" |
 | Realtime disconnected | Shell banner (app-shell). List keeps working and refetches on reconnect |
@@ -192,18 +196,22 @@ per-agent unread tracking, collision detection, snooze, cross-Product
 Contact history, split inbox per agent, CSV export (Initial.md §7 "V2 or
 later", PRD "Later").
 
+## Decisions and defaults
+
+See `docs/open-questions.md`, "Design decisions (2026-09-25)".
+
+- **Reopen** (Pete): a reply to a Closed Conversation reopens it; it is
+  never a new Conversation and is not counted again for billing.
+- **Archived Products** (Pete): inbound email to an archived Product
+  bounces. *Default:* existing Conversations stay readable in the list but
+  are read-only; agents unarchive the Product to reply
+  (`conversation-view.md`).
+
 ## Open points
 
-- **Archived Product replies**: FR-PROD-01 says archiving "prevents new
-  Product interactions". Can agents still reply to existing Conversations
-  of an archived Product (by chat or email)? The list shows them either
-  way; the answer changes the composer (`conversation-view.md`).
 - **Search fields**: which fields are searched (contact name/email, message
   bodies, email subjects, tags, context values) is a backend decision. The
   UI only needs an optional matched snippet.
-- **Customer reply to a Closed Conversation**: does it reopen the
-  Conversation (it then reappears in Open) or start a new one? FR-USE-01
-  implies reopening exists but not what triggers it.
 - **Default status tab**: this design uses Open. If Pending means "waiting
   on customer", some teams want an Open+Pending combined view; not
   specified, so not built.

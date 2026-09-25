@@ -61,7 +61,10 @@ secondary label button; primary "Continue").
    - Left: "Product name" (`Input`, e.g. "Acme Analytics"; hint "Customers
      see this name in the chat widget and emails"). "Primary colour" as a
      `RadioGroup` of 8 preset swatches (`components/ui/radio-group.tsx`,
-     custom swatch items, each with an accessible colour name) plus a
+     custom swatch items, each with an accessible colour name). The presets
+     are the ones in `brand.md` (blue, violet, pink, red, orange, amber,
+     cyan, slate), chosen to stay clear of SupportSeal's own mint green;
+     blue `#2563EB` is preselected. Also a
      "Custom" hex `Input` with a colour preview square. A contrast warning
      appears if the colour is under 3:1 against white ("may be hard to see
      on light pages"); it is advisory, not blocking.
@@ -72,7 +75,10 @@ secondary label button; primary "Continue").
 3. **Domain**: `TagInput` (`components/ui/tag-input.tsx`) for "Where will
    the widget run?". Entries are normalised to hostnames (paste a full URL →
    `app.example.com`). Hints: "Add each site that embeds the widget, e.g.
-   example.com and app.example.com." A `Switch` (`components/ui/switch.tsx`)
+   example.com and app.example.com. Use *.example.com to allow every
+   subdomain." (*Default:* one allowed-domains list, exact hostname
+   matches, with an explicit `*.` wildcard for subdomains that doesn't
+   cover the apex; see `product-settings.md`.) A `Switch` (`components/ui/switch.tsx`)
    "Allow localhost for development" is on by default in onboarding
    (FR-CHAT-01 explicit localhost path). A secondary "Skip for now, I'll
    test on localhost" continues without a production domain; the checklist
@@ -91,8 +97,14 @@ secondary label button; primary "Continue").
   root layout. No framework-specific tabs in V1.
 - **Test it**, two options:
   - "Open test page" (new tab): a SupportSeal-hosted page that embeds this
-    Product's widget, so users can test before deploying (see open point
-    on its origin).
+    Product's widget, so users can test before deploying. *Default*
+    security model: the button requests a **signed, single-Product test
+    token** (Admin only, expires after 30 minutes). The page passes it to
+    the widget, and the service accepts the SupportSeal origin for that
+    Product **only** with a valid token. No allowlist entry is added, and the
+    token grants nothing beyond a normal visitor session. Test Conversations
+    are ordinary Conversations with an automatic "test" tag, and they count
+    for usage like any other.
   - "I've added it to my site": a hint to open the site and send a chat.
 - **Waiting state**: a live card "Waiting for your first message…" with a
   subtle pulsing dot, listening on the realtime stream for the first
@@ -204,7 +216,7 @@ shell).
 
 - Wizard steps: `<ol>` with `aria-current="step"`; the step heading is an
   `<h1>` focused on step change so screen readers announce it.
-- Colour swatches are radio inputs with names ("Violet", "Teal"…) and a
+- Colour swatches are radio inputs with names ("Blue", "Violet"…) and a
   visible selected ring; custom hex has a label.
 - The waiting card uses `role="status"` (polite) so the success is
   announced.
@@ -220,13 +232,19 @@ greeting, logo or launcher position in the preview (V2) · email/DNS
 verification wizard for custom sender domains (V2) · product tours or
 coach marks · required onboarding survey.
 
+## Decisions and defaults
+
+See `docs/open-questions.md`, "Design decisions (2026-09-25)".
+
+- **Test page**: *default:* a signed, single-Product, 30-minute test token
+  (step 4). It still needs security review in the widget PR against
+  FR-CHAT-01 and FR-SEC-01. If rejected, fall back to localhost-only
+  testing with a downloadable HTML file.
+- **Domains**: *default:* one list, exact hostnames, `*.` wildcard for
+  subdomains.
+
 ## Open points
 
-- **Test page origin**: a SupportSeal-hosted test page means the service's
-  own origin must be allowed to load every Product's widget. This needs a
-  security decision against FR-CHAT-01 (e.g. a signed, short-lived test
-  token rather than a blanket allowlist entry). Fallback if rejected:
-  localhost-only testing with a downloadable HTML file.
 - **"Widget installed" detection**: item 1 assumes the service can observe
   widget config loads per Product. Not an FRD requirement. If not built,
   merge items 1 and 2.

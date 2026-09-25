@@ -15,9 +15,11 @@ Initial.md §5, §7, §37, §38, §58.
   Radix primitives, Tabler icons, Public Sans, `next-themes`, `cmdk`, `sonner`.
 - Colour: only through `--vx-*` tokens (`styles/tokens.css`, dark values on
   `.dark`). Product colours are data, never tokens (see "Product identity").
-- Brand: `config/site.ts` `siteConfig.name = "SupportSeal"` is the single
-  source of the product name (Initial.md §58). Replace the placeholder SVG in
-  `components/layout/logo.tsx`.
+- Brand: SupportSeal, mint green. `brand.md` defines the palette, the
+  replacement `--vx-*` token values (the theme's placeholder violet primary
+  is removed), the required component adjustments and the logo direction.
+  `config/site.ts` `siteConfig.name = "SupportSeal"` is the single source
+  of the product name (Initial.md §58).
 - Root font size is 15px (`html { font-size: 15px }`); keep it for the
   dashboard. The chat widget must not depend on it.
 
@@ -52,7 +54,8 @@ sidebar (see `product-switcher.md`).
   2. Product list — owned by `product-switcher.md`.
   3. Navigation, driven by a SupportSeal `config/menu.ts`:
      - **Inbox** (all roles).
-     - **Saved replies** (visibility per the open point below).
+     - **Saved replies** (all roles: Agents browse them; only Admins
+       create, edit and delete them).
      - **Settings** group: Workspace, Products, Team, Billing (hosted mode
        only), each Admin-only. Agents do not see Admin items; the server
        still enforces roles (FR-ACC-01, FR-SEC-01).
@@ -79,14 +82,21 @@ sidebar (see `product-switcher.md`).
 ### Availability control (header)
 
 Journey 4 requires that support can be set to away, and the widget switches
-between live chat and an away message form (FR-CHAT-04). The header shows a
-compact control: a status dot plus the label "Live" (success) or "Away"
-(warning). Clicking opens a `DropdownMenu`
-(`components/ui/dropdown-menu.tsx`) with two `DropdownMenuCheckboxItem`
-options and one line of help text: "Away: visitors leave a message and an
-email address; you reply by email." The change applies immediately and
-shows a `sonner` toast. Who may change it and at which scope are open (see
-below); render the control read-only for users who may not change it.
+between live chat and an away message form (FR-CHAT-04). Availability is
+**Workspace-wide** (Pete, 2026-09-25): one manual Live/Away setting applies
+to every Product's widget. The header shows a compact control: a status dot
+plus the label "Live" (success) or "Away" (warning).
+
+- **Admins** (default, see `docs/open-questions.md`): clicking opens a
+  `DropdownMenu` (`components/ui/dropdown-menu.tsx`) with two
+  `DropdownMenuCheckboxItem` options and one line of help text: "Away:
+  visitors on all your Products leave a message and an email address; you
+  reply by email." The change applies immediately to all widgets and shows a
+  `sonner` toast.
+- **Agents** see the same status as a non-interactive element with the
+  tooltip "Only admins can change availability".
+- The status updates live for every signed-in user when an Admin changes it.
+- There are no schedules or per-Product overrides in V1.
 
 ### Global search (Ctrl/Cmd+K)
 
@@ -192,8 +202,9 @@ line, primary action), `Kbd`, `ProductMark`, `ProductChip`.
   (Tooltip plus `aria-label`).
 - Keep the theme's global `*:focus-visible` outline. Never remove outlines
   without replacing them.
-- Availability control: a button labelled "Support availability: Live",
-  so status is never conveyed by colour alone.
+- Availability control: for Admins, a button labelled "Support
+  availability: Live"; for Agents, the same text as a status element. The
+  status is never conveyed by colour alone.
 - Honour `prefers-reduced-motion`: disable sidebar width and drawer
   transitions.
 - Document keyboard shortcuts in a `?` help dialog. V1 shortcuts:
@@ -209,18 +220,12 @@ by decision) · notification centre · language switcher · horizontal or
 customisable layouts · analytics dashboard home · agent presence list ·
 audit log page · marketing pages and Umami (out of V1 by decision).
 
-## Open points
+## Decisions and defaults
 
-- **Availability scope and permission**: is Live/Away Workspace-wide or
-  per Product, and can Agents change it or only Admins? Manual toggle vs.
-  schedule is also unspecified. This design assumes a manual toggle and
-  works for either scope. For per-Product scope, move the control into the
-  Product list (`product-switcher.md`) and the header shows a summary
-  ("2 of 3 live").
-- **Saved replies management**: FR-INBOX-02 says "managed saved replies"
-  without saying who manages them. The nav item is ready for Admin-only or
-  all roles.
-- **Brand**: SupportSeal is the product name (Pete, 2026-09-25), but no
-  logo or brand primary colour exists yet. Keep the theme primary
-  `#7367f0` until one is chosen. `docs/open-questions.md` §6 still lists
-  the name as undecided and needs updating in a separate docs change.
+See `docs/open-questions.md`, "Design decisions (2026-09-25)".
+
+- **Availability** is Workspace-wide and manual (Pete). *Default:* only
+  Admins can change it.
+- **Saved replies**: *default:* all roles insert them; only Admins manage
+  them.
+- **Brand**: SupportSeal, mint green (Pete); tokens and logo in `brand.md`.
