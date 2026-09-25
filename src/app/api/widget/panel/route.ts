@@ -103,6 +103,7 @@ const PANEL_HTML = `<!doctype html>
   var params = new URLSearchParams(window.location.search);
   var key = params.get('key') || '';
   var hostOrigin = params.get('host') || '';
+  var previewMode = params.get('preview') === '1';
   var hostPath = '/';
   var accent = '#2563eb';
   var inkOnAccent = '#fff';
@@ -229,6 +230,16 @@ const PANEL_HTML = `<!doctype html>
   }
 
   function saveEmail(email, cardEl) {
+    if (previewMode) {
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          state.email = email;
+          if (cardEl) cardEl.remove();
+          render();
+          resolve({ email: email });
+        }, 300);
+      });
+    }
     return fetch(apiUrl('/api/widget/messages'), {
       method: 'PUT', credentials: 'include',
       headers: { 'content-type': 'application/json' },
@@ -248,6 +259,15 @@ const PANEL_HTML = `<!doctype html>
   }
 
   function boot() {
+    if (previewMode) {
+      applyConfig({
+        name: params.get('name') || 'Support',
+        color: params.get('color') || '#2563eb',
+        availability: params.get('availability') === 'AWAY' ? 'AWAY' : 'LIVE'
+      });
+      render();
+      return Promise.resolve();
+    }
     return fetch(apiUrl('/api/widget/session'), { method: 'POST', credentials: 'include' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (data) {
@@ -262,7 +282,7 @@ const PANEL_HTML = `<!doctype html>
   }
 
   function poll() {
-    if (hidden) { reportUnread(); return; }
+    if (previewMode || hidden) { reportUnread(); return; }
     fetch(apiUrl('/api/widget/messages'), { credentials: 'include' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
@@ -290,6 +310,15 @@ const PANEL_HTML = `<!doctype html>
     input.value = '';
     input.style.height = 'auto';
     sendBtn.disabled = true;
+    if (previewMode) {
+      state.messages.push({ id: 'p' + Date.now(), kind: 'CUSTOMER', body: body, createdAt: new Date().toISOString() });
+      render();
+      setTimeout(function () {
+        state.messages.push({ id: 'a' + Date.now(), kind: 'AGENT', body: 'Thanks! This is a preview — replies from your team will appear here.', createdAt: new Date().toISOString() });
+        render();
+      }, 900);
+      return;
+    }
     fetch(apiUrl('/api/widget/messages'), {
       method: 'POST', credentials: 'include',
       headers: { 'content-type': 'application/json' },
@@ -340,6 +369,11 @@ const PANEL_HTML = `<!doctype html>
     hint.textContent = '';
     document.getElementById('awaySend').disabled = true;
     saveEmail(email).then(function () {
+      if (previewMode) {
+        state.messages.push({ id: 'p' + Date.now(), kind: 'CUSTOMER', body: message, createdAt: new Date().toISOString() });
+        render();
+        return;
+      }
       input.dataset.awayMessage = '';
       return fetch(apiUrl('/api/widget/messages'), {
         method: 'POST', credentials: 'include',

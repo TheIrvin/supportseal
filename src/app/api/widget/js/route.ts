@@ -35,6 +35,7 @@ const LOADER_JS = String.raw`
   if (!script) return;
 
   var key = script.getAttribute('data-key');
+  var previewMode = script.getAttribute('data-preview') === '1';
   var serviceOrigin = (function () {
     try {
       return new URL(script.src).origin;
@@ -68,6 +69,15 @@ const LOADER_JS = String.raw`
   function isMobile() { return window.innerWidth < 640; }
 
   function loadConfig() {
+    if (previewMode) {
+      config = {
+        name: script.getAttribute('data-name') || 'Support',
+        color: script.getAttribute('data-color') || '#2563eb',
+        availability: script.getAttribute('data-availability') === 'AWAY' ? 'AWAY' : 'LIVE'
+      };
+      render();
+      return;
+    }
     var url = serviceOrigin + '/api/widget/config?key=' + encodeURIComponent(key) +
       '&host=' + encodeURIComponent(window.location.origin);
     fetch(url)
@@ -116,13 +126,23 @@ const LOADER_JS = String.raw`
     frame.className = 'panel';
     frame.title = config.name + ' support chat';
     frame.src = serviceOrigin + '/widget?key=' + encodeURIComponent(key) +
-      '&host=' + encodeURIComponent(window.location.origin);
+      '&host=' + encodeURIComponent(window.location.origin) +
+      (previewMode
+        ? '&preview=1&name=' + encodeURIComponent(config.name) +
+          '&color=' + encodeURIComponent(config.color) +
+          '&availability=' + encodeURIComponent(config.availability)
+        : '');
     frame.setAttribute('allow', 'clipboard-write');
     frame.addEventListener('load', notifyPage);
     root.appendChild(frame);
 
     document.body.appendChild(hostEl);
     observeRemoval();
+    if (previewMode) {
+      // Previews start with the panel open (onboarding.md "launcher and open
+      // panel"); the visitor can still close it.
+      setTimeout(function () { if (!open) toggle(); }, 400);
+    }
   }
 
   function positionPanel() {

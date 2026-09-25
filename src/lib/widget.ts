@@ -10,6 +10,7 @@ export type WidgetProduct = {
   id: string;
   name: string;
   primaryColor: string;
+  widgetPublicKey: string;
   workspaceId: string;
   domains: string[];
 };
@@ -25,6 +26,7 @@ export async function loadWidgetProduct(widgetKey: string): Promise<WidgetProduc
     id: product.id,
     name: product.name,
     primaryColor: product.primaryColor,
+    widgetPublicKey: product.widgetPublicKey,
     workspaceId: product.workspaceId,
     domains: product.domains.map((d) => d.domain),
   };

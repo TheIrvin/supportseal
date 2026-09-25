@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
     id: productRow.id,
     name: productRow.name,
     primaryColor: productRow.primaryColor,
+    widgetPublicKey: productRow.widgetPublicKey,
     workspaceId: productRow.workspaceId,
     domains: productRow.domains.map((d) => d.domain),
   };
