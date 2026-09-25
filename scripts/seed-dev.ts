@@ -15,6 +15,7 @@ async function main() {
   const existing = await prisma.conversation.findFirst();
   if (existing) {
     console.log("Seed data already present; skipping.");
+    await prisma.$disconnect();
     process.exit(0);
   }
 

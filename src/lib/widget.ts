@@ -2,6 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 
 import { Prisma } from "@/generated/prisma/client";
 
+import { notifyConversationEvent } from "@/lib/events";
+
 import {
   mergeDevContext,
   type VisitorIdentity,
@@ -374,6 +376,13 @@ export async function setVisitorIdentityAndContext(input: {
 
   if (Object.keys(data).length > 0) {
     await prisma.chatVisitor.update({ where: { id: visitor.id }, data });
+    if (visitor.conversationId) {
+      notifyConversationEvent({
+        conversationId: visitor.conversationId,
+        workspaceId: visitor.productId ? (await prisma.product.findUnique({ where: { id: visitor.productId }, select: { workspaceId: true } }))!.workspaceId : "",
+        kind: "context",
+      });
+    }
   }
   return { ok: true, email: emailResult?.ok ? emailResult.email : visitor.email };
 }

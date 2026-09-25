@@ -9,7 +9,7 @@ import { EventEmitter } from "node:events";
 export type ConversationEvent = {
   conversationId: string;
   workspaceId: string;
-  kind: "message" | "status" | "email-capture";
+  kind: "message" | "status" | "context";
 };
 
 const globalForBus = globalThis as unknown as { __supportsealEvents?: EventEmitter };

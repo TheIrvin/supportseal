@@ -235,19 +235,26 @@ const LOADER_JS = String.raw`
       frame.contentWindow.postMessage({ type: 'ss:' + item.type, payload: item.payload }, serviceOrigin);
     }
   }
+  function dispatch(entry) {
+    try {
+      var type = entry && entry[0];
+      if (type === 'identify' || type === 'context') enqueue(type, entry[1] || {});
+    } catch (e) { /* untrusted queue entries never break the widget */ }
+  }
   var publicApi = {
     identify: function (payload) { enqueue('identify', payload || {}); },
     context: function (payload) { enqueue('context', payload || {}); },
+    // Keep the documented async-safety queue usable after the loader takes
+    // over window.SupportSealWidget: q.push(['identify', {...}]) keeps working.
+    q: {
+      push: function (entry) { dispatch(entry); },
+    },
   };
   var existing = window.SupportSealWidget || {};
   var pending = (existing && Array.isArray(existing.q)) ? existing.q : [];
   window.SupportSealWidget = publicApi;
   for (var i = 0; i < pending.length; i++) {
-    try {
-      var call = pending[i];
-      if (call && call[0] === 'identify') publicApi.identify(call[1]);
-      if (call && call[0] === 'context') publicApi.context(call[1]);
-    } catch (e) { /* untrusted queue entries never break the widget */ }
+    dispatch(pending[i]);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadConfig);

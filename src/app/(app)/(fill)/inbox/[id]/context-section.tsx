@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDistanceToNowStrict } from "date-fns";
 import { IconExternalLink } from "@tabler/icons-react";
 
 /**
@@ -36,6 +37,17 @@ const KEY_LABELS: Record<string, string> = {
   adminUrl: "Admin link",
 };
 
+function latestUpdatedAt(
+  entries: Array<{ updatedAt: string | null }>,
+): string | null {
+  let latest: string | null = null;
+  for (const entry of entries) {
+    const stamp = entry.updatedAt;
+    if (stamp && (!latest || stamp > latest)) latest = stamp;
+  }
+  return latest;
+}
+
 export function ContextSection({
   productName,
   entries,
@@ -43,6 +55,7 @@ export function ContextSection({
   productName: string;
   entries: Array<{ key: string; value: string; updatedAt: string | null }>;
 }) {
+  const updatedAt = latestUpdatedAt(entries);
   return (
     <section>
       <h3 className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted">
@@ -55,8 +68,10 @@ export function ContextSection({
         </p>
       ) : (
         <>
-          {entries.some((entry) => entry.updatedAt) ? (
-            <p className="mt-1 text-xs text-muted">updated recently</p>
+          {updatedAt ? (
+            <p className="mt-1 text-xs text-muted">
+              updated {formatDistanceToNowStrict(new Date(updatedAt))} ago
+            </p>
           ) : null}
           <dl className="mt-1.5 space-y-1.5">
             {entries.map((entry) => {
@@ -65,7 +80,7 @@ export function ContextSection({
                 <div key={entry.key} className="flex items-start justify-between gap-2 text-sm">
                   <dt className="shrink-0 text-muted">
                     {KEY_LABELS[entry.key] ?? entry.key}
-                    {entry.key === "pageUrl" || entry.key === "page" ? (
+                    {entry.key === "pageUrl" ? (
                       <span className="block text-[0.625rem]">recorded by widget</span>
                     ) : null}
                   </dt>

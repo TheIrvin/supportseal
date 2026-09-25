@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { prisma } from "@/lib/prisma";
 import { subscribeToConversationEvents } from "@/lib/events";
 import { getPrimaryMembership } from "@/lib/workspace";
 import { getSessionUser } from "@/lib/session";
@@ -7,6 +8,7 @@ import { getSessionUser } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 const HEARTBEAT_MS = 15_000;
+const DB_TICK_MS = 10_000;
 
 /**
  * Workspace conversation stream for the agent inbox (FR-CHAT-03, ADR-0003):
@@ -22,6 +24,7 @@ export async function GET(request: NextRequest) {
   const workspaceId = membership.workspaceId;
 
   const encoder = new TextEncoder();
+  let cleanup: () => void = () => {};
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       let closed = false;
@@ -44,6 +47,28 @@ export async function GET(request: NextRequest) {
         }
       });
 
+      // Slow database tick: wakes the inbox when another app process wrote
+      // (its events never reach this process's bus).
+      let lastSignature: string | null = null;
+      const dbTick = setInterval(async () => {
+        if (closed) return;
+        try {
+          const rows = await prisma.conversation.findMany({
+            where: { workspaceId },
+            orderBy: { updatedAt: "desc" },
+            take: 20,
+            select: { id: true, updatedAt: true },
+          });
+          const signature = rows.map((r) => `${r.id}:${r.updatedAt.getTime()}`).join("|");
+          if (lastSignature !== null && signature !== lastSignature) {
+            send("conversation", { conversationId: "*", kind: "refresh" });
+          }
+          lastSignature = signature;
+        } catch {
+          // transient DB error: retry next tick
+        }
+      }, DB_TICK_MS);
+
       const heartbeat = setInterval(() => {
         if (closed) return;
         try {
@@ -53,9 +78,10 @@ export async function GET(request: NextRequest) {
         }
       }, HEARTBEAT_MS);
 
-      const cleanup = () => {
+      cleanup = () => {
         closed = true;
         clearInterval(heartbeat);
+        clearInterval(dbTick);
         unsubscribe();
         try {
           controller.close();
@@ -64,6 +90,9 @@ export async function GET(request: NextRequest) {
         }
       };
       request.signal.addEventListener("abort", cleanup);
+    },
+    cancel() {
+      cleanup();
     },
   });
 

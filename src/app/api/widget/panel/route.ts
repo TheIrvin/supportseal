@@ -433,6 +433,7 @@ const PANEL_HTML = `<!doctype html>
       }).then(function (r) { return r.json(); }).then(function (data) {
         document.getElementById('awaySend').disabled = false;
         if (data.thread) { state.messages = data.thread.messages || []; render(); }
+        if (!streamActive && !previewMode) startStream();
       });
     });
   });
@@ -447,9 +448,12 @@ const PANEL_HTML = `<!doctype html>
 
   var booted = false;
   var devQueue = [];
+  // identify()/context()/pageUrl all merge into one stored JSON; serialize
+  // the writes so concurrent PUTs cannot clobber each other.
+  var devChain = Promise.resolve();
   function pushDeveloperData(kind, payload) {
-    // identify()/context() can arrive before the session exists; queue until
-    // boot resolves so nothing is dropped (FR-CTX-01).
+    // Calls can arrive before the session exists; queue until boot resolves
+    // so nothing is dropped (FR-CTX-01).
     if (!booted) {
       devQueue.push([kind, payload]);
       return;
@@ -457,10 +461,12 @@ const PANEL_HTML = `<!doctype html>
     var body = {};
     if (kind === 'identify') body.identify = payload;
     if (kind === 'context') body.context = payload;
-    fetch(apiUrl('/api/widget/context'), {
-      method: 'PUT', credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body)
+    devChain = devChain.then(function () {
+      return fetch(apiUrl('/api/widget/context'), {
+        method: 'PUT', credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body)
+      });
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
       if (data && data.email) { state.email = data.email; render(); }
     }).catch(function () { /* silent: developer data is best-effort */ });
@@ -478,40 +484,42 @@ const PANEL_HTML = `<!doctype html>
     if (data.type === 'ss:context') pushDeveloperData('context', data.payload);
   });
 
-  document.addEventListener('visibilitychange', function () { hidden = document.hidden; });
-
   boot().then(function () {
     startStream();
   });
 
-  var streamRetries = 0;
   var streamActive = false;
+  var activeSource = null;
   function startStream() {
     if (previewMode) { if (!pollTimer) pollTimer = setInterval(poll, 4000); return; }
+    if (activeSource) { activeSource.close(); activeSource = null; }
     var after = state.messages.length
       ? state.messages[state.messages.length - 1].createdAt
       : new Date().toISOString();
     var source = new EventSource(apiUrl('/api/widget/stream') + '&after=' + encodeURIComponent(after));
+    activeSource = source;
     streamActive = true;
-    source.addEventListener('ready', function () { streamRetries = 0; });
+    source.addEventListener('ready', function () {
+      // The stream is established; stop the polling fallback if it ran.
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    });
     source.addEventListener('messages', function (event) {
       try {
         var incoming = JSON.parse(event.data);
         incoming.forEach(function (m) {
           if (!state.messages.some(function (x) { return x.id === m.id; })) state.messages.push(m);
         });
-        if (state.messages.length > 0) {
-          state.messages.sort(function (a, b) { return a.createdAt < b.createdAt ? -1 : 1; });
-        }
-        if (!hidden) render();
+        state.messages.sort(function (a, b) {
+          return a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
+        });
+        if (!hidden) { render(); lastCount = state.messages.length; }
         reportUnread();
       } catch (e) { /* malformed frame: fall through to polling safety */ }
     });
     source.onerror = function () {
-      streamRetries += 1;
       if (source.readyState === EventSource.CLOSED) {
         source.close();
-        streamActive = false;
+        if (activeSource === source) { activeSource = null; streamActive = false; }
         // Bounded polling fallback (ADR-0003) when the stream cannot hold.
         if (!pollTimer) pollTimer = setInterval(poll, 4000);
       }

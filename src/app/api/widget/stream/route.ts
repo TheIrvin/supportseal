@@ -47,8 +47,10 @@ export async function GET(request: NextRequest) {
   const afterParam = request.nextUrl.searchParams.get("after");
   let lastSentAt = afterParam ? new Date(afterParam) : new Date();
   if (Number.isNaN(lastSentAt.getTime())) lastSentAt = new Date();
+  const seenIds: string[] = [];
 
   const encoder = new TextEncoder();
+  let cleanup: () => void = () => {};
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       let closed = false;
@@ -65,27 +67,36 @@ export async function GET(request: NextRequest) {
       };
 
       send("ready", { conversationId });
-      let dirty = false;
       const unsubscribe = subscribeToConversationEvents((event) => {
-        if (event.conversationId === conversationId) dirty = true;
+        if (event.conversationId === conversationId) {
+          // Low-latency wake for same-process writes; the tick covers the rest.
+          void check();
+        }
       });
 
       async function check() {
-        if (closed || checking || !dirty) return;
+        if (closed || checking) return;
         checking = true;
-        dirty = false;
         try {
-          const fresh = await prisma.message.findMany({
+          // >= plus a sent-id filter so messages sharing a millisecond with
+          // the cursor are delivered, never duplicated.
+          const candidates = await prisma.message.findMany({
             where: {
               conversationId,
               kind: { in: ["CUSTOMER", "AGENT"] },
-              createdAt: { gt: lastSentAt },
+              createdAt: { gte: lastSentAt },
             },
             orderBy: { createdAt: "asc" },
-            take: 50,
+            take: 100,
           });
+          const fresh = candidates.filter((m) => !seenIds.includes(m.id));
           if (fresh.length > 0) {
-            lastSentAt = fresh[fresh.length - 1].createdAt;
+            for (const m of fresh) {
+              seenIds.push(m.id);
+              if (seenIds.length > 500) seenIds.shift();
+            }
+            const newest = fresh[fresh.length - 1].createdAt;
+            if (newest > lastSentAt) lastSentAt = newest;
             send(
               "messages",
               fresh.map((m) => ({
@@ -113,7 +124,7 @@ export async function GET(request: NextRequest) {
         }
       }, HEARTBEAT_MS);
 
-      const cleanup = () => {
+      cleanup = () => {
         closed = true;
         clearInterval(tick);
         clearInterval(heartbeat);
@@ -125,6 +136,10 @@ export async function GET(request: NextRequest) {
         }
       };
       request.signal.addEventListener("abort", cleanup);
+    },
+    cancel() {
+      // Client went away without an abort signal.
+      cleanup();
     },
   });
 
