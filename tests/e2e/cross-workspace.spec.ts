@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { APP_ORIGIN, HOST_PAGE, loadFixtures, registerAccount, uniqueAccount } from "./helpers";
+import { loadFixtures, openWidget, registerAccount, signIn, uniqueAccount } from "./helpers";
 
 /**
  * Cross-Workspace isolation sanity (Initial.md §63, FR-SEC-01): an agent of a
@@ -22,11 +22,7 @@ test.describe.serial("cross-Workspace isolation", () => {
   test.beforeAll(async ({ browser }) => {
     const fixtures = loadFixtures();
     betaOwnerPage = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
-    await betaOwnerPage.goto("/login");
-    await betaOwnerPage.locator("#email").fill(fixtures.beta.owner.email);
-    await betaOwnerPage.locator("#password").fill(fixtures.beta.owner.password);
-    await betaOwnerPage.getByRole("button", { name: "Sign in" }).click();
-    await expect(betaOwnerPage).toHaveURL(/\/inbox/u);
+    await signIn(betaOwnerPage, fixtures.beta.owner.email, fixtures.beta.owner.password);
 
     const attackerContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     attackerPage = await attackerContext.newPage();
@@ -43,10 +39,9 @@ test.describe.serial("cross-Workspace isolation", () => {
   test("a visitor creates a real Beta conversation with an attachment", async () => {
     const fixtures = loadFixtures();
     const page = await betaCustomerContext.newPage();
-    await page.goto(`${HOST_PAGE}&app=${encodeURIComponent(APP_ORIGIN)}&key=${encodeURIComponent(fixtures.beta.product.key)}`);
-    await page.locator("#supportseal-widget-host button").first().click();
-    const frame = page.frameLocator("#supportseal-widget-host iframe");
-    await expect(frame.locator("#statusline")).toContainText("Online", { timeout: 20_000 });
+    const frame = await openWidget(page, fixtures.beta.product.key, {
+      status: "Online",
+    });
     await frame.locator("#fileInput").setInputFiles({
       name: "beta-invoice.txt",
       mimeType: "text/plain",

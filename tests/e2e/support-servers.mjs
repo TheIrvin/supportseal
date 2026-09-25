@@ -82,37 +82,41 @@ const smtp = net.createServer((socket) => {
   let from = "";
   let recipients = [];
   let inData = false;
-  let data = "";
 
   const reply = (line) => socket.write(line + "\r\n");
   reply("220 e2e-smtp ready");
 
   socket.on("data", (chunk) => {
     buffer += chunk.toString("utf8");
+    if (!inData) {
+      let index = buffer.indexOf("\r\n");
+      while (index !== -1) {
+        const line = buffer.slice(0, index);
+        buffer = buffer.slice(index + 2);
+        if (line.toUpperCase() === "DATA") {
+          inData = true;
+          reply("354 End data with <CR><LF>.<CR><LF>");
+          break;
+        }
+        handleCommand(line);
+        index = buffer.indexOf("\r\n");
+      }
+    }
     if (inData) {
       const endIdx = buffer.indexOf("\r\n.\r\n");
       if (endIdx === -1) return;
-      data += buffer.slice(0, endIdx + 2);
+      const data = buffer.slice(0, endIdx + 2);
       buffer = buffer.slice(endIdx + 5);
       inData = false;
       messages.push(parseMessage(from, recipients, data));
       if (messages.length > 100) messages.shift();
-      data = "";
       from = "";
       recipients = [];
       reply("250 OK");
     }
-    let index = buffer.indexOf("\r\n");
-    while (index !== -1) {
-      const line = buffer.slice(0, index);
-      buffer = buffer.slice(index + 2);
-      handleCommand(line);
-      index = buffer.indexOf("\r\n");
-    }
   });
 
   function handleCommand(line) {
-    if (inData) return;
     const upper = line.toUpperCase();
     if (upper.startsWith("EHLO") || upper.startsWith("HELO")) {
       reply("250-e2e-smtp");
@@ -123,17 +127,12 @@ const smtp = net.createServer((socket) => {
     } else if (upper.startsWith("RCPT TO:")) {
       recipients.push(line.slice(8).trim().replace(/^<|>$/gu, ""));
       reply("250 OK");
-    } else if (upper === "DATA") {
-      inData = true;
-      data = "";
-      reply("354 End data with <CR><LF>.<CR><LF>");
     } else if (upper === "QUIT") {
       reply("221 Bye");
       socket.end();
     } else if (upper === "RSET") {
       from = "";
       recipients = [];
-      data = "";
       reply("250 OK");
     } else {
       reply("250 OK");

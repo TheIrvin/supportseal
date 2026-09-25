@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { HOST_PAGE, loadFixtures } from "./helpers";
+import { createProduct, loadFixtures, openWidget, signIn } from "./helpers";
 
 /**
  * Widget-facing security behaviours: invalid keys, origin allowlist
@@ -19,11 +19,7 @@ test.describe("widget security", () => {
     customerContext = await browser.newContext();
     const ownerContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     ownerPage = await ownerContext.newPage();
-    await ownerPage.goto("/login");
-    await ownerPage.locator("#email").fill(fixtures.beta.owner.email);
-    await ownerPage.locator("#password").fill(fixtures.beta.owner.password);
-    await ownerPage.getByRole("button", { name: "Sign in" }).click();
-    await expect(ownerPage).toHaveURL(/\/inbox/u);
+    await signIn(ownerPage, fixtures.beta.owner.email, fixtures.beta.owner.password);
   });
 
   test.afterAll(async () => {
@@ -54,26 +50,23 @@ test.describe("widget security", () => {
 
   test("one visitor cannot read another visitor's conversation", async ({ request }) => {
     const victimPage = await customerContext.newPage();
-    await victimPage.goto(`${HOST_PAGE}&key=${encodeURIComponent(betaKey)}`);
-    await victimPage.locator("#supportseal-widget-host button").first().click();
-    const frame = victimPage.frameLocator("#supportseal-widget-host iframe");
-    await expect(frame.locator("#statusline")).toContainText("Online", { timeout: 20_000 });
+    const frame = await openWidget(victimPage, betaKey, { status: "Online" });
     await frame.locator("#input").fill("Victim secret message 8f3a");
     await frame.locator("#send").click();
     await expect(frame.locator("#thread")).toContainText("Victim secret message 8f3a");
     await victimPage.close();
 
-    // A second visitor on the same Product gets their own empty session; the
-    // guessed-ID variant is the same API with a foreign token.
+    // A second visitor on the same Product gets their own empty session.
     const session = await request.post(
       `/api/widget/session?key=${encodeURIComponent(betaKey)}&host=${encodeURIComponent("http://localhost:3101")}`,
     );
     expect(session.status(), await session.text()).toBe(200);
     const sessionBody = (await session.json()) as { token?: string; error?: string };
     expect(sessionBody.error).toBeUndefined();
+    expect(sessionBody.token).toBeTruthy();
     const thread = await request.get(
       `/api/widget/messages?key=${encodeURIComponent(betaKey)}&host=${encodeURIComponent("http://localhost:3101")}`,
-      { headers: { "x-ss-visitor-token": sessionBody.token ?? "" } },
+      { headers: { "x-ss-visitor-token": sessionBody.token! } },
     );
     expect(thread.status()).toBe(200);
     const body = (await thread.json()) as {
@@ -86,20 +79,21 @@ test.describe("widget security", () => {
 
   test("developer context is rendered as untrusted data (FR-CTX-02)", async () => {
     const page = await customerContext.newPage();
-    await page.goto(`${HOST_PAGE}&key=${encodeURIComponent(betaKey)}`);
-    await page.locator("#supportseal-widget-host button").first().click();
-    const frame = page.frameLocator("#supportseal-widget-host iframe");
-    await expect(frame.locator("#statusline")).toContainText("Online", { timeout: 20_000 });
+    const frame = await openWidget(page, betaKey, { status: "Online" });
     await frame.locator("#input").fill("Context injection probe");
     await frame.locator("#send").click();
     await expect(frame.locator("#thread")).toContainText("Context injection probe");
+    const contextPut = page.waitForResponse(
+      (response) => response.url().includes("/api/widget/context") && response.status() === 200,
+      { timeout: 20_000 },
+    );
     await page.evaluate(() => {
       const widget = (
         window as unknown as { SupportSealWidget?: { context: (data: unknown) => void } }
       ).SupportSealWidget;
       widget?.context({ plan: '<img src=x onerror="window.__ssXss=1">' });
     });
-    await page.waitForTimeout(1_000);
+    await contextPut;
     await page.close();
 
     await ownerPage.goto("/inbox");
@@ -121,14 +115,7 @@ test.describe("widget security", () => {
   test("archiving a Product blocks new widget chats until unarchived", async ({ request }) => {
     // Dedicated Product so a failure mid-test can never leave the shared
     // Beta fixture archived for other specs.
-    await ownerPage.goto("/settings/products");
-    await ownerPage.locator("#name").fill("Archive Probe");
-    await ownerPage.getByRole("button", { name: "Create Product" }).click();
-    await expect(ownerPage).toHaveURL(/\/settings\/products\/[^/]+\/?(\?|$)/u);
-    const probeId = ownerPage.url().match(/\/settings\/products\/([^/?]+)/u)![1];
-    await ownerPage.goto(`/settings/products/${probeId}?tab=widget`);
-    const probeKey = ((await ownerPage.getByText(/^pk_\S+$/u).textContent()) ?? "").trim();
-    expect(probeKey).toMatch(/^pk_/u);
+    const { id: probeId, key: probeKey } = await createProduct(ownerPage, { name: "Archive Probe" });
 
     await ownerPage.goto(`/settings/products/${probeId}`);
     await ownerPage.getByRole("button", { name: "Archive", exact: true }).click();

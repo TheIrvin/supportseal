@@ -1,6 +1,6 @@
-import { expect, test, type BrowserContext, type FrameLocator, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { HOST_PAGE, registerAccount, uniqueAccount } from "./helpers";
+import { createProduct, openWidget, registerAccount, uniqueAccount, widgetFrame } from "./helpers";
 
 /**
  * The condensed V1 acceptance flow (docs/FRD.md "Acceptance path", Initial.md
@@ -11,7 +11,7 @@ import { HOST_PAGE, registerAccount, uniqueAccount } from "./helpers";
  */
 test.describe.serial("V1 acceptance flow", () => {
   const account = uniqueAccount();
-  const productA = { name: "Alpha Chat", colour: "#2563eb", domain: "app.alpha.test" };
+  const productA = { name: "Alpha Chat", domain: "app.alpha.test" };
   const productB = { name: "Beacon Forms", colour: "#db2777", domain: "forms.beacon.test" };
 
   let agentPage: Page;
@@ -19,25 +19,8 @@ test.describe.serial("V1 acceptance flow", () => {
   let customerPage: Page;
   let productAId = "";
   let productAKey = "";
-  let productBId = "";
   let productBKey = "";
   let conversationAId = "";
-
-  function widgetFrame(page: Page): FrameLocator {
-    return page.frameLocator("#supportseal-widget-host iframe");
-  }
-
-  async function openWidget(page: Page, key: string): Promise<FrameLocator> {
-    await page.goto(`${HOST_PAGE}&key=${encodeURIComponent(key)}`);
-    const host = page.locator("#supportseal-widget-host");
-    await expect(host).toBeAttached();
-    const launcher = host.locator("button").first();
-    await expect(launcher).toBeVisible();
-    await launcher.click();
-    const frame = widgetFrame(page);
-    await expect(frame.locator("#statusline")).toContainText("Online", { timeout: 20_000 });
-    return frame;
-  }
 
   test.beforeAll(async ({ browser }) => {
     const agentContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -92,8 +75,7 @@ test.describe.serial("V1 acceptance flow", () => {
   });
 
   test("visitor starts an anonymous chat from a real embedded widget", async () => {
-    const frame = await openWidget(customerPage, productAKey);
-    await expect(frame.locator("#statusline")).toContainText("Online");
+    const frame = await openWidget(customerPage, productAKey, { status: "Online" });
     await frame.locator("#input").fill("Hello! The export button is broken on Safari.");
     await frame.locator("#send").click();
     await expect(frame.locator("#thread")).toContainText("export button is broken");
@@ -178,20 +160,9 @@ test.describe.serial("V1 acceptance flow", () => {
   });
 
   test("create Product B and start a conversation on it", async () => {
-    await agentPage.goto("/settings/products");
-    await agentPage.locator("#name").fill(productB.name);
-    await agentPage.locator("#primaryColor").fill(productB.colour);
-    await agentPage.locator("#domains").fill(productB.domain);
-    await agentPage.getByRole("button", { name: "Create Product" }).click();
-    await expect(agentPage).toHaveURL(/\/settings\/products\/[^/]+\/?(\?|$)/u);
-    productBId = agentPage.url().match(/\/settings\/products\/([^/?]+)/u)![1];
+    productBKey = (await createProduct(agentPage, productB)).key;
 
-    await agentPage.goto(`/settings/products/${productBId}?tab=widget`);
-    const widgetKeyText = await agentPage.getByText(/^pk_\S+$/u).textContent();
-    productBKey = widgetKeyText?.trim() ?? "";
-    expect(productBKey).toMatch(/^pk_/u);
-
-    const frame = await openWidget(customerPage, productBKey);
+    const frame = await openWidget(customerPage, productBKey, { status: "Online" });
     await frame.locator("#input").fill("Hi Beacon team, how do I embed the form?");
     await frame.locator("#send").click();
     await expect(frame.locator("#thread")).toContainText("embed the form");
@@ -231,7 +202,7 @@ test.describe.serial("V1 acceptance flow", () => {
       agentPage.getByRole("article", { name: /Internal note by /u }).filter({ hasText: note }),
     ).toBeVisible();
 
-    const frame = await openWidget(customerPage, productAKey);
+    const frame = await openWidget(customerPage, productAKey, { status: "Online" });
     await expect(frame.locator("#thread")).toContainText("export button is broken");
     await expect(frame.locator("#thread")).not.toContainText("ENG-412");
   });
@@ -284,7 +255,7 @@ test.describe.serial("V1 acceptance flow", () => {
     }).toPass({ timeout: 15_000 });
     await expect(agentPage.locator("header").getByText("Closed").first()).toBeVisible();
 
-    const frame = await openWidget(customerPage, productAKey);
+    const frame = await openWidget(customerPage, productAKey, { status: "Online" });
     await frame.locator("#input").fill("One more thing — still broken after updating.");
     await frame.locator("#send").click();
 

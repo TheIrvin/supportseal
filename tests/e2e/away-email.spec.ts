@@ -1,8 +1,8 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import {
-  HOST_PAGE,
   onboardWorkspaceWithProduct,
+  openWidget,
   postInboundEmail,
   resetCapturedEmails,
   uniqueAccount,
@@ -53,11 +53,7 @@ test.describe.serial("away mode and email continuation", () => {
   });
 
   test("widget in away mode requires an email before submission", async ({ page }) => {
-    await page.goto(`${HOST_PAGE}&key=${encodeURIComponent(productKey)}`);
-    await page.locator("#supportseal-widget-host button").first().click();
-    const frame = page.frameLocator("#supportseal-widget-host iframe");
-
-    await expect(frame.locator("#statusline")).toContainText("Away");
+    const frame = await openWidget(page, productKey, { status: "Away" });
     await expect(frame.locator("#away")).toBeVisible();
     await expect(frame.locator("#input")).toBeHidden();
 
@@ -69,9 +65,7 @@ test.describe.serial("away mode and email continuation", () => {
   test("visitor submits the away form and the agent sees the conversation", async () => {
     await resetCapturedEmails();
     customerPage = await customerContext.newPage();
-    await customerPage.goto(`${HOST_PAGE}&key=${encodeURIComponent(productKey)}`);
-    await customerPage.locator("#supportseal-widget-host button").first().click();
-    const frame = customerPage.frameLocator("#supportseal-widget-host iframe");
+    const frame = await openWidget(customerPage, productKey, { status: "Away" });
 
     await frame.locator("#email").fill(visitorEmail);
     await frame.locator("#message").fill("My March invoice is missing the GST line.");
@@ -89,11 +83,12 @@ test.describe.serial("away mode and email continuation", () => {
     test.setTimeout(150_000);
     // Reply routing keeps a chat visitor "connected" for 60s after their
     // last activity (src/lib/email/routing.ts); close their page and wait
-    // past that window so the reply routes to email.
+    // past that window (plus a small margin for a read already in flight at
+    // close time) so the reply routes to email.
     await customerPage.close();
 
     const reply = "We regenerated the March invoice — the GST line is back. Mind checking?";
-    await new Promise((resolve) => setTimeout(resolve, 61_000));
+    await new Promise((resolve) => setTimeout(resolve, 65_000));
     await agentPage.getByLabel(/^Reply to /u).fill(reply);
     await agentPage.getByRole("button", { name: "Send", exact: true }).click();
     await expect(

@@ -1,15 +1,16 @@
 import fs from "node:fs";
 
-import { expect, type Page } from "@playwright/test";
+import { expect, type FrameLocator, type Page } from "@playwright/test";
 
 export const APP_ORIGIN = process.env.E2E_APP_URL || "http://localhost:3100";
 export const SUPPORT_ORIGIN = "http://localhost:3101";
-export const HOST_PAGE = `${SUPPORT_ORIGIN}/?app=${encodeURIComponent(APP_ORIGIN)}`;
 
 /** Widget host page for a specific app origin (self-hosted suite uses 3200). */
 export function hostPageFor(appOrigin: string): string {
   return `${SUPPORT_ORIGIN}/?app=${encodeURIComponent(appOrigin)}`;
 }
+
+export const HOST_PAGE = hostPageFor(APP_ORIGIN);
 
 export type Fixtures = {
   beta: {
@@ -81,14 +82,13 @@ export async function postInboundEmail(
     },
     body: JSON.stringify(payload),
   });
-  return { status: response.status, body: (await response.json().catch(() => ({}))) as Record<string, unknown> };
+  return { status: response.status, body: (await response.json()) as Record<string, unknown> };
 }
 
 /** Unique-enough account values so every run starts from a clean slate. */
 export function uniqueAccount() {
   const nonce = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   return {
-    nonce,
     name: `E2E Owner ${nonce}`,
     email: `owner-${nonce}@e2e.test`,
     password: "correct-horse-owner",
@@ -114,6 +114,54 @@ export async function signIn(page: Page, email: string, password: string): Promi
   await page.locator("#password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/inbox/u);
+}
+
+export function widgetFrame(page: Page): FrameLocator {
+  return page.frameLocator("#supportseal-widget-host iframe");
+}
+
+/**
+ * Open the embedded widget. `status` is the status-line text to wait for
+ * ("Online" or "Away") — it only appears once the session boot resolved, so
+ * waiting for it also guards every later interaction against the pre-boot
+ * race. Omit it only when the caller waits for its own signal.
+ */
+export async function openWidget(
+  page: Page,
+  key: string,
+  options: { hostPage?: string; status?: string } = {},
+): Promise<FrameLocator> {
+  await page.goto(`${options.hostPage ?? HOST_PAGE}&key=${encodeURIComponent(key)}`);
+  const host = page.locator("#supportseal-widget-host");
+  await expect(host).toBeAttached();
+  const launcher = host.locator("button").first();
+  await expect(launcher).toBeVisible();
+  await launcher.click();
+  const frame = widgetFrame(page);
+  if (options.status !== undefined) {
+    await expect(frame.locator("#statusline")).toContainText(options.status);
+  }
+  return frame;
+}
+
+/** Create a Product from settings and return its id plus public widget key. */
+export async function createProduct(
+  page: Page,
+  product: { name: string; colour?: string; domain?: string },
+): Promise<{ id: string; key: string }> {
+  await page.goto("/settings/products");
+  await page.locator("#name").fill(product.name);
+  if (product.colour !== undefined) await page.locator("#primaryColor").fill(product.colour);
+  if (product.domain !== undefined) await page.locator("#domains").fill(product.domain);
+  await page.getByRole("button", { name: "Create Product" }).click();
+  await expect(page).toHaveURL(/\/settings\/products\/[^/]+\/?(\?|$)/u);
+  const id = page.url().match(/\/settings\/products\/([^/?]+)/u)?.[1] ?? "";
+  expect(id).not.toBe("");
+
+  await page.goto(`/settings/products/${id}?tab=widget`);
+  const key = ((await page.getByText(/^pk_\S+$/u).textContent()) ?? "").trim();
+  expect(key).toMatch(/^pk_/u);
+  return { id, key };
 }
 
 /**

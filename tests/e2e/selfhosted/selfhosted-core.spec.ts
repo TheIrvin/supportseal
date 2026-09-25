@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { hostPageFor, uniqueAccount } from "../helpers";
+import { hostPageFor, openWidget, registerAccount, uniqueAccount } from "../helpers";
 
 /**
  * Self-hosted core flows (FR-HOST-01): the default deployment mode runs the
@@ -34,11 +34,7 @@ test.describe.serial("self-hosted mode core flows", () => {
   });
 
   test("onboarding works: register, one Workspace, one Product", async () => {
-    await agentPage.goto("/register");
-    await agentPage.locator("#name").fill(account.name);
-    await agentPage.locator("#email").fill(account.email);
-    await agentPage.locator("#password").fill(account.password);
-    await agentPage.getByRole("button", { name: "Sign up" }).click();
+    await registerAccount(agentPage, account);
     await expect(agentPage).toHaveURL(/\/onboarding\/?$/u);
 
     await agentPage.locator("#name").fill(account.workspace);
@@ -64,10 +60,10 @@ test.describe.serial("self-hosted mode core flows", () => {
 
   test("chat widget and agent reply work end to end", async () => {
     const page = await customerContext.newPage();
-    await page.goto(`${hostPageFor(APP)}&key=${encodeURIComponent(productKey)}`);
-    await page.locator("#supportseal-widget-host button").first().click();
-    const frame = page.frameLocator("#supportseal-widget-host iframe");
-    await expect(frame.locator("#statusline")).toContainText("Online", { timeout: 20_000 });
+    const frame = await openWidget(page, productKey, {
+      hostPage: hostPageFor(APP),
+      status: "Online",
+    });
     await frame.locator("#input").fill("Self-hosted chat message 4c1f");
     await frame.locator("#send").click();
     await expect(frame.locator("#thread")).toContainText("Self-hosted chat message 4c1f");
