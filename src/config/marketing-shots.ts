@@ -44,6 +44,10 @@ export const MARKETING_SHOTS: Record<string, MarketingShot> = {
   S9: shot("S9", "Team settings with Admin and Agent roles", 1440, 900),
   S10: shot("S10", "Hosted billing page: usage meter for the current period", 1440, 900),
   S11: shot("S11", "Conversation with note, tag and saved-reply picker open", 1440, 900),
+  // The design shot list leaves the attachments crop unnamed ("crop of a
+  // Conversation with a file"); it gets a manifest entry so the frame can
+  // render a pending slot like every other capture.
+  "S-attachments": shot("S-attachments", "Conversation crop showing a shared file attachment", 900, 640),
 };
 
 /** Full shot-list ids from the design doc, for completeness tests. */

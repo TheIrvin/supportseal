@@ -38,7 +38,10 @@ describe("marketing pages never hard-code the product name", () => {
       }
       for (const file of files) {
         const content = readFileSync(file, "utf8");
-        if (/SupportSeal/.test(content)) offenders.push(path.relative(ROOT, file));
+        // `SupportSealWidget` is the shipped widget API global
+        // (src/app/api/widget/js/route.ts) and must appear verbatim in code
+        // samples; the brand name itself never appears as a literal.
+        if (/SupportSeal(?!Widget)/.test(content)) offenders.push(path.relative(ROOT, file));
       }
     }
     expect(offenders).toEqual([]);

@@ -4,7 +4,11 @@ import { MARKETING_SHOTS, SHOT_LIST_IDS } from "@/config/marketing-shots";
 
 describe("marketing shot manifest", () => {
   it("declares every S-id from the design-doc shot list", () => {
-    expect(Object.keys(MARKETING_SHOTS).sort()).toEqual([...SHOT_LIST_IDS].sort());
+    const ids = Object.keys(MARKETING_SHOTS);
+    for (const id of SHOT_LIST_IDS) {
+      expect(ids, `missing ${id}`).toContain(id);
+    }
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("describes and dimensions every shot (aspect placeholders without CLS)", () => {
@@ -17,7 +21,7 @@ describe("marketing shot manifest", () => {
   });
 
   it("starts fully unavailable until real captures exist (open question M6)", () => {
-    const available = SHOT_LIST_IDS.filter((id) => MARKETING_SHOTS[id].available);
+    const available = Object.values(MARKETING_SHOTS).filter((shot) => shot.available);
     expect(available).toEqual([]);
   });
 });
