@@ -44,7 +44,7 @@ export function getAttachmentStorage(): AttachmentStorage {
   return globalForStorage.__supportsealStorage;
 }
 
-/** Test helper: swap the storage adapter (in-memory). */
-export function setAttachmentStorageForTest(storage: AttachmentStorage): void {
-  globalForStorage.__supportsealStorage = storage;
+/** Test helper: swap or clear the storage adapter (in-memory). */
+export function setAttachmentStorageForTest(storage: AttachmentStorage | null): void {
+  globalForStorage.__supportsealStorage = storage ?? undefined;
 }

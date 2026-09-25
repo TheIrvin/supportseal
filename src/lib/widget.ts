@@ -170,9 +170,13 @@ export type VisitorSession = {
   email: string | null;
   name: string | null;
   conversationId: string | null;
+  originHostname: string | null;
 };
 
-export async function createVisitorSession(product: WidgetProduct): Promise<{
+export async function createVisitorSession(
+  product: WidgetProduct,
+  originHostname: string | null,
+): Promise<{
   token: string;
   session: VisitorSession;
 }> {
@@ -181,6 +185,7 @@ export async function createVisitorSession(product: WidgetProduct): Promise<{
     data: {
       productId: product.id,
       tokenHash: hashVisitorToken(token),
+      originHostname,
     },
   });
   return {
@@ -191,6 +196,7 @@ export async function createVisitorSession(product: WidgetProduct): Promise<{
       email: null,
       name: null,
       conversationId: null,
+      originHostname,
     },
   };
 }
@@ -210,6 +216,7 @@ export async function resolveVisitorSession(
     email: visitor.email,
     name: visitor.name,
     conversationId: visitor.conversationId,
+    originHostname: visitor.originHostname,
   };
 }
 
@@ -233,7 +240,11 @@ export async function setVisitorEmail(input: {
     data: { email },
   });
   if (input.visitor.conversationId) {
-    // Link the email to the conversation's contact (dedupes within the Workspace).
+    // Email-takeover guard: a widget visitor claiming an email that already
+    // belongs to a different contact must NOT hijack that contact's
+    // conversation history. Only fill the email when it is free in the
+    // Workspace; otherwise the claim is recorded on the visitor (agents see
+    // it) and the conversation keeps its own contact.
     const conversation = await prisma.conversation.findUnique({
       where: { id: input.visitor.conversationId },
       select: { id: true, workspaceId: true, contactId: true },
@@ -243,12 +254,7 @@ export async function setVisitorEmail(input: {
         where: { workspaceId: conversation.workspaceId, email },
         select: { id: true },
       });
-      if (existing) {
-        await prisma.conversation.update({
-          where: { id: conversation.id },
-          data: { contactId: existing.id },
-        });
-      } else {
+      if (!existing) {
         await prisma.contact.update({
           where: { id: conversation.contactId },
           data: { email },
@@ -412,6 +418,30 @@ export async function setVisitorIdentityAndContext(input: {
     }
   }
   return { ok: true, email: emailResult?.ok ? emailResult.email : visitor.email };
+}
+
+export function declaredHostname(hostParam: string | null | undefined): string | null {
+  if (!hostParam) return null;
+  try {
+    return new URL(hostParam).hostname;
+  } catch {
+    return hostParam.trim().toLowerCase() || null;
+  }
+}
+
+/**
+ * Guard a visitor request: origin gate + session binding. The session is
+ * pinned to the hostname that passed the allowlist when it was created, so a
+ * later request cannot claim a different (allowlisted) host for the same
+ * cookie, and a stolen cookie cannot be replayed from another origin.
+ */
+export function sessionOriginMatches(
+  session: VisitorSession,
+  hostParam: string | null | undefined,
+): boolean {
+  const hostname = declaredHostname(hostParam);
+  if (!session.originHostname) return true; // pre-binding sessions
+  return hostname === session.originHostname;
 }
 
 export async function getAvailabilityForProduct(workspaceId: string): Promise<"LIVE" | "AWAY"> {

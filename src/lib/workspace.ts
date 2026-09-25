@@ -46,8 +46,25 @@ export async function createWorkspace(input: {
   }
 
   if (!isHostedMode()) {
-    const workspaceCount = await prisma.workspace.count();
-    if (workspaceCount > 0) {
+    // Serialize the check-then-create with a transaction-scoped advisory
+    // lock so two concurrent first runs cannot both create a Workspace.
+    const workspace = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('supportseal-workspace-create'))`;
+      const workspaceCount = await tx.workspace.count();
+      if (workspaceCount > 0) {
+        return null;
+      }
+      const created = await tx.workspace.create({ data: { name } });
+      await tx.membership.create({
+        data: {
+          userId: input.userId,
+          workspaceId: created.id,
+          role: "ADMIN",
+        },
+      });
+      return created;
+    });
+    if (!workspace) {
       return {
         ok: false,
         error:
@@ -55,6 +72,7 @@ export async function createWorkspace(input: {
           "A self-hosted installation serves exactly one Workspace (ADR-0001).",
       };
     }
+    return { ok: true, workspaceId: workspace.id };
   }
 
   const workspace = await prisma.$transaction(async (tx) => {
@@ -216,19 +234,31 @@ export async function acceptInvite(input: {
     };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.membership.create({
-      data: {
-        userId: input.userId,
-        workspaceId: invite.workspaceId,
-        role: invite.role,
-      },
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.membership.create({
+        data: {
+          userId: input.userId,
+          workspaceId: invite.workspaceId,
+          role: invite.role,
+        },
+      });
+      await tx.invite.update({
+        where: { id: invite.id },
+        data: { acceptedAt: new Date() },
+      });
     });
-    await tx.invite.update({
-      where: { id: invite.id },
-      data: { acceptedAt: new Date() },
-    });
-  });
+  } catch (error) {
+    // One-membership-per-account is enforced at the database level; surface
+    // it as a friendly error instead of a 500.
+    if ((error as { code?: string }).code === "P2002") {
+      return {
+        ok: false,
+        error: "This account already belongs to a Workspace. V1 supports one Workspace per account.",
+      };
+    }
+    throw error;
+  }
 
   return { ok: true, workspaceId: invite.workspaceId };
 }

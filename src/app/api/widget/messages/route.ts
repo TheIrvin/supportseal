@@ -6,6 +6,7 @@ import {
   isWidgetOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
+  sessionOriginMatches,
   setVisitorEmail,
   touchVisitor,
   visitorCookieName,
@@ -36,6 +37,9 @@ async function guard(request: NextRequest) {
 
   const token = request.cookies.get(visitorCookieName(product.id))?.value;
   const visitor = await resolveVisitorSession(product, token);
+  if (visitor && !sessionOriginMatches(visitor, hostParam)) {
+    return { error: NextResponse.json({ error: "origin_not_allowed" }, { status: 403 }) };
+  }
   if (!visitor) return { error: NextResponse.json({ error: "no_session" }, { status: 401 }) };
 
   return { product, visitor };

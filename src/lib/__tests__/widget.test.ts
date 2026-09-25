@@ -91,7 +91,7 @@ describe("widget sessions and messages", () => {
 
   it("creates a session, sends messages and resumes in the same browser", async () => {
     const product = (await loadWidgetProduct(productKey))!;
-    const { token, session } = await createVisitorSession(product);
+    const { token, session } = await createVisitorSession(product, "app.pmtoolkit.dev");
 
     const first = await visitorSendMessage({
       product,
@@ -141,7 +141,7 @@ describe("widget sessions and messages", () => {
 
   it("shows agent replies to the visitor and hides internal notes", async () => {
     const product = (await loadWidgetProduct(productKey))!;
-    const { session } = await createVisitorSession(product);
+    const { session } = await createVisitorSession(product, "app.pmtoolkit.dev");
     const sent = await visitorSendMessage({ product, visitor: session, body: "Hello?" });
     if (!sent.ok) throw new Error(sent.error);
 
@@ -159,7 +159,7 @@ describe("widget sessions and messages", () => {
 
   it("reopens a closed conversation on the next visitor message (Pete, 2026-09-25)", async () => {
     const product = (await loadWidgetProduct(productKey))!;
-    const { session } = await createVisitorSession(product);
+    const { session } = await createVisitorSession(product, "app.pmtoolkit.dev");
     const sent = await visitorSendMessage({ product, visitor: session, body: "First" });
     if (!sent.ok) throw new Error(sent.error);
     await db.prisma.conversation.update({
@@ -178,7 +178,7 @@ describe("widget sessions and messages", () => {
 
   it("captures an email and links it to the conversation contact", async () => {
     const product = (await loadWidgetProduct(productKey))!;
-    const { session } = await createVisitorSession(product);
+    const { session } = await createVisitorSession(product, "app.pmtoolkit.dev");
     const sent = await visitorSendMessage({ product, visitor: session, body: "Need a reply" });
     if (!sent.ok) throw new Error(sent.error);
 

@@ -5,6 +5,7 @@ import {
   isWidgetOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
+  sessionOriginMatches,
   setVisitorIdentityAndContext,
   visitorCookieName,
 } from "@/lib/widget";
@@ -39,6 +40,9 @@ export async function PUT(request: NextRequest) {
   const token = request.cookies.get(visitorCookieName(product.id))?.value;
   const visitor = await resolveVisitorSession(product, token);
   if (!visitor) return NextResponse.json({ error: "no_session" }, { status: 401 });
+  if (!sessionOriginMatches(visitor, hostParam)) {
+    return NextResponse.json({ error: "origin_not_allowed" }, { status: 403 });
+  }
 
   const payload = (await request.json().catch(() => null)) as
     | { identify?: unknown; context?: unknown }

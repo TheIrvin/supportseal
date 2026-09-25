@@ -5,6 +5,7 @@ import {
   isWidgetOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
+  sessionOriginMatches,
   visitorCookieName,
 } from "@/lib/widget";
 import { rateLimitWidgetIp } from "@/lib/widget-rate-limit";
@@ -35,6 +36,9 @@ export async function POST(request: NextRequest) {
   const token = request.cookies.get(visitorCookieName(product.id))?.value;
   const visitor = await resolveVisitorSession(product, token);
   if (!visitor) return NextResponse.json({ error: "no_session" }, { status: 401 });
+  if (!sessionOriginMatches(visitor, hostParam)) {
+    return NextResponse.json({ error: "origin_not_allowed" }, { status: 403 });
+  }
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");

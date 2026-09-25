@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
+import { sendBounce } from "@/lib/email/outbound";
 import { addCustomerMessage, upsertContact } from "@/lib/conversations";
 import {
   AttachmentError,
@@ -201,6 +202,25 @@ async function findConversationByHeaders(email: InboundEmail, productId: string,
   return null;
 }
 
+async function recordBounce(
+  productId: string | null,
+  toAddress: string,
+  subject: string | null,
+  reason: string,
+): Promise<void> {
+  // Never bounce bounces/system senders (mail loops, FR-EMAIL-03).
+  const local = toAddress.split("@")[0]?.toLowerCase() ?? "";
+  if (
+    local.startsWith("mailer-daemon") ||
+    local.startsWith("postmaster") ||
+    local.startsWith("no-reply") ||
+    local.startsWith("noreply")
+  ) {
+    return;
+  }
+  await sendBounce({ productId, toAddress, originalSubject: subject, reason }).catch(() => undefined);
+}
+
 function bodyPreview(email: InboundEmail): string {
   return (email.text?.trim() || (email.html ? htmlToText(email.html) : "")).slice(0, 500);
 }
@@ -233,6 +253,7 @@ export async function processInboundEmail(input: {
 
   const match = await findProductByRecipient(email.to);
   if (!match) {
+    await recordBounce(null, sender.email, email.subject, "no product matches the recipient address");
     return { outcome: "rejected", reason: "no product matches the recipient address", bounce: true };
   }
   const { product } = match;
@@ -296,6 +317,7 @@ export async function processInboundEmail(input: {
 
   if (product.archivedAt) {
     await recordDelivery("REJECTED", null, "product archived — inbound mail is rejected (bounce)");
+    await recordBounce(product.id, sender.email, email.subject, "this Product is archived");
     return { outcome: "rejected", reason: "product archived", bounce: true };
   }
 

@@ -157,6 +157,27 @@ async function recordDelivery(
   });
 }
 
+/** Rejection bounce for undeliverable inbound mail (FR-EMAIL-03). */
+export async function sendBounce(input: {
+  productId: string | null;
+  toAddress: string;
+  originalSubject: string | null;
+  reason: string;
+}): Promise<void> {
+  const transport = getTransport();
+  if (!transport) return; // record-only: nothing to send
+  await transport.sendMail({
+    from: `Mail Delivery Subsystem <${managedSender()}>`,
+    to: input.toAddress,
+    subject: `Undeliverable: ${input.originalSubject ?? "your message"}`,
+    text: `Your message could not be delivered: ${input.reason}.`,
+    headers: {
+      "Auto-Submitted": "auto-replied",
+      "X-Auto-Response-Suppress": "All",
+    },
+  });
+}
+
 /** Default outbound subject for a conversation (re: threading, not matching). */
 export function replySubject(subject: string | null, productName: string): string {
   const base = subject?.trim() || `${productName} support`;

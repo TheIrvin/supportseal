@@ -2,9 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { rateLimitWidgetIp } from "@/lib/widget-rate-limit";
+import { sessionOriginMatches } from "@/lib/widget";
 
 import {
   createVisitorSession,
+  declaredHostname,
   getAvailabilityForProduct,
   isWidgetOriginAllowed,
   loadWidgetProduct,
@@ -37,6 +39,10 @@ export async function POST(request: NextRequest) {
 
   const existingToken = request.cookies.get(visitorCookieName(product.id))?.value;
   const existing = await resolveVisitorSession(product, existingToken);
+  if (existing && !sessionOriginMatches(existing, hostParam)) {
+    // The cookie was issued for a different origin: refuse to continue it.
+    return NextResponse.json({ error: "origin_not_allowed" }, { status: 403 });
+  }
   if (existing) {
     const thread = await visitorListMessages({ product, visitor: existing });
     const availability = await getAvailabilityForProduct(product.workspaceId);
@@ -49,7 +55,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const { token } = await createVisitorSession(product);
+  const { token } = await createVisitorSession(product, declaredHostname(hostParam));
   const availability = await getAvailabilityForProduct(product.workspaceId);
   const response = NextResponse.json({
     name: product.name,
@@ -60,7 +66,10 @@ export async function POST(request: NextRequest) {
   });
   response.cookies.set(visitorCookieName(product.id), token, {
     httpOnly: true,
-    sameSite: "none",
+    // Lax is enough: the panel iframe and its API calls are same-origin
+    // (both served by SupportSeal), so cross-site requests never need the
+    // cookie — which is exactly the CSRF property we want.
+    sameSite: "lax",
     secure: true,
     path: "/",
     maxAge: 60 * 60 * 24 * 365,

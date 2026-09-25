@@ -6,6 +6,7 @@ import {
   isWidgetOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
+  sessionOriginMatches,
   visitorCookieName,
 } from "@/lib/widget";
 
@@ -43,6 +44,9 @@ export async function GET(request: NextRequest) {
   const visitor = await resolveVisitorSession(product, token);
   if (!visitor || !visitor.conversationId) {
     return new Response("no session", { status: 401 });
+  }
+  if (!sessionOriginMatches(visitor, hostParam)) {
+    return new Response("forbidden", { status: 403 });
   }
   const conversationId = visitor.conversationId;
 
