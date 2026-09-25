@@ -2,18 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useTheme } from "next-themes";
 import {
   IconLogout,
   IconMenu2,
-  IconMoon,
   IconSearch,
-  IconSun,
 } from "@tabler/icons-react";
 
 import { useLayout } from "@/components/layout/layout-provider";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -101,7 +98,6 @@ export function Header({
   onAvailabilityChange: (next: "LIVE" | "AWAY") => void;
 }) {
   const { collapsed, toggleCollapsed, setMobileOpen } = useLayout();
-  const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   void pending;
@@ -152,18 +148,7 @@ export function Header({
             })
           }
         />
-        <Button
-          variant="text"
-          color="secondary"
-          size="sm"
-          iconOnly
-          className="text-body"
-          aria-label="Toggle theme"
-          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        >
-          <IconSun className="hidden size-5 dark:block" />
-          <IconMoon className="size-5 dark:hidden" />
-        </Button>
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

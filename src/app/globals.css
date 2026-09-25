@@ -69,6 +69,8 @@
 
 html {
   font-size: 15px;
+  /* Sticky headers must not hide anchors or focused elements (WCAG 2.4.11). */
+  scroll-padding-top: calc(var(--vx-header-height) + 1rem);
 }
 
 body {

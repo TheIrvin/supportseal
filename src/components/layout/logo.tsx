@@ -30,9 +30,13 @@ export function SealMark({ size = 32, className }: { size?: number; className?: 
   );
 }
 
-export function Logo({ collapsed = false, className }: { collapsed?: boolean; className?: string }) {
+export function Logo({
+  collapsed = false,
+  href = "/inbox",
+  className,
+}: { collapsed?: boolean; href?: string; className?: string }) {
   return (
-    <Link href="/inbox" className={cn("flex items-center gap-3 overflow-hidden", className)}>
+    <Link href={href} className={cn("flex items-center gap-3 overflow-hidden", className)}>
       <SealMark size={32} />
       <span
         className={cn(
