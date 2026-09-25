@@ -164,7 +164,7 @@ function ComparisonTable() {
       tabIndex={0}
       role="region"
       aria-label="Hosting plan comparison"
-      className="max-w-full overflow-x-auto rounded-lg border border-border bg-surface"
+      className="relative max-w-full overflow-x-auto rounded-lg border border-border bg-surface"
     >
       <table className="w-full min-w-[40rem] border-collapse text-[0.933rem]">
         <caption className="sr-only">

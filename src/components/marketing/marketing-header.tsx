@@ -79,7 +79,9 @@ export function MarketingHeader() {
         </nav>
 
         <div className="ms-auto flex items-center gap-1 lg:gap-2">
-          <ThemeToggle />
+          <span className="hidden lg:inline-flex">
+            <ThemeToggle />
+          </span>
           <Button asChild variant="text" size="sm" className="hidden lg:inline-flex">
             <Link href="/login">Sign in</Link>
           </Button>
@@ -125,6 +127,7 @@ export function MarketingHeader() {
                 ))}
               </nav>
               <div className="mt-auto flex flex-col gap-3 border-t border-border pt-4">
+                <ThemeToggle />
                 <Button asChild variant="outline" size="md">
                   <Link href="/login" onClick={() => setMenuOpen(false)}>
                     Sign in

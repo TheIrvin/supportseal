@@ -24,7 +24,7 @@ export function FeatureRow({
 }) {
   return (
     <div className={cn("grid gap-8 lg:grid-cols-12 lg:gap-12", className)}>
-      <div className={cn("flex flex-col justify-center lg:col-span-5", reverse && "lg:order-2")}>
+      <div className={cn("flex min-w-0 flex-col justify-center lg:col-span-5", reverse && "lg:order-2")}>
         {kicker ? (
           <p className="text-[0.867rem] font-semibold tracking-[0.04em] text-primary">{kicker}</p>
         ) : null}
@@ -34,7 +34,7 @@ export function FeatureRow({
         <div className="mt-3 text-[1.067rem] leading-[1.65] text-body">{children}</div>
         {actions ? <div className="mt-5">{actions}</div> : null}
       </div>
-      {media ? <div className={cn("lg:col-span-7", reverse && "lg:order-1")}>{media}</div> : null}
+      {media ? <div className={cn("min-w-0 lg:col-span-7", reverse && "lg:order-1")}>{media}</div> : null}
     </div>
   );
 }
