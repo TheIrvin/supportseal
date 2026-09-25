@@ -110,20 +110,3 @@ export async function signIn(page: Page, email: string, password: string): Promi
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/inbox/u);
 }
-
-/**
- * Open the widget on the host page and return locators scoped to the panel
- * iframe. The launcher button lives in the shadow-DOM host injected by the
- * real loader script.
- */
-export async function openWidget(page: Page, key: string) {
-  await page.goto(`${HOST_PAGE}&key=${encodeURIComponent(key)}`);
-  const host = page.locator("#supportseal-widget-host");
-  await expect(host).toBeAttached();
-  const launcher = host.locator("button").first();
-  await expect(launcher).toBeVisible();
-  await launcher.click();
-  const frame = page.frameLocator("#supportseal-widget-host iframe");
-  await expect(frame.locator("#input")).toBeVisible();
-  return frame;
-}

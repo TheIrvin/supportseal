@@ -74,7 +74,7 @@ const server = http.createServer((req, res) => {
   res.end("not found");
 });
 
-server.listen(HTTP_PORT);
+server.listen(HTTP_PORT, "127.0.0.1");
 
 /** Minimal SMTP receiver: EHLO/MAIL/RCPT/DATA/QUIT, no auth, no TLS. */
 const smtp = net.createServer((socket) => {
@@ -186,7 +186,7 @@ function parseMessage(from, recipients, raw) {
   };
 }
 
-smtp.listen(SMTP_PORT);
+smtp.listen(SMTP_PORT, "127.0.0.1");
 
 function shutdown() {
   server.close();

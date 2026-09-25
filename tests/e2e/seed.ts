@@ -49,7 +49,6 @@ async function main() {
       owner: { email: ownerEmail, password: ownerPassword },
     },
   };
-  await fs.mkdir(new URL(".", import.meta.url), { recursive: true });
   const fixturesFile = process.env.E2E_FIXTURES_FILE;
   if (!fixturesFile) throw new Error("E2E_FIXTURES_FILE is required");
   await fs.writeFile(fixturesFile, JSON.stringify(fixtures, null, 2));

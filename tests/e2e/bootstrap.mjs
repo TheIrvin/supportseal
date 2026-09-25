@@ -34,6 +34,7 @@ const appEnv = {
   BETTER_AUTH_SECRET: SHARED_SECRET,
   INBOUND_WEBHOOK_SECRET: SHARED_SECRET,
   INBOUND_EMAIL_DOMAIN: "inbound.localhost",
+  SMTP_URL: "",
   ...(MODE === "hosted" ? { HOSTED_MODE: "1", SMTP_URL: "smtp://127.0.0.1:1025" } : { HOSTED_MODE: "" }),
 };
 
@@ -62,10 +63,18 @@ async function main() {
   }
 
   console.log(`[e2e-bootstrap] starting next dev (${MODE}) on :${PORT}`);
-  const child = spawn("npx", ["next", "dev", "--port", PORT], { env: appEnv, stdio: "inherit" });
+  // Spawn the real next binary (not npx) so signalled shutdowns reach the
+  // server directly; escalate to SIGKILL if it ignores SIGTERM.
+  const child = spawn(
+    process.execPath,
+    [path.join(process.cwd(), "node_modules", "next", "dist", "bin", "next"), "dev", "--port", PORT],
+    { env: appEnv, stdio: "inherit" },
+  );
 
   const forward = (signal) => {
     child.kill(signal);
+    const force = setTimeout(() => child.kill("SIGKILL"), 5_000);
+    child.on("exit", () => clearTimeout(force));
   };
   process.on("SIGTERM", () => forward("SIGTERM"));
   process.on("SIGINT", () => forward("SIGINT"));

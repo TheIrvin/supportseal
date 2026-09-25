@@ -150,7 +150,6 @@ test.describe.serial("V1 acceptance flow", () => {
 
   test("visitor uploads an attachment the agent can see", async () => {
     const frame = widgetFrame(customerPage);
-    await frame.locator("#attach").click();
     await frame.locator("#fileInput").setInputFiles({
       name: "console.txt",
       mimeType: "text/plain",
@@ -222,8 +221,9 @@ test.describe.serial("V1 acceptance flow", () => {
     // Retry the tab switch: the first click can land before hydration wires
     // up the composer tabs on a freshly loaded page.
     await expect(async () => {
+      if (await agentPage.getByLabel("Internal note").isVisible()) return;
       await agentPage.getByRole("tab", { name: "Note" }).click();
-      await expect(agentPage.getByLabel("Internal note")).toBeVisible({ timeout: 2_000 });
+      await expect(agentPage.getByLabel("Internal note")).toBeVisible({ timeout: 3_000 });
     }).toPass({ timeout: 15_000 });
     await agentPage.getByLabel("Internal note").fill(note);
     await agentPage.getByRole("button", { name: "Add note", exact: true }).click();
@@ -256,9 +256,10 @@ test.describe.serial("V1 acceptance flow", () => {
 
     await agentPage.goto(`/inbox/${conversationAId}`);
     await expect(async () => {
+      if (await agentPage.getByRole("button", { name: /Safari export fix/u }).isVisible()) return;
       await agentPage.getByRole("button", { name: "Saved" }).click();
       await expect(agentPage.getByRole("button", { name: /Safari export fix/u })).toBeVisible({
-        timeout: 2_000,
+        timeout: 3_000,
       });
     }).toPass({ timeout: 15_000 });
     await agentPage.getByRole("button", { name: /Safari export fix/u }).click();
@@ -277,8 +278,9 @@ test.describe.serial("V1 acceptance flow", () => {
   test("closing a conversation and getting a visitor message reopens it", async () => {
     await agentPage.goto(`/inbox/${conversationAId}`);
     await expect(async () => {
+      if (await agentPage.getByRole("button", { name: "Reopen" }).isVisible()) return;
       await agentPage.getByRole("button", { name: "Close", exact: true }).click();
-      await expect(agentPage.getByRole("button", { name: "Reopen" })).toBeVisible({ timeout: 2_000 });
+      await expect(agentPage.getByRole("button", { name: "Reopen" })).toBeVisible({ timeout: 3_000 });
     }).toPass({ timeout: 15_000 });
     await expect(agentPage.locator("header").getByText("Closed").first()).toBeVisible();
 
