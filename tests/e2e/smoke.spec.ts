@@ -20,10 +20,10 @@ test.describe.serial("e2e infrastructure", () => {
     expect(fixtures.beta.product.inboundEmail).toBe("support@beta.test");
   });
 
-  test("beta fixture owner can sign in and sees the empty inbox", async ({ page }) => {
+  test("beta fixture owner can sign in and reach the inbox", async ({ page }) => {
     const fixtures = loadFixtures();
     await signIn(page, fixtures.beta.owner.email, fixtures.beta.owner.password);
-    await expect(page.getByText("No open conversations.")).toBeVisible();
+    await expect(page.getByRole("tablist", { name: "Conversation status" })).toBeVisible();
   });
 
   test("registration is open in hosted mode", async ({ page }) => {

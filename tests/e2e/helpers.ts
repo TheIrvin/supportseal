@@ -110,3 +110,33 @@ export async function signIn(page: Page, email: string, password: string): Promi
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/inbox/u);
 }
+
+/**
+ * Register an account and complete onboarding up to the install step for one
+ * Product; returns that Product's public widget key.
+ */
+export async function onboardWorkspaceWithProduct(
+  page: Page,
+  account: ReturnType<typeof uniqueAccount>,
+  product: { name: string; domain: string },
+): Promise<string> {
+  await registerAccount(page, account);
+  await page.locator("#name").fill(account.workspace);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(/\/onboarding\/product/u);
+
+  await page.locator("#name").fill(product.name);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(/\/onboarding\/domain/u);
+
+  await page.locator("#domain").fill(product.domain);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("button", { name: `Remove ${product.domain}` })).toBeVisible();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(/\/onboarding\/install/u);
+
+  const snippet = (await page.locator("pre").first().textContent()) ?? "";
+  const key = snippet.match(/data-key="(pk_[^"]+)"/u)?.[1] ?? "";
+  expect(key).toMatch(/^pk_/u);
+  return key;
+}

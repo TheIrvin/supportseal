@@ -35,7 +35,7 @@ test.describe.serial("V1 acceptance flow", () => {
     await expect(launcher).toBeVisible();
     await launcher.click();
     const frame = widgetFrame(page);
-    await expect(frame.locator("#input")).toBeVisible();
+    await expect(frame.locator("#statusline")).toContainText("Online", { timeout: 20_000 });
     return frame;
   }
 
