@@ -27,9 +27,15 @@ export function isValidHexColor(value: string): boolean {
   return HEX_COLOR.test(value);
 }
 
-/** Normalize a visitor-facing domain: lowercase, strip scheme/path/port. */
+/** Normalize a visitor-facing domain: lowercase, strip scheme/path/port.
+ * Allows one leading `*.` (wildcard subdomains, design D7). */
 export function normalizeDomain(input: string): string | null {
   let value = input.trim().toLowerCase();
+  let wildcard = false;
+  if (value.startsWith("*.")) {
+    wildcard = true;
+    value = value.slice(2);
+  }
   if (value.includes("://")) {
     try {
       value = new URL(input.trim()).hostname;
@@ -38,7 +44,7 @@ export function normalizeDomain(input: string): string | null {
     }
   }
   value = value.replace(/^[./]+/u, "").split("/")[0].split(":")[0].replace(/\.+$/u, "");
-  if (value === "localhost" || HOSTNAME.test(value)) return value;
+  if (value === "localhost" || HOSTNAME.test(value)) return wildcard ? `*.${value}` : value;
   return null;
 }
 

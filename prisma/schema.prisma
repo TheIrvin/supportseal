@@ -154,9 +154,30 @@ model Product {
   workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   domains   ProductDomain[]
   conversations Conversation[]
+  chatVisitors ChatVisitor[]
 
   @@index([workspaceId])
   @@map("products")
+}
+
+// --- Chat visitors (FR-CHAT-02) --------------------------------------------
+
+model ChatVisitor {
+  id             String    @id @default(uuid())
+  productId      String
+  tokenHash      String    @unique
+  email          String?
+  name           String?
+  conversationId String?
+  createdConversationAt DateTime?
+  createdAt      DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  devContext     Json?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("chat_visitors")
 }
 
 model ProductDomain {

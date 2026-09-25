@@ -1,0 +1,377 @@
+import { NextResponse, type NextRequest } from "next/server";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * The widget panel, served as a dependency-free HTML document from the
+ * SupportSeal origin and embedded in an iframe by the loader. Loads no fonts
+ * and no dashboard bundle (docs/design/chat-widget.md).
+ */
+export async function GET(request: NextRequest) {
+  const key = request.nextUrl.searchParams.get("key") ?? "";
+  const host = request.nextUrl.searchParams.get("host") ?? "";
+  const html = PANEL_HTML.replace("__KEY__", escapeAttr(key)).replace("__HOST__", escapeAttr(host));
+  return new NextResponse(html, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-frame-options": "ALLOWALL",
+      "content-security-policy":
+        "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'",
+    },
+  });
+}
+
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+const PANEL_HTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chat</title>
+<style>
+  :root { font-synthesis: none; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #43544D; background: #fff; display: flex; flex-direction: column; }
+  header { padding: 16px 20px; color: #fff; }
+  header h1 { font-size: 17px; font-weight: 600; color: #fff; }
+  .status { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-top: 2px; opacity: .95; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #3DDC97; display: inline-block; }
+  .dot.away { background: #8FA19A; }
+  .pill { margin-left: auto; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.22); }
+  .close { position: absolute; top: 14px; right: 14px; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; line-height: 1; display: none; }
+  @media (max-width: 639px) { .close { display: block; } }
+  #thread { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; overscroll-behavior: contain; }
+  .msg { max-width: 82%; padding: 10px 12px; border-radius: 12px; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+  .msg.customer { align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg.agent { align-self: flex-start; background: #EFF4F2; color: #15261F; border-bottom-left-radius: 4px; }
+  .msg .who { font-size: 11px; opacity: .8; margin-bottom: 2px; }
+  .msg.pending { opacity: .55; }
+  .msg.error { outline: 1px solid #C42B2B; }
+  .retry { color: #C42B2B; background: none; border: none; font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px; font-weight: 600; }
+  .day { align-self: center; font-size: 11px; color: #5F6F69; padding: 4px 0; }
+  .sysline { align-self: center; font-size: 12px; color: #5F6F69; text-align: center; max-width: 90%; }
+  .card { align-self: stretch; border: 1px solid #DCE5E1; border-radius: 10px; padding: 12px; font-size: 13px; }
+  .card p { margin-bottom: 8px; color: #15261F; font-weight: 500; }
+  .card .row { display: flex; gap: 8px; }
+  input, textarea, button { font: inherit; }
+  .field { flex: 1; border: 1px solid #7A8B85; border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+  .btn { border: none; border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; color: #fff; }
+  .btn.secondary { background: none; color: #5F6F69; border: 1px solid #DCE5E1; }
+  .linkbtn { background: none; border: none; color: #5F6F69; font-size: 12px; cursor: pointer; margin-top: 6px; }
+  #away { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  #away label { font-size: 13px; font-weight: 500; color: #15261F; display: block; margin-bottom: 4px; }
+  #away textarea { width: 100%; resize: none; }
+  .hint { font-size: 12px; color: #C42B2B; min-height: 14px; }
+  #composer { display: flex; gap: 8px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #DCE5E1; align-items: flex-end; }
+  #composer textarea { flex: 1; resize: none; border: 1px solid #7A8B85; border-radius: 10px; padding: 10px 12px; font-size: 16px; max-height: 132px; }
+  #send { border: none; border-radius: 10px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #send svg { width: 18px; height: 18px; }
+  .banner { padding: 8px 16px; font-size: 12px; background: #EFF4F2; color: #43544D; display: none; }
+</style>
+</head>
+<body>
+  <header id="header">
+    <h1 id="title">Chat</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusline"></span><span class="pill" id="testmode" style="display:none">Test mode</span></div>
+    <button class="close" id="closeBtn" aria-label="Close chat">&#10005;</button>
+  </header>
+  <div class="banner" id="banner">We can't reach support right now. <button class="retry" id="retryBtn">Retry</button></div>
+  <div id="thread" role="log" aria-live="polite"></div>
+  <form id="away" style="display:none" novalidate>
+    <div>
+      <label for="email">Email</label>
+      <input class="field" id="email" type="email" name="email" autocomplete="email" required>
+    </div>
+    <div>
+      <label for="message">Message</label>
+      <textarea class="field" id="message" rows="5" required></textarea>
+    </div>
+    <div class="hint" id="awayHint"></div>
+    <button class="btn" id="awaySend" type="submit">Send message</button>
+  </form>
+  <div id="composer" style="display:none">
+    <textarea id="input" rows="1" placeholder="Write a message…" aria-label="Write a message"></textarea>
+    <button id="send" aria-label="Send message"></button>
+  </div>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var key = params.get('key') || '';
+  var hostOrigin = params.get('host') || '';
+  var hostPath = '/';
+  var accent = '#2563eb';
+  var inkOnAccent = '#fff';
+  var config = null;
+  var state = { messages: [], email: null, conversationId: null };
+  var lastCount = 0;
+  var pollTimer = null;
+  var hidden = false;
+
+  var thread = document.getElementById('thread');
+  var input = document.getElementById('input');
+  var sendBtn = document.getElementById('send');
+  var awayForm = document.getElementById('away');
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function autoContrast(hex) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return '#fff';
+    var c = m[1];
+    function lin(x) { return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }
+    var l = 0.2126 * lin(parseInt(c.slice(0, 2), 16) / 255) + 0.7152 * lin(parseInt(c.slice(2, 4), 16) / 255) + 0.0722 * lin(parseInt(c.slice(4, 6), 16) / 255);
+    return l > 0.35 ? '#000' : '#fff';
+  }
+  function apiUrl(path) {
+    return path + '?key=' + encodeURIComponent(key) + '&host=' + encodeURIComponent(hostOrigin);
+  }
+  function pageUrl() {
+    try { return new URL(hostOrigin).origin + hostPath; } catch (e) { return hostOrigin + hostPath; }
+  }
+
+  function applyConfig(data) {
+    config = data;
+    accent = data.color || accent;
+    inkOnAccent = autoContrast(accent);
+    document.getElementById('header').style.background = accent;
+    document.getElementById('title').textContent = data.name;
+    sendBtn.style.background = accent;
+    sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="' + inkOnAccent + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>';
+    var away = data.availability === 'AWAY';
+    document.getElementById('dot').className = 'dot' + (away ? ' away' : '');
+    document.getElementById('statusline').textContent = away
+      ? 'Away · Send us a message, we\\u2019ll reply by email'
+      : 'Online · Chat with us';
+    try {
+      var h = new URL(hostOrigin).hostname;
+      if (h === 'localhost' || h === '127.0.0.1') document.getElementById('testmode').style.display = 'inline-block';
+    } catch (e) {}
+  }
+
+  function render() {
+    thread.innerHTML = '';
+    if (state.messages.length === 0 && config && config.availability !== 'AWAY') {
+      var p = document.createElement('p');
+      p.className = 'sysline';
+      p.textContent = 'Ask us anything, we\\u2019re here.';
+      thread.appendChild(p);
+    }
+    var lastDay = '';
+    state.messages.forEach(function (m, i) {
+      var day = new Date(m.createdAt).toDateString();
+      if (day !== lastDay) {
+        lastDay = day;
+        var d = document.createElement('p');
+        d.className = 'day';
+        d.textContent = new Date(m.createdAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+        thread.appendChild(d);
+      }
+      var el = document.createElement('div');
+      el.className = 'msg ' + (m.kind === 'CUSTOMER' ? 'customer' : 'agent');
+      if (m.kind === 'CUSTOMER') { el.style.background = accent; el.style.color = inkOnAccent; }
+      var who = document.createElement('div');
+      who.className = 'who';
+      who.textContent = m.kind === 'CUSTOMER' ? '' : (config ? config.name : '') + ' Support';
+      if (who.textContent) el.appendChild(who);
+      var body = document.createElement('div');
+      body.textContent = m.body;
+      el.appendChild(body);
+      thread.appendChild(el);
+    });
+    if (state.email) {
+      var s = document.createElement('p');
+      s.className = 'sysline';
+      s.textContent = 'We\\u2019ll email ' + state.email + ' if you\\u2019ve left.';
+      thread.appendChild(s);
+    } else if (state.messages.length > 0 && config && config.availability !== 'AWAY') {
+      renderEmailCapture();
+    }
+    thread.scrollTop = thread.scrollHeight;
+    renderModes();
+  }
+
+  function renderEmailCapture() {
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = '<p>Get replies by email if you leave</p>' +
+      '<div class="row"><input class="field" id="captureEmail" type="email" placeholder="you@example.com" aria-label="Email address">' +
+      '<button class="btn" type="button" id="captureSave">Save</button></div>' +
+      '<button class="linkbtn" type="button" id="captureNo">No thanks</button>';
+    thread.appendChild(card);
+    card.querySelector('#captureSave').addEventListener('click', function () { saveEmail(card.querySelector('#captureEmail').value, card); });
+    card.querySelector('#captureNo').addEventListener('click', function () { card.remove(); });
+  }
+
+  function renderModes() {
+    var away = config && config.availability === 'AWAY';
+    var showAway = away && state.messages.length === 0;
+    awayForm.style.display = showAway ? 'flex' : 'none';
+    document.getElementById('composer').style.display = showAway ? 'none' : 'flex';
+    if (!showAway) {
+      document.getElementById('emailHint') && document.getElementById('emailHint').remove();
+      if (away && !state.email) {
+        var hint = document.createElement('div');
+        hint.id = 'emailHint';
+        hint.className = 'sysline';
+        hint.style.padding = '0 16px 8px';
+        hint.textContent = 'We\\u2019re away — leave your email so we can reply.';
+        document.getElementById('composer').before(hint);
+      }
+    }
+  }
+
+  function saveEmail(email, cardEl) {
+    return fetch(apiUrl('/api/widget/messages'), {
+      method: 'PUT', credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      if (data.email) {
+        state.email = data.email;
+        if (cardEl) cardEl.remove();
+        render();
+      } else if (cardEl) {
+        var hint = cardEl.querySelector('.hint');
+        if (!hint) { hint = document.createElement('div'); hint.className = 'hint'; cardEl.appendChild(hint); }
+        hint.textContent = data.error || 'Enter a valid email address.';
+      }
+      return data;
+    });
+  }
+
+  function boot() {
+    return fetch(apiUrl('/api/widget/session'), { method: 'POST', credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (data) {
+        applyConfig(data);
+        state.email = data.session && data.session.email;
+        state.conversationId = data.thread && data.thread.conversationId;
+        state.messages = (data.thread && data.thread.messages) || [];
+        lastCount = state.messages.length;
+        render();
+      })
+      .catch(function () { document.getElementById('banner').style.display = 'block'; });
+  }
+
+  function poll() {
+    if (hidden) { reportUnread(); return; }
+    fetch(apiUrl('/api/widget/messages'), { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.thread) return;
+        var prev = state.messages.length;
+        state.messages = data.thread.messages || [];
+        state.conversationId = data.thread.conversationId;
+        if (JSON.stringify(state.messages) !== JSON.stringify([])) render();
+        var agentNew = state.messages.slice(prev).filter(function (m) { return m.kind === 'AGENT'; }).length;
+        if (state.messages.length !== prev || agentNew) reportUnread();
+        lastCount = state.messages.length;
+      })
+      .catch(function () {});
+  }
+
+  function reportUnread() {
+    if (hidden && state.messages.length > lastCount) {
+      parent.postMessage({ type: 'ss:unread', count: state.messages.length - lastCount }, '*');
+    }
+  }
+
+  function send() {
+    var body = input.value.trim();
+    if (!body) return;
+    input.value = '';
+    input.style.height = 'auto';
+    sendBtn.disabled = true;
+    fetch(apiUrl('/api/widget/messages'), {
+      method: 'POST', credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: body, pageUrl: pageUrl() })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (result) {
+        sendBtn.disabled = false;
+        if (result.ok && result.data.thread) {
+          state.messages = result.data.thread.messages || [];
+          render();
+        } else {
+          input.value = body;
+          if (result.data.error === 'rate_limited') {
+            var hint = document.createElement('p');
+            hint.className = 'sysline';
+            hint.textContent = 'You\\u2019re sending messages too quickly. Try again in a moment.';
+            hint.id = 'rlHint';
+            var old = document.getElementById('rlHint'); if (old) old.remove();
+            thread.appendChild(hint); thread.scrollTop = thread.scrollHeight;
+            setTimeout(function () { hint.remove(); }, 2500);
+          }
+        }
+      })
+      .catch(function () {
+        sendBtn.disabled = false;
+        input.value = body;
+        document.getElementById('banner').style.display = 'block';
+      });
+  }
+
+  sendBtn.addEventListener('click', send);
+  input.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); }
+  });
+  input.addEventListener('input', function () {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 132) + 'px';
+  });
+
+  awayForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    var email = document.getElementById('email').value.trim();
+    var message = document.getElementById('message').value.trim();
+    var hint = document.getElementById('awayHint');
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) { hint.textContent = 'Enter a valid email address so we can reply.'; return; }
+    if (!message) { hint.textContent = 'Write a short message so we know how to help.'; return; }
+    hint.textContent = '';
+    document.getElementById('awaySend').disabled = true;
+    saveEmail(email).then(function () {
+      input.dataset.awayMessage = '';
+      return fetch(apiUrl('/api/widget/messages'), {
+        method: 'POST', credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body: message, pageUrl: pageUrl() })
+      }).then(function (r) { return r.json(); }).then(function (data) {
+        document.getElementById('awaySend').disabled = false;
+        if (data.thread) { state.messages = data.thread.messages || []; render(); }
+      });
+    });
+  });
+
+  document.getElementById('closeBtn').addEventListener('click', function () {
+    parent.postMessage({ type: 'ss:close' }, '*');
+  });
+  document.getElementById('retryBtn').addEventListener('click', function () {
+    document.getElementById('banner').style.display = 'none';
+    boot();
+  });
+
+  window.addEventListener('message', function (event) {
+    var data = event.data || {};
+    if (data.type === 'ss:page' && typeof data.path === 'string') hostPath = data.path;
+    if (data.type === 'ss:open') { hidden = false; lastCount = state.messages.length; input.focus(); }
+    if (data.type === 'ss:close') hidden = true;
+  });
+
+  document.addEventListener('visibilitychange', function () { hidden = document.hidden; });
+
+  boot();
+  pollTimer = setInterval(poll, 4000);
+})();
+</script>
+</body>
+</html>`;
