@@ -81,9 +81,15 @@ enum WorkspaceAvailability {
   AWAY
 }
 
+enum WorkspacePlan {
+  FREE
+  PRO
+}
+
 model Workspace {
   id             String               @id @default(uuid())
   name           String
+  plan           WorkspacePlan        @default(FREE)
   availability   WorkspaceAvailability @default(LIVE)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt

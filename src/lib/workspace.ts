@@ -10,7 +10,7 @@ export type MembershipRole = "ADMIN" | "AGENT";
 
 export type WorkspaceContext = {
   user: SessionUser;
-  workspace: { id: string; name: string };
+  workspace: { id: string; name: string; plan?: "FREE" | "PRO" };
   role: MembershipRole;
 };
 
@@ -84,7 +84,11 @@ export async function requireWorkspace(nextPath = "/inbox"): Promise<WorkspaceCo
   }
   return {
     user,
-    workspace: { id: membership.workspaceId, name: membership.workspace.name },
+    workspace: {
+      id: membership.workspaceId,
+      name: membership.workspace.name,
+      plan: membership.workspace.plan,
+    },
     role: membership.role,
   };
 }

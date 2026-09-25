@@ -16,6 +16,7 @@ function Shell({
   onAvailabilityChange,
   mode = "page",
   checklist,
+  usageWarning = null,
   children,
 }: {
   user: ShellUser;
@@ -25,6 +26,7 @@ function Shell({
   onAvailabilityChange: (next: "LIVE" | "AWAY") => void;
   mode?: "page" | "fill";
   checklist?: { items: Array<{ id: string; title: string; done: boolean }>; doneCount: number; total: number } | null;
+  usageWarning?: { conversationsOpened: number; limit: number | null; graceRemainingDays: number } | null;
   children: React.ReactNode;
 }) {
   const { collapsed, mobileOpen, setMobileOpen } = useLayout();
@@ -50,6 +52,16 @@ function Shell({
           isAdmin={role === "ADMIN"}
           onAvailabilityChange={onAvailabilityChange}
         />
+        {usageWarning ? (
+          <div className="border-b border-border bg-warning-label px-4 py-2 text-sm text-warning">
+            {usageWarning.conversationsOpened} conversations this period
+            {usageWarning.limit !== null ? ` (limit ${usageWarning.limit})` : ""} — customer
+            messages keep flowing; grace ends in {usageWarning.graceRemainingDays} days.{" "}
+            <a href="/settings/billing" className="font-medium underline">
+              Review usage
+            </a>
+          </div>
+        ) : null}
         <main
           id="main"
           className={cn(

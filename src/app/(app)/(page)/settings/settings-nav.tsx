@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 const tabs = [
   { href: "/settings/team", label: "Team" },
   { href: "/settings/products", label: "Products" },
+  ...(process.env.HOSTED_MODE === "1" ? [{ href: "/settings/billing", label: "Billing" }] : []),
 ];
 
 export function SettingsNav() {

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { listProducts } from "@/lib/products";
 import { getAvailability, requireWorkspace } from "@/lib/workspace";
 import { computeChecklist } from "@/lib/onboarding";
+import { computeUsage } from "@/lib/usage";
+import { isHostedMode } from "@/lib/hosting";
 import { setAvailabilityAction } from "./actions";
 
 /**
@@ -19,7 +21,7 @@ export async function Shell({
 }) {
   const ctx = await requireWorkspace();
 
-  const [products, counts, availability, checklist] = await Promise.all([
+  const [products, counts, availability, checklist, usage] = await Promise.all([
     listProducts(ctx.workspace.id),
     prisma.conversation.groupBy({
       by: ["productId"],
@@ -28,6 +30,9 @@ export async function Shell({
     }),
     getAvailability(ctx.workspace.id),
     computeChecklist(ctx.workspace.id),
+    isHostedMode() && ctx.role === "ADMIN"
+      ? computeUsage(ctx.workspace.id, ctx.workspace.plan === "PRO" ? "pro" : "free")
+      : Promise.resolve(null),
   ]);
 
   const countByProduct = new Map(counts.map((c) => [c.productId, c._count._all]));
@@ -48,6 +53,15 @@ export async function Shell({
           openCount: countByProduct.get(p.id) ?? 0,
         }))}
       checklist={checklist.doneCount < checklist.total ? checklist : null}
+      usageWarning={
+        usage && usage.overLimit
+          ? {
+              conversationsOpened: usage.conversationsOpened,
+              limit: usage.limit,
+              graceRemainingDays: usage.graceRemainingDays ?? 0,
+            }
+          : null
+      }
     >
       {children}
     </AppShell>
