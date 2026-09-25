@@ -1,19 +1,41 @@
 # SupportSeal agent guide
 
-Process rules for coding agents working in this repository, extracted from
-[Initial.md](Initial.md) (the master prompt). This file stays short; follow
-the section links for the full text. Product behaviour questions go to
-[docs/PRD.md](docs/PRD.md) / [docs/FRD.md](docs/FRD.md); anything undecided
-lives in [docs/open-questions.md](docs/open-questions.md) — never guess an
-answer to an open question.
+Open-source customer support platform for people building several products
+(working name — see README.md). Pre-code: documents only. Product behaviour
+questions go to docs/PRD.md / docs/FRD.md; anything undecided lives in
+docs/open-questions.md — never guess an answer to an open question.
 
-## Repo state and commands
+## Setup and exact commands
 
-Docs-only: no code, no package manifest, no CI. There is nothing to install,
-lint, typecheck, test or build yet.
+- Docs-only repository: no code, no package manifest, no CI. There is nothing
+  to install, lint, typecheck, test or build yet.
+- TODO (foundation PR that adds the application): record install / dev /
+  lint / typecheck / test / build commands and the
+  verify:fast / verify / verify:full chain here.
 
-TODO (foundation PR that adds the application): record install/dev/lint/
-typecheck/test/build commands and the verify chain here.
+## Architecture map
+
+- No application code yet. Intended direction (docs/architecture.md, ADRs):
+  modular monolith + separately bundled chat widget; Next.js/TypeScript with
+  PostgreSQL and Prisma as the reasonable starting stack (confirm at the
+  spike); hosted multi-Workspace, self-hosted single-Workspace in V1
+  (ADR-0001); SSE realtime proposed pending the two-process/reverse-proxy
+  spike (ADR-0003); email behind provider adapters (ADR-0004); independent
+  self-hostable auth (ADR-0002).
+- Document map: docs/PRD.md (why/scope) and docs/FRD.md (observable V1
+  behaviour, stable requirement IDs) are canonical; Initial.md is the master
+  prompt (mission, full V1 scope, process rules) and yields to the PRD/FRD
+  on conflicts; docs/open-questions.md tracks decisions pending Pete.
+
+## Important invariants and safety constraints
+
+- Workspace isolation is a security boundary: every tenant-aware operation
+  must prove Workspace ownership (Initial.md §30, ADR-0001).
+- Never copy Vuexy/PixInvent source, assets or components into this AGPL
+  repository; the redistribution licence is not established (Initial.md §19,
+  docs/open-questions.md).
+- AGPLv3 is the intended licence but no LICENSE file exists yet
+  (docs/open-questions.md). Keep proprietary code out.
 
 ## Model routing and cost (Initial.md §42–47)
 
@@ -27,7 +49,7 @@ typecheck/test/build commands and the verify chain here.
 - Before using an expensive model ask: "Will it materially improve this
   particular task?" If not, use GLM-5.3.
 
-## PR workflow (Initial.md §45–46, §50)
+## PR workflow (Initial.md §45–46, §48–51)
 
 - Before a substantive PR: run `/cursor-prep` where available (soft
   requirement); primary local review coderabbit-cli, fallback
@@ -40,22 +62,48 @@ typecheck/test/build commands and the verify chain here.
   exist**; for user-facing functionality actually run the application —
   compilation is not proof. Visual PRs include screenshots with realistic
   data.
-
-## PR sizing and stacking (Initial.md §48, §51)
-
 - One coherent idea per PR. Target <600 meaningful changed lines; avoid
-  >1,000 without a justified reason; split PRs that grow too large.
-- Stacked PRs: base correctly on the parent, make the dependency obvious,
-  never duplicate the parent's changes, retarget when the parent merges.
+  >1,000 without a justified reason. Stacked PRs: base correctly on the
+  parent, make the dependency obvious, never duplicate the parent's changes,
+  retarget when the parent merges.
 
-## Browser verification (Initial.md §52, §63)
+## Verification matrix
 
-Every important user-facing flow is verified in a real browser; unit tests
-alone are not acceptance. The reference procedures are the V1 end-to-end
-flow (Initial.md §52) and the two-Workspace cross-tenant sanity test
-(Initial.md §63). Cross-Workspace access attempts must fail.
+| Command | Meaning |
+| --- | --- |
+| TODO | No verify chain exists yet (docs-only repository). |
 
-## Git
+- Docs-only changes: no automated checks exist; report explicitly that
+  nothing was run.
+- Browser verification is mandatory for every important user-facing flow
+  once the app exists; unit tests alone are not acceptance. Reference
+  procedures: the V1 end-to-end flow (Initial.md §52) and the two-Workspace
+  cross-tenant sanity test (Initial.md §63). Cross-Workspace access
+  attempts must fail.
 
-Feature branch + PR; Pete merges. Never push to main, never run
-`gh pr merge`, never rewrite main history.
+## Deployment and post-deployment checks
+
+- TODO: nothing deploys yet. Direction: self-hosting target is
+  `docker compose up` or an equivalently simple documented flow
+  (Initial.md §17); the managed-SaaS host is undecided — test long-lived
+  request and background-job requirements before committing to one
+  (docs/architecture.md). Self-hosted mode must never require Stripe, the
+  hosted API or external telemetry (Initial.md §17).
+
+## Known non-obvious gotchas
+
+- The PRD/FRD are canonical; when Initial.md conflicts with them, resolve
+  it explicitly via docs/open-questions.md instead of silently picking a
+  side (Initial.md, "Durable project documents").
+- Commit `0594e5a` ("Update print statement from 'Hello' to 'Goodbye'")
+  actually adds all of Initial.md — misleading label in history.
+- The final product name is undecided (Initial.md §58): do not scatter a
+  new temporary name through docs, code or filenames.
+
+## Definition of done
+
+- Docs-only PRs: state explicitly that no automated checks exist and none
+  were run.
+- PR opened for Pete to merge — the merge is the deploy trigger; never push
+  `main` directly.
+- Target <600 meaningful changed lines per PR (Initial.md §48).
