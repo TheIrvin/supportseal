@@ -67,7 +67,10 @@ test.describe.serial("cross-Workspace isolation", () => {
 
   test("the Beta owner sees the conversation and attachment (positive control)", async () => {
     await betaOwnerPage.goto("/inbox");
-    const row = betaOwnerPage.locator('ul[aria-label="Conversations"] li a').first();
+    const row = betaOwnerPage
+      .locator('ul[aria-label="Conversations"] li a')
+      .filter({ hasText: "Beta Tool invoice" })
+      .first();
     await expect(row).toBeVisible();
     const href = (await row.getAttribute("href")) ?? "";
     betaConversationId = href.match(/\/inbox\/([^/?]+)/u)?.[1] ?? "";

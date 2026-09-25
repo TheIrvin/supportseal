@@ -109,7 +109,7 @@ test.describe.serial("away mode and email continuation", () => {
   });
 
   test("customer email reply continues the same conversation", async () => {
-    test.skip(!outbound, "no outbound email captured");
+    expect(outbound, "previous test must capture the outbound reply").toBeTruthy();
 
     const result = await postInboundEmail({
       from: visitorEmail,

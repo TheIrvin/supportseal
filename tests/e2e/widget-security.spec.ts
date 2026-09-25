@@ -103,7 +103,10 @@ test.describe("widget security", () => {
     await page.close();
 
     await ownerPage.goto("/inbox");
-    const row = ownerPage.locator('ul[aria-label="Conversations"] li a').first();
+    const row = ownerPage
+      .locator('ul[aria-label="Conversations"] li a')
+      .filter({ hasText: "Context injection probe" })
+      .first();
     await expect(row).toBeVisible();
     await row.click();
     await expect(
@@ -116,12 +119,23 @@ test.describe("widget security", () => {
   });
 
   test("archiving a Product blocks new widget chats until unarchived", async ({ request }) => {
-    await ownerPage.goto(`/settings/products/${fixtures.beta.product.id}`);
+    // Dedicated Product so a failure mid-test can never leave the shared
+    // Beta fixture archived for other specs.
+    await ownerPage.goto("/settings/products");
+    await ownerPage.locator("#name").fill("Archive Probe");
+    await ownerPage.getByRole("button", { name: "Create Product" }).click();
+    await expect(ownerPage).toHaveURL(/\/settings\/products\/[^/]+\/?(\?|$)/u);
+    const probeId = ownerPage.url().match(/\/settings\/products\/([^/?]+)/u)![1];
+    await ownerPage.goto(`/settings/products/${probeId}?tab=widget`);
+    const probeKey = ((await ownerPage.getByText(/^pk_\S+$/u).textContent()) ?? "").trim();
+    expect(probeKey).toMatch(/^pk_/u);
+
+    await ownerPage.goto(`/settings/products/${probeId}`);
     await ownerPage.getByRole("button", { name: "Archive", exact: true }).click();
     await expect(ownerPage.getByText("Archived", { exact: true }).first()).toBeVisible();
 
     const blocked = await request.post(
-      `/api/widget/session?key=${encodeURIComponent(betaKey)}&host=${encodeURIComponent("http://localhost:3101")}`,
+      `/api/widget/session?key=${encodeURIComponent(probeKey)}&host=${encodeURIComponent("http://localhost:3101")}`,
     );
     expect(blocked.status()).toBe(404);
 
@@ -129,7 +143,7 @@ test.describe("widget security", () => {
     await expect(ownerPage.getByText("Archived", { exact: true })).toHaveCount(0);
     await expect(ownerPage.getByRole("button", { name: "Archive", exact: true })).toBeVisible();
     const restored = await request.post(
-      `/api/widget/session?key=${encodeURIComponent(betaKey)}&host=${encodeURIComponent("http://localhost:3101")}`,
+      `/api/widget/session?key=${encodeURIComponent(probeKey)}&host=${encodeURIComponent("http://localhost:3101")}`,
     );
     expect(restored.status()).toBe(200);
   });
