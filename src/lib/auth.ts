@@ -4,12 +4,32 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { appConfig } from "@/lib/config";
 import { resolvePrisma } from "@/lib/prisma";
 
+function safeHost(url: string): string | undefined {
+  try {
+    return new URL(url).host;
+  } catch {
+    return undefined;
+  }
+}
+
 function createAuth() {
   return betterAuth({
     // The signing secret comes from BETTER_AUTH_SECRET (read automatically);
     // production refuses to boot without it — see getAuth().
     baseURL: appConfig.url,
-    trustedOrigins: [appConfig.url],
+    // Trust the deployment URL plus any same-origin request host, so the app
+    // works on localhost, LAN hosts and production domains alike.
+    trustedOrigins: (request) => {
+      const origins = new Set<string>([appConfig.url]);
+      const req = request as { headers?: Headers; url?: string } | undefined;
+      const host =
+        req?.headers?.get?.("host") ?? (req?.url ? safeHost(req.url) : undefined);
+      if (host) {
+        origins.add(`http://${host}`);
+        origins.add(`https://${host}`);
+      }
+      return [...origins];
+    },
     database: prismaAdapter(resolvePrisma(), { provider: "postgresql" }),
     emailAndPassword: {
       enabled: true,

@@ -5,9 +5,8 @@ import { prisma } from "@/lib/prisma";
 import {
   createVisitorSession,
   getAvailabilityForProduct,
-  isOriginAllowed,
+  isWidgetOriginAllowed,
   loadWidgetProduct,
-  resolveEmbeddingHostname,
   resolveVisitorSession,
   visitorListMessages,
 } from "@/lib/widget";
@@ -24,10 +23,13 @@ export async function POST(request: NextRequest) {
   const product = await loadWidgetProduct(key);
   if (!product) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const hostname = resolveEmbeddingHostname(request.headers, hostParam);
-  const allowed =
-    hostname !== null &&
-    isOriginAllowed(hostname, product.domains, process.env.NODE_ENV === "production");
+  const allowed = isWidgetOriginAllowed({
+    productDomains: product.domains,
+    hostParam,
+    referer: request.headers.get("referer"),
+    serviceOrigin: request.nextUrl.origin,
+    serviceIsProduction: process.env.NODE_ENV === "production",
+  });
   if (!allowed) return NextResponse.json({ error: "origin_not_allowed" }, { status: 403 });
 
   const existingToken = request.cookies.get(visitorCookieName(product.id))?.value;

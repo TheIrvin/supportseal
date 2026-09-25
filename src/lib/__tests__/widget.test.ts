@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { startTestDb, stopTestDb, type TestDb } from "@/test/integration-db";
-import { createWorkspace, type WorkspaceContext } from "@/lib/workspace";
+import { type WorkspaceContext } from "@/lib/workspace";
 import { createProduct } from "@/lib/products";
 import { addAgentMessage } from "@/lib/conversations";
 import { getAvailabilityForProduct, setAvailabilityForTest } from "@/test/widget-helpers";

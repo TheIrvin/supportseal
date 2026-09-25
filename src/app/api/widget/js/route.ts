@@ -70,7 +70,7 @@ const LOADER_JS = String.raw`
   function loadConfig() {
     var url = serviceOrigin + '/api/widget/config?key=' + encodeURIComponent(key) +
       '&host=' + encodeURIComponent(window.location.origin);
-    fetch(url, { credentials: 'include' })
+    fetch(url)
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (data) {
         config = data;

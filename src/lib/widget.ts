@@ -79,6 +79,47 @@ export function resolveEmbeddingHostname(headers: Headers, hostParam?: string | 
   return null;
 }
 
+/**
+ * Widget origin gate (FR-CHAT-01). The declared embedding host (sent by the
+ * loader, which runs on the customer's page) must be allowlisted; when a
+ * Referer is present it must agree or belong to the service itself. The
+ * hardening spike (docs/design/chat-widget.md "Isolation approach") may
+ * replace the declared-host trust with signed origin binding.
+ */
+export function isWidgetOriginAllowed(input: {
+  productDomains: string[];
+  hostParam: string | null | undefined;
+  referer: string | null;
+  serviceOrigin: string;
+  serviceIsProduction: boolean;
+}): boolean {
+  let declaredHostname: string | null = null;
+  if (input.hostParam) {
+    try {
+      declaredHostname = new URL(input.hostParam).hostname;
+    } catch {
+      declaredHostname = input.hostParam.trim().toLowerCase() || null;
+    }
+  }
+  if (!declaredHostname) return false;
+  if (!isOriginAllowed(declaredHostname, input.productDomains, input.serviceIsProduction)) {
+    return false;
+  }
+
+  if (input.referer) {
+    try {
+      const refererUrl = new URL(input.referer);
+      const refererIsService = refererUrl.origin === input.serviceOrigin;
+      if (!refererIsService && !isOriginAllowed(refererUrl.hostname, input.productDomains, input.serviceIsProduction)) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function hashVisitorToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }

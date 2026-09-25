@@ -1,18 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import {
-  getAvailabilityForProduct,
-  isOriginAllowed,
-  loadWidgetProduct,
-  resolveEmbeddingHostname,
-} from "@/lib/widget";
+import { getAvailabilityForProduct, isWidgetOriginAllowed, loadWidgetProduct } from "@/lib/widget";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Public widget configuration (FR-CHAT-01). The key identifies the Product
- * and grants no privileged access; the embedding origin must be allowed.
- * Invalid key/origin returns 404 with no detail.
+ * Public widget configuration (FR-CHAT-01). CORS-open for the loader
+ * (credentials are never needed here); the key identifies the Product and
+ * grants no privileged access. Invalid key/origin returns an error with no
+ * detail.
  */
 export async function GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get("key") ?? "";
@@ -22,12 +18,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const hostname = resolveEmbeddingHostname(request.headers, hostParam);
-  const allowed = hostname !== null && isOriginAllowed(
-    hostname,
-    product.domains,
-    process.env.NODE_ENV === "production",
-  );
+  const allowed = isWidgetOriginAllowed({
+    productDomains: product.domains,
+    hostParam,
+    referer: request.headers.get("referer"),
+    serviceOrigin: request.nextUrl.origin,
+    serviceIsProduction: process.env.NODE_ENV === "production",
+  });
   if (!allowed) {
     return NextResponse.json({ error: "origin_not_allowed" }, { status: 403 });
   }
@@ -39,6 +36,20 @@ export async function GET(request: NextRequest) {
       color: product.primaryColor,
       availability,
     },
-    { headers: { "cache-control": "no-store" } },
+    {
+      headers: {
+        "cache-control": "no-store",
+        "access-control-allow-origin": "*",
+      },
+    },
   );
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    headers: {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET",
+    },
+  });
 }
