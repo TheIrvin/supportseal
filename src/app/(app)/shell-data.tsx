@@ -1,12 +1,21 @@
-import type { ReactNode } from "react";
-
 import { AppShell } from "@/components/layout/app-shell";
 import { prisma } from "@/lib/prisma";
 import { listProducts } from "@/lib/products";
 import { getAvailability, requireWorkspace } from "@/lib/workspace";
 import { setAvailabilityAction } from "./actions";
 
-export default async function AppLayout({ children }: { children: ReactNode }) {
+/**
+ * Loads shell data (workspace context, sidebar Products with open counts,
+ * availability) and renders the AppShell in the requested mode. Used by the
+ * (page) and (fill) route-group layouts.
+ */
+export async function Shell({
+  mode,
+  children,
+}: {
+  mode: "page" | "fill";
+  children: React.ReactNode;
+}) {
   const ctx = await requireWorkspace();
 
   const [products, counts, availability] = await Promise.all([
@@ -27,6 +36,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       role={ctx.role}
       availability={availability}
       onAvailabilityChange={setAvailabilityAction}
+      mode={mode}
       products={products
         .filter((p) => p.archivedAt === null)
         .map((p) => ({

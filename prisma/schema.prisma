@@ -94,6 +94,7 @@ model Workspace {
   contacts    Contact[]
   conversations Conversation[]
   tags        Tag[]
+  savedReplies SavedReply[]
 
   @@map("workspaces")
 }
@@ -271,4 +272,19 @@ model ConversationTag {
 
   @@unique([conversationId, tagId])
   @@map("conversation_tags")
+}
+
+model SavedReply {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  body        String
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, name])
+  @@map("saved_replies")
 }

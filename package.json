@@ -19,7 +19,8 @@
     "db:dev": "node scripts/dev-db.mjs",
     "verify:fast": "npm run lint && npm run typecheck && npm run test:run",
     "verify": "npm run lint && npm run typecheck && npm run test:run && npm run build",
-    "verify:full": "npm run verify"
+    "verify:full": "npm run verify",
+    "db:seed": "tsx scripts/seed-dev.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
