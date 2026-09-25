@@ -22,6 +22,7 @@ model User {
   sessions    Session[]
   accounts    Account[]
   invitesSent Invite[]    @relation("InviteSentBy")
+  messages    Message[]   @relation("MessageAuthor")
 
   @@map("users")
 }
@@ -84,6 +85,9 @@ model Workspace {
   memberships Membership[]
   invites     Invite[]
   products    Product[]
+  contacts    Contact[]
+  conversations Conversation[]
+  tags        Tag[]
 
   @@map("workspaces")
 }
@@ -142,6 +146,7 @@ model Product {
 
   workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   domains   ProductDomain[]
+  conversations Conversation[]
 
   @@index([workspaceId])
   @@map("products")
@@ -158,4 +163,106 @@ model ProductDomain {
   @@unique([productId, domain])
   @@index([productId])
   @@map("product_domains")
+}
+
+// --- Contacts and conversations --------------------------------------------
+
+model Contact {
+  id          String    @id @default(uuid())
+  workspaceId String
+  email       String?
+  name        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId])
+  @@map("contacts")
+}
+
+enum ConversationChannel {
+  CHAT
+  EMAIL
+}
+
+enum ConversationStatus {
+  OPEN
+  PENDING
+  CLOSED
+}
+
+enum MessageKind {
+  CUSTOMER
+  AGENT
+  NOTE
+}
+
+model Conversation {
+  id                 String              @id @default(uuid())
+  workspaceId        String
+  productId          String
+  contactId          String
+  channel            ConversationChannel
+  status             ConversationStatus  @default(OPEN)
+  subject            String?
+  lastMessageAt      DateTime            @default(now())
+  firstAgentReplyAt  DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  contact   Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  tags      ConversationTag[]
+
+  @@index([workspaceId, status, lastMessageAt])
+  @@index([workspaceId, productId])
+  @@index([contactId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String
+  kind           MessageKind
+  body           String
+  agentUserId    String?
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author       User?        @relation("MessageAuthor", fields: [agentUserId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+model Tag {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  createdAt   DateTime @default(now())
+
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversations ConversationTag[]
+
+  @@unique([workspaceId, name])
+  @@map("tags")
+}
+
+model ConversationTag {
+  id             String   @id @default(uuid())
+  conversationId String
+  tagId          String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  tag           Tag           @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, tagId])
+  @@map("conversation_tags")
 }
