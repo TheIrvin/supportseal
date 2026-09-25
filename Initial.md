@@ -12,6 +12,20 @@ Work autonomously. Make sensible engineering decisions without repeatedly asking
 
 ---
 
+# Durable project documents
+
+Create these concise documents in the foundation PR:
+
+* `docs/PRD.md` — durable audience, problem, product promise, scope and outcomes.
+* `docs/FRD.md` — observable V1 behaviour and acceptance requirements.
+* `docs/product-positioning.md` — positioning hypothesis and message hierarchy.
+* `docs/repository-discovery.md` — inspected repository evidence and constraints.
+* `docs/architecture.md` and focused `docs/adr/` entries — technical direction and decisions.
+
+Treat the PRD and FRD as the canonical durable product requirements after extraction. Use this master prompt for initial orchestration, process and model-routing instructions; link to the durable docs rather than duplicating their text in new documents. If implementation discoveries change product scope or behaviour, update the relevant PRD/FRD requirement in the same PR and explain why. If documents conflict with a requirement here, resolve the conflict explicitly in that PR; do not silently change behaviour. Keep fast-changing prices, vendor comparisons, library versions, progress reports and PR sequence details out of the PRD/FRD.
+
+---
+
 # 1. Product thesis
 
 The core problem is:
@@ -1662,7 +1676,7 @@ A likely sequence is:
 ### PR 1 — Foundation
 
 * repository/bootstrap
-* architectural docs
+* concise PRD and FRD, positioning, discovery, architecture and relevant ADRs
 * local development
 * database
 * basic CI
