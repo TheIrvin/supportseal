@@ -15,7 +15,26 @@ export default function robots(): MetadataRoute.Robots {
     return { rules: [{ userAgent: "*", disallow: "/" }] };
   }
   return {
-    rules: [{ userAgent: "*", allow: "/" }],
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        // The public site is the marketing surface; app routes stay out of
+        // search indexes even in hosted mode.
+        disallow: [
+          "/api/",
+          "/inbox",
+          "/settings",
+          "/onboarding",
+          "/saved-replies",
+          "/widget-preview",
+          "/start",
+          "/login",
+          "/register",
+          "/invite/",
+        ],
+      },
+    ],
     sitemap: `${siteConfig.url}/sitemap.xml`,
   };
 }

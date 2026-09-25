@@ -9,16 +9,10 @@ import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { siteConfig } from "@/config/site";
+import { marketingPages, siteConfig } from "@/config/site";
 import { cn } from "@/lib/cn";
 
 type NavLink = { label: string; href: string };
-
-const INTERNAL_LINKS: NavLink[] = [
-  { label: "Features", href: "/features" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Open source", href: "/open-source" },
-];
 
 const EXTERNAL_LINKS: Array<NavLink & { note: string }> = [
   { label: "Docs", href: siteConfig.selfHostingGuideUrl, note: "opens on GitHub" },
@@ -42,7 +36,7 @@ export function MarketingHeader() {
         <Logo href="/" className="lg:me-4" />
 
         <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
-          {INTERNAL_LINKS.map((link) => {
+          {marketingPages.map((link) => {
             const active = pathname === link.href;
             return (
               <Link
@@ -50,15 +44,16 @@ export function MarketingHeader() {
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex h-11 items-center rounded-md px-3 text-[0.9375rem] transition-colors duration-150 hover:text-heading",
+                  "relative inline-flex h-11 items-center rounded-md px-3 text-[0.9375rem] transition-colors duration-150 hover:text-heading",
                   active ? "font-medium text-heading" : "text-body",
                 )}
               >
                 {link.label}
+                {/* Current page: 2px primary underline (design doc). */}
                 <span
                   aria-hidden
                   className={cn(
-                    "mt-1 h-0.5 self-stretch rounded-full",
+                    "absolute inset-x-3 bottom-0 h-0.5 rounded-full",
                     active ? "bg-primary" : "bg-transparent",
                   )}
                 />
@@ -99,7 +94,7 @@ export function MarketingHeader() {
             <SheetContent side="right" className="w-[22rem] p-6">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               <nav aria-label="Main" className="flex flex-col gap-1">
-                {INTERNAL_LINKS.map((link) => (
+                {marketingPages.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}

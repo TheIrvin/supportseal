@@ -54,13 +54,13 @@ export async function computeUsage(
   const overLimit = limit !== null && inPeriod > limit;
   let graceEndsAt: Date | null = null;
   let graceRemainingDays: number | null = null;
-  if (overLimit && plan.graceDays > 0) {
+  if (overLimit && limit !== null && plan.graceDays > 0) {
     // Grace starts when the (limit+1)-th conversation actually opened — the
     // moment the allowance was crossed — not at the period boundary.
     const crossing = await prisma.conversation.findFirst({
       where: { workspaceId, createdAt: { gte: period.start, lt: period.end } },
       orderBy: { createdAt: "asc" },
-      skip: limit!,
+      skip: limit,
       select: { createdAt: true },
     });
     const crossingAt = crossing?.createdAt ?? now;

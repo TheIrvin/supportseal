@@ -66,7 +66,7 @@ export function ScreenshotFrame({
             aria-hidden
             fill
             sizes="(max-width: 1024px) 100vw, 60vw"
-            loading={eager ? "lazy" : "lazy"}
+            loading="lazy"
             className="hidden object-cover object-top dark:block"
           />
           {markers?.slice(0, 3).map((marker, index) => (
@@ -100,25 +100,27 @@ export function ScreenshotFrame({
         </div>
       )}
       {shot.available ? (
-        <>
-          {/* Zoom affordance on small screens (WCAG 1.4.10). */}
+        /* Zoom affordance on small screens (WCAG 1.4.10); one link per theme. */
+        <div className="mt-2 flex flex-col gap-1 md:hidden">
           <a
             href={`/marketing/${shot.id}-light.png`}
             target="_blank"
             rel="noopener"
-            className="mt-2 inline-block text-[0.8125rem] text-primary underline underline-offset-4 md:hidden"
+            className="text-[0.8125rem] text-primary underline underline-offset-4 dark:hidden"
           >
-            View full size<span className="sr-only"> (light theme screenshot, opens in a new tab)</span>
+            View full size
+            <span className="sr-only"> (light theme screenshot, opens in a new tab)</span>
           </a>
           <a
             href={`/marketing/${shot.id}-dark.png`}
             target="_blank"
             rel="noopener"
-            className="mt-2 hidden text-[0.8125rem] text-primary underline underline-offset-4 md:hidden dark:inline-block"
+            className="hidden text-[0.8125rem] text-primary underline underline-offset-4 dark:inline-block"
           >
-            View full size<span className="sr-only"> (dark theme screenshot, opens in a new tab)</span>
+            View full size
+            <span className="sr-only"> (dark theme screenshot, opens in a new tab)</span>
           </a>
-        </>
+        </div>
       ) : null}
       {caption ? <figcaption className="mt-3 text-[0.933rem] text-muted">{caption}</figcaption> : null}
       {markerList ? <div className="mt-4">{markerList}</div> : null}

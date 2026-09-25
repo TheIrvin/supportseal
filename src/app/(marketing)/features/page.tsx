@@ -7,6 +7,7 @@ import { CtaBand } from "@/components/marketing/cta-band";
 import { ScreenshotFrame } from "@/components/marketing/screenshot-frame";
 import { Section, SectionHeading } from "@/components/marketing/section";
 import { siteConfig } from "@/config/site";
+import { cn } from "@/lib/cn";
 
 import { FeaturesNav, type FeaturesNavItem } from "./features-nav";
 
@@ -21,7 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
-const CONTEXT_SNIPPET = `SupportSealWidget.q.push(["identify", {
+const CONTEXT_SNIPPET = `window.SupportSealWidget = window.SupportSealWidget || { q: [] };
+SupportSealWidget.q.push(["identify", {
   userId: "u_1042",
   email: "sam@example.com",
 }]);
@@ -35,7 +37,7 @@ type FeatureSection = {
   id: string;
   title: string;
   body: React.ReactNode;
-  shot?: { id: string; alt: string; withCode?: boolean };
+  shot: { id: string; alt: string; withCode?: boolean };
 };
 
 const SECTIONS: FeatureSection[] = [
@@ -124,36 +126,46 @@ export default function FeaturesPage() {
             </Button>
           </div>
         </div>
-        <FeaturesNav items={NAV_ITEMS} />
+        {/* Chip row sits directly under the hero text (not sticky, design doc). */}
+        <FeaturesNav items={NAV_ITEMS} variant="chips" />
       </Section>
 
-      {SECTIONS.map((section, index) => (
-        <Section
-          key={section.id}
-          id={section.id}
-          aria-labelledby={`${section.id}-heading`}
-          band={index % 2 === 0 ? "surface" : "default"}
-        >
-          <div className="max-w-[50rem]">
-            <SectionHeading id={`${section.id}-heading`} title={section.title} />
-            <p className="mt-4 max-w-[40rem] text-[1.067rem] leading-[1.65] text-body">
-              {section.body}
-            </p>
+      {/* Sticky "On this page" sidebar beside the section column on lg; the
+          chip row (inside FeaturesNav) shows under the hero on small screens.
+          The grid keeps the nav sticky across every section. */}
+      <div className="mx-auto w-full max-w-[80rem] px-5 sm:px-8">
+        <div className="grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
+          <FeaturesNav items={NAV_ITEMS} variant="sidebar" />
+          <div className="min-w-0">
+            {SECTIONS.map((section, index) => (
+              <section
+                key={section.id}
+                id={section.id}
+                aria-labelledby={`${section.id}-heading`}
+                className={cn(
+                  "border-y border-border py-12 sm:py-16 lg:py-20",
+                  index % 2 === 0 ? "bg-surface" : "bg-body-bg",
+                )}
+              >
+                <div className="max-w-[50rem]">
+                  <SectionHeading id={`${section.id}-heading`} title={section.title} />
+                  <p className="mt-4 max-w-[40rem] text-[1.067rem] leading-[1.65] text-body">
+                    {section.body}
+                  </p>
+                </div>
+                <div className="mt-10 max-w-[60rem]">
+                  <ScreenshotFrame shotId={section.shot.id} alt={section.shot.alt} />
+                  {section.shot.withCode ? (
+                    <div className="mt-6">
+                      <CodeBlock code={CONTEXT_SNIPPET} label="Developer context snippet" />
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            ))}
           </div>
-          <div className="mt-10">
-            {section.shot ? (
-              <div className="max-w-[60rem]">
-                <ScreenshotFrame shotId={section.shot.id} alt={section.shot.alt} />
-                {section.shot.withCode ? (
-                  <div className="mt-6">
-                    <CodeBlock code={CONTEXT_SNIPPET} label="Developer context snippet" />
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </Section>
-      ))}
+        </div>
+      </div>
 
       <CtaBand
         title="Follow the Conversation from the first message to the next reply"

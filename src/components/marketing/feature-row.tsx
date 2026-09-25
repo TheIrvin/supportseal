@@ -12,6 +12,7 @@ export function FeatureRow({
   media,
   reverse = false,
   actions,
+  headingLevel = "h3",
   className,
 }: {
   title: React.ReactNode;
@@ -20,17 +21,20 @@ export function FeatureRow({
   media?: React.ReactNode;
   reverse?: boolean;
   actions?: React.ReactNode;
+  /** Home rows have no h2 above them, so they carry h2 titles (no skipped levels). */
+  headingLevel?: "h2" | "h3";
   className?: string;
 }) {
+  const Heading = headingLevel;
   return (
     <div className={cn("grid gap-8 lg:grid-cols-12 lg:gap-12", className)}>
       <div className={cn("flex min-w-0 flex-col justify-center lg:col-span-5", reverse && "lg:order-2")}>
         {kicker ? (
           <p className="text-[0.867rem] font-semibold tracking-[0.04em] text-primary">{kicker}</p>
         ) : null}
-        <h3 className="mt-2 text-[1.33rem] leading-[1.35] font-semibold tracking-[-0.01em] text-heading">
+        <Heading className="mt-2 text-[1.33rem] leading-[1.35] font-semibold tracking-[-0.01em] text-heading">
           {title}
-        </h3>
+        </Heading>
         <div className="mt-3 text-[1.067rem] leading-[1.65] text-body">{children}</div>
         {actions ? <div className="mt-5">{actions}</div> : null}
       </div>

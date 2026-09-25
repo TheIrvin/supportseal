@@ -89,6 +89,7 @@ export default function HomePage() {
       {/* How it works (feature rows). */}
       <Section band="surface">
         <FeatureRow
+          headingLevel="h2"
           title="Keep each product in view"
           media={
             <ScreenshotFrame
@@ -108,6 +109,7 @@ export default function HomePage() {
 
       <Section>
         <FeatureRow
+          headingLevel="h2"
           reverse
           title="Chat now. Continue by email."
           media={
@@ -132,6 +134,7 @@ export default function HomePage() {
 
       <Section band="surface">
         <FeatureRow
+          headingLevel="h2"
           title="Bring the app details into the Conversation"
           media={
             <div className="flex flex-col gap-6">
@@ -156,6 +159,7 @@ export default function HomePage() {
 
       <Section>
         <FeatureRow
+          headingLevel="h2"
           reverse
           title="Leave a useful thread for the next reply"
           media={

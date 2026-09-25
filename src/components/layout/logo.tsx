@@ -40,7 +40,7 @@ export function Logo({
       <SealMark size={32} />
       <span
         className={cn(
-          "text-[1.375rem] font-semibold tracking-[-0.01em] text-heading transition-opacity",
+          "min-w-0 truncate text-[1.375rem] font-semibold tracking-[-0.01em] text-heading transition-opacity",
           collapsed && "opacity-0 lg:hidden",
         )}
       >

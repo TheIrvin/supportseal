@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
 import proxy from "@/proxy";
@@ -54,12 +54,42 @@ describe("proxy marketing gating", () => {
         const response = proxy(makeRequest(path));
         expect(response.headers.get("location")).toBeNull();
         expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+        expect(response.status).toBe(200);
       }
     });
 
     it("still protects app routes", () => {
       const response = proxy(makeRequest("/inbox"));
       expect(response.headers.get("location")).toBe("http://localhost:3000/login?next=%2Finbox");
+    });
+  });
+
+  describe("hosted mode with unset public pricing values", () => {
+    beforeEach(() => {
+      process.env.HOSTED_MODE = "1";
+    });
+
+    it("refuses the static pricing page in production instead of serving TBD", () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      vi.stubEnv("NODE_ENV", "production");
+      try {
+        // Values ship as PRICING_UNSET until the launch decision (issue #6).
+        const response = proxy(makeRequest("/pricing"));
+        expect(response.status).toBe(503);
+      } finally {
+        vi.unstubAllEnvs();
+        void originalNodeEnv;
+      }
+    });
+
+    it("keeps serving the pricing page in development", () => {
+      vi.stubEnv("NODE_ENV", "development");
+      try {
+        const response = proxy(makeRequest("/pricing"));
+        expect(response.status).toBe(200);
+      } finally {
+        vi.unstubAllEnvs();
+      }
     });
   });
 });

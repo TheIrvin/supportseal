@@ -192,7 +192,7 @@ who has contacted you before.
 | Does adding a product or teammate change the price? | No. Products are unlimited, and there is no per-seat pricing. | [SF-12](shipped-features.md#sf-12--hosted-plans-unlimited-products-and-no-seat-pricing) |
 | Can I self-host for free? | Yes. The AGPLv3 software has no self-hosting licence fee. You provide and maintain the infrastructure and email setup. | [SF-13](shipped-features.md#sf-13--free-self-hosting-and-open-source) |
 
-## Self-host / open source — `/self-host`
+## Self-host / open source — `/open-source`
 
 ### Hero: Run your support desk on your infrastructure
 
@@ -273,7 +273,7 @@ in the last column covers every field in that row.
 | Choose Pro | Registration for new users; Billing for an existing Workspace Admin | SF-09, SF-12 |
 | Explore the features | Proposed `/features` page above | SF-01–SF-10 |
 | See hosted plans / See pricing | Proposed `/pricing` page above | SF-11–SF-13 |
-| Explore self-hosting | Proposed `/self-host` page above | SF-13, SF-14 |
+| Explore self-hosting | Implemented `/open-source` page | SF-13, SF-14 |
 | Read the self-hosting guide | [Existing guide](../self-hosting.md), exposed through the public docs or repository | SF-14 |
 | View the source | [Project repository](https://github.com/pietervw/supportseal) | SF-13 |
 | Read the licence | [AGPLv3 licence](../../LICENSE), exposed through the public repository | SF-13 |

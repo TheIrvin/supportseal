@@ -12,3 +12,10 @@ export const siteConfig = {
   selfHostingGuideUrl: "https://github.com/pietervw/supportseal/blob/main/docs/self-hosting.md",
   licenseUrl: "https://github.com/pietervw/supportseal/blob/main/LICENSE",
 };
+
+/** Hosted marketing routes: header nav, sitemap, and the self-hosted proxy redirect. */
+export const marketingPages = [
+  { label: "Features", href: "/features" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Open source", href: "/open-source" },
+] as const;

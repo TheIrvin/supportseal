@@ -32,8 +32,6 @@ export function HostingComparison({ headingLevel = "h3" }: { headingLevel?: "h3"
                 {"external" in card.cta && card.cta.external ? (
                   <a
                     href={card.cta.href}
-                    target="_blank"
-                    rel="noopener"
                     className="inline-flex items-center gap-1 text-[0.9375rem] font-medium text-primary underline underline-offset-4"
                   >
                     {card.cta.label}

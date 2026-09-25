@@ -30,13 +30,7 @@ describe("marketing pages never hard-code the product name", () => {
     const dirs = ["src/components/marketing", "src/app/(marketing)"].map((dir) => path.join(ROOT, dir));
     const offenders: string[] = [];
     for (const dir of dirs) {
-      let files: string[];
-      try {
-        files = collectFiles(dir);
-      } catch {
-        continue; // directory may not exist yet
-      }
-      for (const file of files) {
+      for (const file of collectFiles(dir)) {
         const content = readFileSync(file, "utf8");
         // `SupportSealWidget` is the shipped widget API global
         // (src/app/api/widget/js/route.ts) and must appear verbatim in code

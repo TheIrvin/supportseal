@@ -46,13 +46,13 @@ export default function OpenSourcePage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button asChild variant="solid" color="primary" size="lg">
-              <a href={siteConfig.selfHostingGuideUrl} target="_blank" rel="noopener">
+              <a href={siteConfig.selfHostingGuideUrl}>
                 Read the self-hosting guide
                 <span className="sr-only"> (opens on GitHub)</span>
               </a>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <a href={siteConfig.repositoryUrl} target="_blank" rel="noopener">
+              <a href={siteConfig.repositoryUrl}>
                 View the source
                 <span className="sr-only"> (opens on GitHub)</span>
               </a>
@@ -125,13 +125,13 @@ export default function OpenSourcePage() {
         </div>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Button asChild variant="outline" size="md">
-            <a href={siteConfig.repositoryUrl} target="_blank" rel="noopener">
+            <a href={siteConfig.repositoryUrl}>
               View the source
               <span className="sr-only"> (opens on GitHub)</span>
             </a>
           </Button>
           <Button asChild variant="outline" size="md">
-            <a href={siteConfig.licenseUrl} target="_blank" rel="noopener">
+            <a href={siteConfig.licenseUrl}>
               Read the licence
               <span className="sr-only"> (opens on GitHub)</span>
             </a>

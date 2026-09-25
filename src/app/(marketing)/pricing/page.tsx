@@ -13,7 +13,7 @@ import { ScreenshotFrame } from "@/components/marketing/screenshot-frame";
 import { Section, SectionHeading } from "@/components/marketing/section";
 import { CORE_CAPABILITIES } from "@/config/hosting-comparison";
 import { isHostedMode } from "@/lib/hosting";
-import { assertPricingCompleteForHostedProduction, pricingConfig } from "@/config/pricing";
+import { assertPricingCompleteForHostedProduction, formatUsd, pricingConfig } from "@/config/pricing";
 import { siteConfig } from "@/config/site";
 
 // A hosted production build must fail while any public pricing value is
@@ -269,6 +269,7 @@ export default function PricingPage() {
                 <ConfigValue
                   value={pricingConfig.hostedPro.monthlyPriceUsd}
                   configKey="pricingConfig.hostedPro.monthlyPriceUsd"
+                  format={formatUsd}
                 />
                 <span className="text-[0.933rem] text-muted">USD / month</span>
               </p>
@@ -320,7 +321,7 @@ export default function PricingPage() {
               </dl>
               <div className="mt-6 pt-2">
                 <Button asChild variant="outline" size="md" className="w-full sm:w-auto">
-                  <a href={siteConfig.selfHostingGuideUrl} target="_blank" rel="noopener">
+                  <a href={siteConfig.selfHostingGuideUrl}>
                     Read the self-hosting guide
                     <span className="sr-only"> (opens on GitHub)</span>
                   </a>
