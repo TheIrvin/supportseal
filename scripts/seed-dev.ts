@@ -15,20 +15,60 @@ async function main() {
   const existing = await prisma.conversation.findFirst();
   if (existing) {
     console.log("Seed data already present; skipping.");
-    return;
+    process.exit(0);
   }
 
-  const workspace = await prisma.workspace.findFirst();
+  // Bootstrap the founder account through the real auth API when missing, so
+  // reseading is one command (dev only; password is a known dev value).
+  let founder = await prisma.user.findUnique({ where: { email: "founder@example.com" } });
+  if (!founder) {
+    const { getAuth } = await import("../src/lib/auth");
+    const auth = await getAuth();
+    await auth.api.signUpEmail({
+      body: {
+        name: "Pete Founder",
+        email: "founder@example.com",
+        password: "correct-horse-battery",
+      },
+      headers: new Headers({ origin: "http://localhost:3000" }),
+    });
+    founder = await prisma.user.findUniqueOrThrow({ where: { email: "founder@example.com" } });
+    console.log("Created founder@example.com (password: correct-horse-battery)");
+  }
+
+  let workspace = await prisma.workspace.findFirst();
   if (!workspace) {
-    console.log("No workspace yet — register a user and create a Workspace first.");
-    process.exit(0);
+    workspace = await prisma.workspace.create({
+      data: {
+        name: "Acme Studio",
+        memberships: { create: { userId: founder.id, role: "ADMIN" } },
+      },
+    });
+    console.log(`Created workspace "${workspace.name}"`);
   }
   const ws: { id: string; name: string } = workspace;
 
-  const products = await prisma.product.findMany({ where: { workspaceId: ws.id } });
+  let products = await prisma.product.findMany({ where: { workspaceId: ws.id } });
   if (products.length === 0) {
-    console.log("No products yet — create at least one Product first.");
-    return;
+    const created = await Promise.all(
+      [
+        { name: "Alpha SaaS", color: "#2563eb", domains: ["app.alpha.dev"] },
+        { name: "Beacon Forms", color: "#db2777", domains: ["beaconforms.dev"] },
+        { name: "PM Toolkit", color: "#ca8a04", domains: ["engineering-comments-register.vercel.app"] },
+      ].map((p) =>
+        prisma.product.create({
+          data: {
+            workspaceId: ws.id,
+            name: p.name,
+            primaryColor: p.color,
+            widgetPublicKey: `pk_${crypto.randomBytes(24).toString("base64url")}`,
+            domains: { create: p.domains.map((domain) => ({ domain })) },
+          },
+        }),
+      ),
+    );
+    products = created;
+    console.log(`Created ${created.length} products`);
   }
 
   async function contact(email: string, name: string | null) {

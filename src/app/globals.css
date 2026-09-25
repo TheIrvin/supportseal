@@ -40,6 +40,7 @@
 
   --color-dark: var(--vx-dark);
   --color-dark-label: var(--vx-dark-label);
+  --color-dark-contrast: var(--vx-dark-contrast);
 
   --color-body-bg: var(--vx-body-bg);
   --color-surface: var(--vx-surface);

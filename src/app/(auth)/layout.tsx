@@ -16,13 +16,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </p>
         </div>
         <svg className="pointer-events-none absolute inset-0 size-full" viewBox="0 0 640 800" aria-hidden>
-          <circle cx="520" cy="160" r="180" fill="var(--vx-primary)" opacity="0.12" />
-          <circle cx="80" cy="640" r="220" fill="var(--vx-primary)" opacity="0.1" />
-          <rect x="280" y="280" width="220" height="280" rx="24" fill="var(--vx-surface)" />
-          <rect x="304" y="312" width="172" height="16" rx="8" fill="var(--vx-primary-label)" />
-          <rect x="304" y="348" width="132" height="12" rx="6" fill="var(--vx-border)" />
-          <rect x="304" y="420" width="172" height="88" rx="12" fill="var(--vx-primary)" opacity="0.35" />
-          <circle cx="390" cy="250" r="36" fill="var(--vx-primary)" />
+          <circle cx="460" cy="150" r="150" fill="var(--vx-primary)" opacity="0.12" />
+          <circle cx="80" cy="660" r="200" fill="var(--vx-primary)" opacity="0.1" />
+          <rect x="60" y="300" width="220" height="200" rx="24" fill="var(--vx-surface)" />
+          <rect x="84" y="332" width="172" height="16" rx="8" fill="var(--vx-primary-label)" />
+          <rect x="84" y="368" width="132" height="12" rx="6" fill="var(--vx-border)" />
+          <rect x="84" y="400" width="172" height="72" rx="12" fill="var(--vx-primary)" opacity="0.35" />
+          <circle cx="240" cy="280" r="36" fill="var(--vx-primary)" />
         </svg>
         <p className="relative z-10 text-sm text-muted">{brand.tagline}</p>
       </div>

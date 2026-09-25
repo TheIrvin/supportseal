@@ -309,7 +309,8 @@ function ConversationRow({
         href={`/inbox/${item.id}${params.size ? `?${params.toString()}` : ""}`}
         aria-current={selected ? "true" : undefined}
         className={cn(
-          "block border-b border-border px-3 py-2.5 transition-colors hover:bg-hover",
+          "block border-b border-border px-3 py-2.5 transition-colors",
+          !selected && "hover:bg-hover",
           selected && "bg-primary-label shadow-[inset_3px_0_0_var(--vx-primary)]",
         )}
       >

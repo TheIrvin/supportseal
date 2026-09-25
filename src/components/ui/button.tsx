@@ -7,7 +7,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        solid: "",
+        solid:
+          "disabled:pointer-events-none disabled:bg-hover disabled:text-muted disabled:shadow-none",
         label: "",
         outline: "border bg-transparent",
         text: "bg-transparent",
@@ -44,13 +45,13 @@ const buttonVariants = cva(
       { iconOnly: true, size: "lg", class: "w-11" },
       { iconOnly: true, size: "xl", class: "w-[50px]" },
 
-      { variant: "solid", color: "primary", class: "bg-primary text-primary-contrast hover:bg-primary-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-primary)_35%,transparent)]" },
+      { variant: "solid", color: "primary", class: "bg-primary text-primary-contrast hover:bg-primary-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-primary)_35%,transparent)] dark:shadow-none" },
       { variant: "solid", color: "secondary", class: "bg-secondary text-secondary-contrast hover:bg-secondary-dark" },
-      { variant: "solid", color: "success", class: "bg-success text-success-contrast hover:bg-success-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-success)_35%,transparent)]" },
-      { variant: "solid", color: "danger", class: "bg-danger text-danger-contrast hover:bg-danger-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-danger)_35%,transparent)]" },
-      { variant: "solid", color: "warning", class: "bg-warning text-warning-contrast hover:bg-warning-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-warning)_35%,transparent)]" },
-      { variant: "solid", color: "info", class: "bg-info text-info-contrast hover:bg-info-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-info)_35%,transparent)]" },
-      { variant: "solid", color: "dark", class: "bg-dark text-white hover:opacity-90 dark:bg-dark dark:text-dark-contrast" },
+      { variant: "solid", color: "success", class: "bg-success text-success-contrast hover:bg-success-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-success)_35%,transparent)] dark:shadow-none" },
+      { variant: "solid", color: "danger", class: "bg-danger text-danger-contrast hover:bg-danger-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-danger)_35%,transparent)] dark:shadow-none" },
+      { variant: "solid", color: "warning", class: "bg-warning text-warning-contrast hover:bg-warning-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-warning)_35%,transparent)] dark:shadow-none" },
+      { variant: "solid", color: "info", class: "bg-info text-info-contrast hover:bg-info-dark shadow-[0_2px_4px_color-mix(in_srgb,var(--vx-info)_35%,transparent)] dark:shadow-none" },
+      { variant: "solid", color: "dark", class: "bg-dark text-dark-contrast hover:opacity-90" },
 
       { variant: "label", color: "primary", class: "bg-primary-label text-primary hover:bg-primary hover:text-primary-contrast" },
       { variant: "label", color: "secondary", class: "bg-secondary-label text-secondary hover:bg-secondary hover:text-secondary-contrast" },
@@ -58,7 +59,7 @@ const buttonVariants = cva(
       { variant: "label", color: "danger", class: "bg-danger-label text-danger hover:bg-danger hover:text-danger-contrast" },
       { variant: "label", color: "warning", class: "bg-warning-label text-warning hover:bg-warning hover:text-warning-contrast" },
       { variant: "label", color: "info", class: "bg-info-label text-info hover:bg-info hover:text-info-contrast" },
-      { variant: "label", color: "dark", class: "bg-dark-label text-dark hover:bg-dark hover:text-white" },
+      { variant: "label", color: "dark", class: "bg-dark-label text-dark hover:bg-dark hover:text-dark-contrast" },
 
       { variant: "outline", color: "primary", class: "border-primary text-primary hover:bg-primary hover:text-primary-contrast" },
       { variant: "outline", color: "secondary", class: "border-secondary text-secondary hover:bg-secondary hover:text-secondary-contrast" },
@@ -66,7 +67,7 @@ const buttonVariants = cva(
       { variant: "outline", color: "danger", class: "border-danger text-danger hover:bg-danger hover:text-danger-contrast" },
       { variant: "outline", color: "warning", class: "border-warning text-warning hover:bg-warning hover:text-warning-contrast" },
       { variant: "outline", color: "info", class: "border-info text-info hover:bg-info hover:text-info-contrast" },
-      { variant: "outline", color: "dark", class: "border-dark text-dark hover:bg-dark hover:text-white" },
+      { variant: "outline", color: "dark", class: "border-dark text-dark hover:bg-dark hover:text-dark-contrast" },
 
       { variant: "text", color: "primary", class: "text-primary hover:bg-primary-label" },
       { variant: "text", color: "secondary", class: "text-secondary hover:bg-secondary-label" },

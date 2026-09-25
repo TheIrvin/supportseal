@@ -62,7 +62,8 @@ and pane frame are in `support-inbox.md`.
   (cursor pagination, ~50 per page) with scroll position preserved, plus a
   "Load earlier messages" button at the top for keyboard users.
 - **Chat messages**: bubbles with max width ~70ch. Customer: left,
-  `bg-surface-2`, text-heading. Agent: right, `bg-primary-label`,
+  `bg-surface border border-border` (the thread sits on `--vx-body-bg`, so
+  `--vx-surface-2` is too close to it in dark mode). Agent: right, `bg-primary-label`,
   text-heading, with the agent display name above the first bubble of a
   run. Group consecutive messages from the same author within 5 minutes and
   show a timestamp per group (absolute time on hover/focus).

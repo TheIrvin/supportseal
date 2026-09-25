@@ -1,3 +1,4 @@
+import { Card, CardContent } from "@/components/ui/card";
 import { listInvites, listMembers, requireWorkspace } from "@/lib/workspace";
 import { InviteForm } from "./invite-form";
 import { InvitesTable } from "./invites-table";
@@ -21,21 +22,29 @@ export default async function TeamPage() {
         </p>
       </header>
 
-      <section className="space-y-4">
-        <h3 className="text-sm font-medium text-muted">Members</h3>
-        <MembersTable members={members} currentUserId={ctx.user.id} />
+      <section>
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <h3 className="text-sm font-medium text-muted">Members</h3>
+            <MembersTable members={members} currentUserId={ctx.user.id} />
+          </CardContent>
+        </Card>
       </section>
 
       {ctx.role === "ADMIN" ? (
-        <section className="space-y-4">
-          <h3 className="text-sm font-medium text-muted">Invite a teammate</h3>
-          <InviteForm />
-          {invites.length > 0 ? (
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted">Pending & past invites</h3>
-              <InvitesTable invites={invites} />
-            </div>
-          ) : null}
+        <section>
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <h3 className="text-sm font-medium text-muted">Invite a teammate</h3>
+              <InviteForm />
+              {invites.length > 0 ? (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-muted">Pending &amp; past invites</h3>
+                  <InvitesTable invites={invites} />
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
         </section>
       ) : null}
     </div>

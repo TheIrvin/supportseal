@@ -103,12 +103,15 @@ function ProductList({
           <Link
             href={`/inbox?product=${product.id}`}
             onClick={onNavigate}
+            aria-label={`${product.name}${product.openCount > 0 ? `, ${product.openCount} open` : ""}`}
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9375rem] text-body transition-colors hover:bg-hover hover:text-heading"
           >
             <ProductMark name={product.name} color={product.primaryColor} size="sm" />
-            <span className="truncate">{product.name}</span>
+            <span className={cn("truncate", collapsed && "lg:hidden")}>{product.name}</span>
             {product.openCount > 0 ? (
-              <span className="ms-auto text-sm font-semibold text-muted">{product.openCount}</span>
+              <span className={cn("ms-auto text-sm font-semibold text-muted", collapsed && "lg:hidden")}>
+                {product.openCount}
+              </span>
             ) : null}
           </Link>
         </li>
@@ -118,9 +121,9 @@ function ProductList({
           <Link
             href="/settings/products"
             onClick={onNavigate}
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9375rem] text-primary transition-colors hover:bg-hover"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9375rem] text-body transition-colors hover:bg-hover hover:text-heading"
           >
-            <span className="flex size-5 items-center justify-center">
+            <span className="flex size-5 items-center justify-center text-primary">
               <IconPlus className="size-4" />
             </span>
             <span className="truncate">Add Product</span>

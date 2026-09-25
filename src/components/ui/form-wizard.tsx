@@ -60,7 +60,7 @@ export function FormWizard({
                   "inline-flex size-9 shrink-0 items-center justify-center border text-sm font-medium",
                   modern || variant === "icons" ? "rounded-md" : "rounded-full",
                   done || active
-                    ? "border-primary bg-primary text-white"
+                    ? "border-primary bg-primary text-primary-contrast"
                     : "border-border bg-surface text-muted",
                 )}
               >

@@ -152,7 +152,7 @@ export function ConversationView({
           <div className="ms-auto flex items-center gap-1.5">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="text" color="secondary" size="sm">
                   <Badge variant="light" color={STATUS_META[conversation.status].color}>
                     {STATUS_META[conversation.status].label}
                   </Badge>
@@ -373,8 +373,8 @@ function MessageBubble({ message }: { message: Message }) {
     >
       <div
         className={cn(
-          "max-w-[85%] rounded-lg p-3 sm:max-w-[70ch]",
-          isAgent ? "bg-primary-label" : "bg-surface-2",
+          "max-w-[min(85%,70ch)] rounded-lg p-3",
+          isAgent ? "bg-primary-label" : "border border-border bg-surface",
         )}
       >
         {isAgent ? (

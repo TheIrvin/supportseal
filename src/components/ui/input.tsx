@@ -5,9 +5,9 @@ const inputState = {
   default:
     "border-border-strong hover:border-muted focus:border-primary focus:shadow-[0_0_0_0.15rem_var(--vx-focus-ring)] focus:outline-none",
   valid:
-    "border-success focus:border-success focus:shadow-[0_0_0_0.15rem_rgba(40,199,111,0.24)] focus:outline-none",
+    "border-success focus:border-success focus:shadow-[0_0_0_0.15rem_color-mix(in_srgb,var(--vx-success)_24%,transparent)] focus:outline-none",
   invalid:
-    "border-danger focus:border-danger focus:shadow-[0_0_0_0.15rem_rgba(234,84,85,0.24)] focus:outline-none",
+    "border-danger focus:border-danger focus:shadow-[0_0_0_0.15rem_color-mix(in_srgb,var(--vx-danger)_24%,transparent)] focus:outline-none",
 } as const;
 
 const inputVariants = cva(

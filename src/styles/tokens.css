@@ -39,6 +39,7 @@
 
   --vx-dark: #15261f;
   --vx-dark-label: #e4ebe8;
+  --vx-dark-contrast: #ffffff;
 
   --vx-body-bg: #f5f8f7;
   --vx-surface: #ffffff;
@@ -94,6 +95,7 @@
 
   --vx-dark: #e8f0ec;
   --vx-dark-label: rgba(232, 240, 236, 0.16);
+  --vx-dark-contrast: #0e1614;
 
   --vx-body-bg: #0e1614;
   --vx-surface: #16211d;
