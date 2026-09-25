@@ -13,22 +13,22 @@ export default async function TeamPage() {
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-8 p-6">
+    <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold text-heading">Team</h1>
+        <h2 className="text-lg font-medium text-heading">Team</h2>
         <p className="mt-1 text-muted">
           Admins manage the Workspace, Products and settings. Agents work the inbox.
         </p>
       </header>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-medium text-heading">Members</h2>
+        <h3 className="text-sm font-medium text-muted">Members</h3>
         <MembersTable members={members} currentUserId={ctx.user.id} />
       </section>
 
       {ctx.role === "ADMIN" ? (
         <section className="space-y-4">
-          <h2 className="text-lg font-medium text-heading">Invite a teammate</h2>
+          <h3 className="text-sm font-medium text-muted">Invite a teammate</h3>
           <InviteForm />
           {invites.length > 0 ? (
             <div className="space-y-2">

@@ -83,6 +83,7 @@ model Workspace {
 
   memberships Membership[]
   invites     Invite[]
+  products    Product[]
 
   @@map("workspaces")
 }
@@ -123,4 +124,38 @@ model Invite {
 
   @@index([workspaceId])
   @@map("invites")
+}
+
+// --- Product ---------------------------------------------------------------
+
+model Product {
+  id                   String    @id @default(uuid())
+  workspaceId          String
+  name                 String
+  primaryColor         String    @default("#7367f0")
+  widgetPublicKey      String    @unique
+  inboundEmail         String?
+  inboundEmailVerified DateTime?
+  archivedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  domains   ProductDomain[]
+
+  @@index([workspaceId])
+  @@map("products")
+}
+
+model ProductDomain {
+  id        String   @id @default(uuid())
+  productId String
+  domain    String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, domain])
+  @@index([productId])
+  @@map("product_domains")
 }
