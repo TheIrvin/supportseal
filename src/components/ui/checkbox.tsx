@@ -11,19 +11,19 @@ const checkboxVariants = cva(
     variants: {
       color: {
         primary:
-          "border-muted data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=checked]:text-white data-[state=indeterminate]:text-white",
+          "border-border-strong data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=checked]:text-primary-contrast data-[state=indeterminate]:text-white",
         secondary:
-          "border-muted data-[state=checked]:border-secondary data-[state=checked]:bg-secondary data-[state=indeterminate]:border-secondary data-[state=indeterminate]:bg-secondary data-[state=checked]:text-white data-[state=indeterminate]:text-white",
+          "border-border-strong data-[state=checked]:border-secondary data-[state=checked]:bg-secondary data-[state=indeterminate]:border-secondary data-[state=indeterminate]:bg-secondary data-[state=checked]:text-secondary-contrast data-[state=indeterminate]:text-white",
         success:
-          "border-muted data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=indeterminate]:border-success data-[state=indeterminate]:bg-success data-[state=checked]:text-white data-[state=indeterminate]:text-white",
+          "border-border-strong data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=indeterminate]:border-success data-[state=indeterminate]:bg-success data-[state=checked]:text-success-contrast data-[state=indeterminate]:text-white",
         danger:
-          "border-muted data-[state=checked]:border-danger data-[state=checked]:bg-danger data-[state=indeterminate]:border-danger data-[state=indeterminate]:bg-danger data-[state=checked]:text-white data-[state=indeterminate]:text-white",
+          "border-border-strong data-[state=checked]:border-danger data-[state=checked]:bg-danger data-[state=indeterminate]:border-danger data-[state=indeterminate]:bg-danger data-[state=checked]:text-danger-contrast data-[state=indeterminate]:text-white",
         warning:
-          "border-muted data-[state=checked]:border-warning data-[state=checked]:bg-warning data-[state=indeterminate]:border-warning data-[state=indeterminate]:bg-warning data-[state=checked]:text-white data-[state=indeterminate]:text-white",
+          "border-border-strong data-[state=checked]:border-warning data-[state=checked]:bg-warning data-[state=indeterminate]:border-warning data-[state=indeterminate]:bg-warning data-[state=checked]:text-warning-contrast data-[state=indeterminate]:text-white",
         info:
-          "border-muted data-[state=checked]:border-info data-[state=checked]:bg-info data-[state=indeterminate]:border-info data-[state=indeterminate]:bg-info data-[state=checked]:text-white data-[state=indeterminate]:text-white",
+          "border-border-strong data-[state=checked]:border-info data-[state=checked]:bg-info data-[state=indeterminate]:border-info data-[state=indeterminate]:bg-info data-[state=checked]:text-info-contrast data-[state=indeterminate]:text-white",
         dark:
-          "border-muted data-[state=checked]:border-dark data-[state=checked]:bg-dark data-[state=indeterminate]:border-dark data-[state=indeterminate]:bg-dark data-[state=checked]:text-white data-[state=indeterminate]:text-white",
+          "border-border-strong data-[state=checked]:border-dark data-[state=checked]:bg-dark data-[state=indeterminate]:border-dark data-[state=indeterminate]:bg-dark data-[state=checked]:text-dark-contrast data-[state=indeterminate]:text-white",
       },
     },
     defaultVariants: { color: "primary" },

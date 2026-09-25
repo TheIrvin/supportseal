@@ -2,221 +2,216 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { IconCircle, IconCircleDot, IconX } from "@tabler/icons-react";
+import { useEffect } from "react";
+import { IconCircle, IconPlus, IconStack2 } from "@tabler/icons-react";
+
 import { cn } from "@/lib/cn";
-import { menuSections, type MenuItem } from "@/config/menu";
+import { menuSections } from "@/config/menu";
 import { useLayout } from "@/components/layout/layout-provider";
 import { Logo } from "@/components/layout/logo";
-import { Badge } from "@/components/ui/badge";
+import { ProductMark } from "@/components/product-identity";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+export type SidebarProduct = {
+  id: string;
+  name: string;
+  primaryColor: string;
+  openCount: number;
+};
 
 function isActive(pathname: string, href?: string) {
   if (!href) return false;
-  if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function itemOrChildActive(pathname: string, item: MenuItem): boolean {
-  if (isActive(pathname, item.href)) return true;
-  return item.children?.some((child) => itemOrChildActive(pathname, child)) ?? false;
-}
-
 function NavLink({
-  item,
-  nested,
+  href,
+  label,
+  icon: Icon,
   collapsed,
   onNavigate,
 }: {
-  item: MenuItem;
-  nested?: boolean;
+  href: string;
+  label: string;
+  icon?: typeof IconCircle;
   collapsed: boolean;
   onNavigate: () => void;
 }) {
   const pathname = usePathname();
-  const active = isActive(pathname, item.href);
-  const Icon = item.icon ?? IconCircle;
+  const active = isActive(pathname, href);
 
   const content = (
     <Link
-      href={item.href ?? "#"}
+      href={href}
       onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9375rem] transition-colors",
-        nested && "ps-10",
+        "flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9375rem] transition-colors",
         active
-          ? "bg-primary text-white shadow-[0_2px_6px_rgba(115,103,240,0.35)]"
+          ? "bg-primary-label text-primary"
           : "text-body hover:bg-hover hover:text-heading",
-        collapsed && !nested && "lg:justify-center lg:px-0",
+        collapsed && "lg:justify-center lg:px-0",
       )}
     >
-      {nested ? (
-        <IconCircle
-          className={cn("size-2.5", active ? "fill-white text-white" : "text-muted")}
-        />
-      ) : (
-        <Icon className="size-[22px] shrink-0" stroke={1.6} />
-      )}
-      <span className={cn("truncate", collapsed && "lg:hidden")}>{item.label}</span>
-      {item.badge && !(collapsed && !nested) ? (
-        <Badge color="danger" variant="solid" className={cn("ms-auto h-5 min-w-5 px-1.5", collapsed && "lg:hidden")}>
-          {item.badge}
-        </Badge>
-      ) : null}
+      {Icon ? <Icon className="size-[22px] shrink-0" stroke={1.6} /> : null}
+      <span className={cn("truncate", collapsed && "lg:hidden")}>{label}</span>
     </Link>
   );
 
-  if (collapsed && !nested) {
+  if (collapsed) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="right">{item.label}</TooltipContent>
+        <TooltipContent side="right">{label}</TooltipContent>
       </Tooltip>
     );
   }
-
   return content;
 }
 
-function NavGroup({
-  item,
+function ProductList({
+  products,
   collapsed,
+  isAdmin,
   onNavigate,
 }: {
-  item: MenuItem;
+  products: SidebarProduct[];
   collapsed: boolean;
+  isAdmin: boolean;
   onNavigate: () => void;
 }) {
   const pathname = usePathname();
-  const childActive = itemOrChildActive(pathname, item);
-  const [toggled, setToggled] = useState<boolean | null>(null);
-  const open = toggled ?? childActive;
-  const Icon = item.icon ?? IconCircleDot;
+  const currentProduct = pathname.startsWith("/inbox?product=") ? null : null;
+  void currentProduct;
 
-  if (!item.children?.length) {
-    return <NavLink item={item} collapsed={collapsed} onNavigate={onNavigate} />;
-  }
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setToggled(!open)}
-        className={cn(
-          "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[0.9375rem] text-body transition-colors hover:bg-hover hover:text-heading",
-          childActive && !open && "text-primary",
-          collapsed && "lg:justify-center lg:px-0",
-        )}
-      >
-        <Icon className="size-[22px] shrink-0" stroke={1.6} />
-        <span className={cn("truncate", collapsed && "lg:hidden")}>{item.label}</span>
-        {item.badge ? (
-          <Badge color="danger" variant="solid" className={cn("ms-auto h-5 min-w-5 px-1.5", collapsed && "lg:hidden")}>
-            {item.badge}
-          </Badge>
-        ) : null}
-        <span
-          className={cn(
-            "ms-auto text-muted transition-transform",
-            open && "rotate-90",
-            collapsed && "lg:hidden",
-            item.badge && "ms-1",
-          )}
+  const items = (
+    <ul className="space-y-0.5">
+      <li>
+        <Link
+          href="/inbox"
+          onClick={onNavigate}
+          className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9375rem] text-body transition-colors hover:bg-hover hover:text-heading"
         >
-          ▸
-        </span>
-      </button>
-      <div className={cn("grid transition-[grid-template-rows] duration-200", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]", collapsed && "lg:hidden")}>
-        <div className="overflow-hidden">
-          <div className="mt-0.5 space-y-0.5">
-            {item.children.map((child) => (
-              <NavLink
-                key={child.id}
-                item={child}
-                nested
-                collapsed={false}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+          <span className="flex size-5 items-center justify-center">
+            <IconStack2 className="size-[18px]" stroke={1.6} />
+          </span>
+          <span className="truncate">All Products</span>
+        </Link>
+      </li>
+      {products.slice(0, 8).map((product) => (
+        <li key={product.id}>
+          <Link
+            href={`/inbox?product=${product.id}`}
+            onClick={onNavigate}
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9375rem] text-body transition-colors hover:bg-hover hover:text-heading"
+          >
+            <ProductMark name={product.name} color={product.primaryColor} size="sm" />
+            <span className="truncate">{product.name}</span>
+            {product.openCount > 0 ? (
+              <span className="ms-auto text-sm font-semibold text-muted">{product.openCount}</span>
+            ) : null}
+          </Link>
+        </li>
+      ))}
+      {isAdmin ? (
+        <li>
+          <Link
+            href="/settings/products"
+            onClick={onNavigate}
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9375rem] text-primary transition-colors hover:bg-hover"
+          >
+            <span className="flex size-5 items-center justify-center">
+              <IconPlus className="size-4" />
+            </span>
+            <span className="truncate">Add Product</span>
+          </Link>
+        </li>
+      ) : null}
+    </ul>
   );
+
+  if (collapsed) {
+    return (
+      <nav aria-label="Products" className="hidden lg:block">
+        {items}
+      </nav>
+    );
+  }
+  return <nav aria-label="Products">{items}</nav>;
 }
 
-export function Sidebar() {
+export function Sidebar({
+  products,
+  role,
+  mobileOpen,
+  onClose,
+}: {
+  products: SidebarProduct[];
+  role: "ADMIN" | "AGENT";
+  mobileOpen: boolean;
+  onClose: () => void;
+}) {
+  const { collapsed } = useLayout();
   const pathname = usePathname();
-  const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useLayout();
-
-  const sections = useMemo(() => menuSections, []);
+  const sections = menuSections(role);
 
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname, setMobileOpen]);
+    onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   return (
     <>
-      <div
-        className={cn(
-          "fixed inset-0 z-40 bg-black/40 lg:hidden",
-          mobileOpen ? "block" : "hidden",
-        )}
-        onClick={() => setMobileOpen(false)}
-      />
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={onClose} aria-hidden />
+      ) : null}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-surface shadow-card transition-[width,transform] duration-200",
-          "w-sidebar",
+          "fixed inset-y-0 start-0 z-40 flex w-sidebar flex-col border-e border-border bg-surface transition-[margin] duration-200",
           collapsed && "lg:w-sidebar-collapsed",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
-        <div className="flex h-header items-center justify-between px-5">
+        <div className={cn("flex h-header items-center px-4", collapsed && "lg:justify-center lg:px-0")}>
           <Logo collapsed={collapsed} />
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            className="hidden size-6 items-center justify-center rounded-full border-2 border-primary text-primary lg:inline-flex"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <span className="size-1.5 rounded-full bg-primary" />
-          </button>
-          <button
-            type="button"
-            className="rounded-md p-1 text-muted hover:bg-hover lg:hidden"
-            onClick={() => setMobileOpen(false)}
-            aria-label="Close menu"
-          >
-            <IconX className="size-5" />
-          </button>
         </div>
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-6">
+        <div className="flex-1 overflow-y-auto">
+          <div className={cn("px-2 pb-2", collapsed && "lg:px-1.5")}>
+            <ProductList
+              products={products}
+              collapsed={collapsed}
+              isAdmin={role === "ADMIN"}
+              onNavigate={onClose}
+            />
+          </div>
           {sections.map((section) => (
-            <div key={section.id}>
+            <div key={section.id} className="px-2 pb-2">
               {section.label ? (
                 <p
                   className={cn(
-                    "mb-2 px-3 text-[0.6875rem] font-medium tracking-[0.08em] text-muted uppercase",
+                    "px-3 pt-3 pb-1 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted",
                     collapsed && "lg:hidden",
                   )}
                 >
                   {section.label}
                 </p>
               ) : null}
-              <div className="space-y-0.5">
+              <ul className="space-y-0.5">
                 {section.items.map((item) => (
-                  <NavGroup
-                    key={item.id}
-                    item={item}
-                    collapsed={collapsed}
-                    onNavigate={() => setMobileOpen(false)}
-                  />
+                  <li key={item.id}>
+                    <NavLink
+                      href={item.href ?? "#"}
+                      label={item.label}
+                      icon={item.icon}
+                      collapsed={collapsed}
+                      onNavigate={onClose}
+                    />
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           ))}
-        </nav>
+        </div>
       </aside>
     </>
   );

@@ -236,3 +236,27 @@ export async function listMembers(workspaceId: string) {
     orderBy: { createdAt: "asc" },
   });
 }
+
+/** Workspace-wide support availability (Pete: one Live/Away for all Products). */
+export async function getAvailability(workspaceId: string): Promise<"LIVE" | "AWAY"> {
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { availability: true },
+  });
+  return workspace?.availability ?? "LIVE";
+}
+
+export async function setAvailability(input: {
+  workspaceId: string;
+  actorRole: MembershipRole;
+  availability: "LIVE" | "AWAY";
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (input.actorRole !== "ADMIN") {
+    return { ok: false, error: "Only Workspace admins can change support availability." };
+  }
+  await prisma.workspace.update({
+    where: { id: input.workspaceId },
+    data: { availability: input.availability },
+  });
+  return { ok: true };
+}

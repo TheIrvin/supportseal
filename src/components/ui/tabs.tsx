@@ -27,7 +27,7 @@ export function TabsTrigger({
     <TabsPrimitive.Trigger
       className={cn(
         "inline-flex h-9 cursor-pointer items-center justify-center rounded-md px-4 text-[0.9375rem] font-medium text-body transition-colors",
-        "hover:text-heading data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-[0_2px_6px_rgba(115,103,240,0.35)]",
+        "hover:text-heading data-[state=active]:bg-primary data-[state=active]:text-primary-contrast data-[state=active]:shadow-[0_2px_6px_color-mix(in_srgb,var(--vx-primary)_35%,transparent)]",
         className,
       )}
       {...props}

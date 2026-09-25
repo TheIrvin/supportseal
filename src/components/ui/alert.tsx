@@ -13,7 +13,7 @@ const alertVariants = cva("relative flex gap-3 rounded-lg px-4 py-3 text-[0.9375
       info: "bg-info-label text-info",
     },
     solid: {
-      true: "text-white",
+      true: "",
       false: "",
     },
   },

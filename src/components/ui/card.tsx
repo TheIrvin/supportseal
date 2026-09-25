@@ -7,7 +7,7 @@ const cardVariants = cva("vx-card", {
   variants: {
     variant: {
       default: "",
-      solid: "text-white shadow-none",
+      solid: "shadow-none",
       label: "shadow-none",
       outline: "border bg-transparent shadow-none",
     },

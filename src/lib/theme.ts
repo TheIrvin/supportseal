@@ -20,20 +20,20 @@ export type ThemeColorKey = (typeof TOKEN_KEYS)[number];
 export type ThemeColors = Record<ThemeColorKey, string>;
 
 const FALLBACK: ThemeColors = {
-  primary: "#7367f0",
-  "primary-dark": "#675dd8",
-  "primary-light": "#8f85f3",
-  success: "#28c76f",
-  danger: "#ea5455",
-  warning: "#ff9f43",
-  info: "#00cfe8",
-  secondary: "#a8aaae",
-  heading: "#5d596c",
-  body: "#6f6b7d",
-  muted: "#a5a3ae",
-  border: "#dbdade",
+  primary: "#08765a",
+  "primary-dark": "#06644c",
+  "primary-light": "#3ddc97",
+  success: "#1e7b34",
+  danger: "#c42b2b",
+  warning: "#8f5500",
+  info: "#0e6ba0",
+  secondary: "#5f6f69",
+  heading: "#15261f",
+  body: "#43544d",
+  muted: "#5f6f69",
+  border: "#dce5e1",
   surface: "#ffffff",
-  "body-bg": "#f8f7fa",
+  "body-bg": "#f5f8f7",
 };
 
 export function readCssVar(name: string, fallback = ""): string {

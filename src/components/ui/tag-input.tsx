@@ -37,7 +37,7 @@ export function TagInput({
   }
 
   return (
-    <div className={cn("rounded-md border border-border bg-surface px-2 py-1.5", className)}>
+    <div className={cn("rounded-md border border-border-strong bg-surface px-2 py-1.5", className)}>
       <div className="flex flex-wrap gap-1.5">
         {value.map((tag) => (
           <span
@@ -71,7 +71,7 @@ export function TagInput({
         )}
       </div>
       {draft && filtered.length ? (
-        <ul className="mt-1 max-h-40 overflow-auto rounded-md border border-border bg-surface p-1">
+        <ul className="mt-1 max-h-40 overflow-auto rounded-md border border-border-strong bg-surface p-1">
           {filtered.slice(0, 8).map((item) => (
             <li key={item}>
               <button
@@ -107,7 +107,7 @@ export function Typeahead({
         onChange={(event) => setValue(event.target.value)}
       />
       {value && matches.length ? (
-        <ul className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-surface p-1 shadow-menu">
+        <ul className="absolute z-20 mt-1 w-full rounded-lg border border-border-strong bg-surface p-1 shadow-menu">
           {matches.map((item) => (
             <li key={item}>
               <button

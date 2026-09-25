@@ -4,6 +4,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
+  --color-brand-mint: var(--vx-brand-mint);
+  --color-brand-ink: var(--vx-brand-ink);
+
   --color-primary: var(--vx-primary);
   --color-primary-dark: var(--vx-primary-dark);
   --color-primary-light: var(--vx-primary-light);
@@ -13,22 +16,27 @@
   --color-secondary: var(--vx-secondary);
   --color-secondary-dark: var(--vx-secondary-dark);
   --color-secondary-label: var(--vx-secondary-label);
+  --color-secondary-contrast: var(--vx-secondary-contrast);
 
   --color-success: var(--vx-success);
   --color-success-dark: var(--vx-success-dark);
   --color-success-label: var(--vx-success-label);
+  --color-success-contrast: var(--vx-success-contrast);
 
   --color-danger: var(--vx-danger);
   --color-danger-dark: var(--vx-danger-dark);
   --color-danger-label: var(--vx-danger-label);
+  --color-danger-contrast: var(--vx-danger-contrast);
 
   --color-warning: var(--vx-warning);
   --color-warning-dark: var(--vx-warning-dark);
   --color-warning-label: var(--vx-warning-label);
+  --color-warning-contrast: var(--vx-warning-contrast);
 
   --color-info: var(--vx-info);
   --color-info-dark: var(--vx-info-dark);
   --color-info-label: var(--vx-info-label);
+  --color-info-contrast: var(--vx-info-contrast);
 
   --color-dark: var(--vx-dark);
   --color-dark-label: var(--vx-dark-label);
@@ -40,6 +48,7 @@
   --color-body: var(--vx-body);
   --color-muted: var(--vx-muted);
   --color-border: var(--vx-border);
+  --color-border-strong: var(--vx-border-strong);
   --color-hover: var(--vx-hover);
 
   --font-sans: var(--font-public-sans), "Public Sans", ui-sans-serif, system-ui, sans-serif;

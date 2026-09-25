@@ -126,7 +126,7 @@ export async function createProduct(input: {
   if (name.length < 1 || name.length > 60) {
     return { ok: false, error: "Product name must be between 1 and 60 characters." };
   }
-  const primaryColor = (input.primaryColor ?? "#7367f0").trim().toLowerCase();
+  const primaryColor = (input.primaryColor ?? "#2563eb").trim().toLowerCase();
   if (!isValidHexColor(primaryColor)) {
     return { ok: false, error: "Primary colour must be a hex value like #7367f0." };
   }

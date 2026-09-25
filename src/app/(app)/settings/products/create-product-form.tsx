@@ -34,7 +34,7 @@ export function CreateProductForm() {
                 id="primaryColor"
                 name="primaryColor"
                 type="color"
-                defaultValue="#7367f0"
+                defaultValue="#2563eb"
                 className="h-[38px] w-16 p-1"
               />
               <span className="text-sm text-muted">Used in the widget and inbox</span>

@@ -52,7 +52,7 @@ export function SelectContent({
         position="popper"
         sideOffset={6}
         className={cn(
-          "z-50 max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-border bg-surface shadow-menu",
+          "z-50 max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-border-strong bg-surface shadow-menu",
           className,
         )}
         {...props}

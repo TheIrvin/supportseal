@@ -3,7 +3,7 @@ import { cn } from "@/lib/cn";
 
 const inputState = {
   default:
-    "border-border hover:border-muted focus:border-primary focus:shadow-[0_0_0_0.15rem_var(--vx-focus-ring)] focus:outline-none",
+    "border-border-strong hover:border-muted focus:border-primary focus:shadow-[0_0_0_0.15rem_var(--vx-focus-ring)] focus:outline-none",
   valid:
     "border-success focus:border-success focus:shadow-[0_0_0_0.15rem_rgba(40,199,111,0.24)] focus:outline-none",
   invalid:

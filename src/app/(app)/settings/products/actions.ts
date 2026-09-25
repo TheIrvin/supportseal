@@ -29,7 +29,7 @@ export async function createProductAction(
   const result = await createProduct({
     ctx,
     name: String(formData.get("name") ?? ""),
-    primaryColor: String(formData.get("primaryColor") ?? "#7367f0"),
+    primaryColor: String(formData.get("primaryColor") ?? "#2563eb"),
     domains: parseDomains(formData.get("domains")),
   });
   if (!result.ok) return { error: result.error };
@@ -47,7 +47,7 @@ export async function updateProductAction(
     ctx,
     productId,
     name: String(formData.get("name") ?? ""),
-    primaryColor: String(formData.get("primaryColor") ?? "#7367f0"),
+    primaryColor: String(formData.get("primaryColor") ?? "#2563eb"),
   });
   if (!result.ok) return { error: result.error };
   revalidatePath(`/settings/products/${productId}`);
