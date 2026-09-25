@@ -1,6 +1,6 @@
 # ADR 0002 — Independent authentication
 
-Status: Accepted constraint; implementation library pending validation — tracked as [pietervw/supportseal#5](https://github.com/pietervw/supportseal/issues/5)
+Status: Accepted. Library chosen: [better-auth](https://better-auth.com) (validated during implementation, initially tracked as [pietervw/supportseal#5](https://github.com/pietervw/supportseal/issues/5))
 Date: 2026-09-25
 
 ## Decision
@@ -13,4 +13,4 @@ Several existing projects use Clerk, but this product promises a fully independe
 
 ## Consequences
 
-Choose a maintained self-hostable library after validating its current session and credential flows; implement password protection, reset-token expiry, invite acceptance, secure cookies and rate limiting. No auth-provider-specific IDs should define the Product or Conversation model.
+better-auth runs entirely in-process against the Prisma database: email/password credentials (scrypt hashes), database-backed sessions, and a Next.js route handler. Password reset emails and invite emails arrive with the email slices. Workspace membership and roles stay in our own Prisma models — no auth-provider IDs define Product or Conversation models. Rate limiting, secure cookies and reset-token expiry come from the library defaults plus our Workspace-level guards.

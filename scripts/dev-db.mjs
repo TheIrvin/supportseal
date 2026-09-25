@@ -25,7 +25,7 @@ async function run() {
   )`);
 
   const applied = new Set(
-    (await db.query<{ id: string }>("SELECT id FROM dev_migrations")).rows.map((r) => r.id),
+    (await db.query("SELECT id FROM dev_migrations")).rows.map((r) => r.id),
   );
 
   let entries = [];
