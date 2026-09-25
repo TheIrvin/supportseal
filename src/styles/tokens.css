@@ -1,0 +1,76 @@
+/* Vuexy-inspired design tokens.
+   Recolor a project by changing the hex values in :root (and .dark if needed).
+   Tailwind maps these via @theme in globals.css. Charts read the same variables. */
+
+:root {
+  --vx-primary: #7367f0;
+  --vx-primary-dark: #675dd8;
+  --vx-primary-light: #8f85f3;
+  --vx-primary-label: #eae8fd;
+  --vx-primary-contrast: #ffffff;
+
+  --vx-secondary: #a8aaae;
+  --vx-secondary-dark: #97999d;
+  --vx-secondary-label: #f2f2f3;
+
+  --vx-success: #28c76f;
+  --vx-success-dark: #24b364;
+  --vx-success-label: #ddf6e8;
+
+  --vx-danger: #ea5455;
+  --vx-danger-dark: #d34c4d;
+  --vx-danger-label: #fce5e6;
+
+  --vx-warning: #ff9f43;
+  --vx-warning-dark: #e68f3c;
+  --vx-warning-label: #fff0e1;
+
+  --vx-info: #00cfe8;
+  --vx-info-dark: #00bad1;
+  --vx-info-label: #d7f5f9;
+
+  --vx-dark: #4b4b4b;
+  --vx-dark-label: #e4e4e4;
+
+  --vx-body-bg: #f8f7fa;
+  --vx-surface: #ffffff;
+  --vx-surface-2: #f6f6f7;
+  --vx-heading: #5d596c;
+  --vx-body: #6f6b7d;
+  --vx-muted: #a5a3ae;
+  --vx-border: #dbdade;
+  --vx-hover: #f3f2f5;
+  --vx-focus-ring: rgba(115, 103, 240, 0.24);
+
+  --vx-sidebar-width: 16.25rem;
+  --vx-sidebar-collapsed: 5.25rem;
+  --vx-header-height: 4rem;
+  --vx-radius: 0.375rem;
+  --vx-radius-lg: 0.5rem;
+  --vx-shadow-card: 0 0.25rem 1.125rem rgba(75, 70, 92, 0.1);
+  --vx-shadow-menu: 0 0.25rem 1.5rem rgba(75, 70, 92, 0.18);
+}
+
+.dark {
+  --vx-primary-label: rgba(115, 103, 240, 0.16);
+  --vx-secondary: #a8aaae;
+  --vx-secondary-label: rgba(168, 170, 174, 0.16);
+  --vx-success-label: rgba(40, 199, 111, 0.16);
+  --vx-danger-label: rgba(234, 84, 85, 0.16);
+  --vx-warning-label: rgba(255, 159, 67, 0.16);
+  --vx-info-label: rgba(0, 207, 232, 0.16);
+  --vx-dark: #d7d8de;
+  --vx-dark-label: rgba(215, 216, 222, 0.16);
+
+  --vx-body-bg: #25293c;
+  --vx-surface: #2f3349;
+  --vx-surface-2: #25293c;
+  --vx-heading: #cfd3ec;
+  --vx-body: #b6bee3;
+  --vx-muted: #7983bb;
+  --vx-border: #434968;
+  --vx-hover: #3a3f57;
+  --vx-focus-ring: rgba(115, 103, 240, 0.36);
+  --vx-shadow-card: 0 0.25rem 1.125rem rgba(15, 20, 34, 0.4);
+  --vx-shadow-menu: 0 0.25rem 1.5rem rgba(15, 20, 34, 0.55);
+}

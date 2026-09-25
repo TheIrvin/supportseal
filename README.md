@@ -8,10 +8,35 @@ the same source. See [docs/PRD.md](docs/PRD.md) for the product promise.
 
 ## Status
 
-**Pre-code.** This repository currently contains project documents only —
-no application code, package manifest, CI or Docker setup yet. The intended
-starting stack (Next.js/TypeScript, PostgreSQL, Prisma) is direction, not a
-decision; see [docs/architecture.md](docs/architecture.md).
+**Early build.** Next.js 16 App Router + TypeScript, Tailwind CSS 4 with the
+[vauxey-theme](https://github.com/pietervw/vauxey-theme) kit, Prisma 7 +
+PostgreSQL (PGlite for instant local dev), Vitest. Docker/self-hosting
+groundwork is in place.
+
+### Local development
+
+```bash
+npm install          # also runs prisma generate
+npm run db:dev       # migrate the local PGlite database (.dev-data/)
+npm run dev          # http://localhost:3000 (no DATABASE_URL needed)
+```
+
+With a real Postgres instead: set `DATABASE_URL` in `.env` (copy from
+`.env.example`) and run `npm run db:migrate`.
+
+### Commands
+
+| Command | Meaning |
+| --- | --- |
+| `npm run verify:fast` | lint + typecheck + tests |
+| `npm run verify` | verify:fast + build |
+| `npm run verify:full` | verify (E2E suite not added yet) |
+
+### Self-hosting (groundwork)
+
+`docker compose up` runs Postgres, applies migrations once via the `migrate`
+target, then serves the app on http://localhost:3000 (health: `/api/health`).
+The full self-hosting guide lands with the self-hosting slice.
 
 ## Read this first
 

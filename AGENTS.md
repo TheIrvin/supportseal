@@ -7,11 +7,31 @@ docs/open-questions.md — never guess an answer to an open question.
 
 ## Setup and exact commands
 
-- Docs-only repository: no code, no package manifest, no CI. There is nothing
-  to install, lint, typecheck, test or build yet.
-- TODO (foundation PR that adds the application): record install / dev /
-  lint / typecheck / test / build commands and the
-  verify:fast / verify / verify:full chain here.
+- Node ≥22 <25 (`.nvmrc` = 22), npm. `npm install` runs `postinstall` →
+  `prisma generate`.
+- Copy `.env.example` → `.env`. Dev: `npm run db:dev` (migrates the local
+  file-backed PGlite database at `.dev-data/`), then `npm run dev`. With a
+  real Postgres: set `DATABASE_URL`, use `npm run db:migrate`.
+- Build: `npm run build` (prisma generate + next build, standalone output),
+  then `npm run start`.
+- Path alias `@/*` → `src/*` (tsconfig + vitest). Next.js 16 App Router,
+  React 19, Tailwind CSS 4 with the vauxey-theme kit (`src/components`,
+  `src/styles/tokens.css`).
+- Prisma client output → `src/generated/prisma` (gitignored). After schema
+  changes: `npx prisma generate` and a migration via `npx prisma migrate dev`
+  against a real Postgres (or hand-write `prisma/migrations/<ts>_name/`
+  and replay with `npm run db:dev` + tests).
+
+## Verification matrix
+
+| Command | Meaning |
+| --- | --- |
+| `npm run verify:fast` | lint + typecheck + unit/integration tests |
+| `npm run verify` | verify:fast + build |
+| `npm run verify:full` | = verify (E2E suite not added yet) |
+
+- Single test file: `npm run test:run -- src/lib/__tests__/brand.test.ts`.
+- Integration tests run on in-memory PGlite (no external database needed).
 
 ## Architecture map
 
@@ -73,10 +93,10 @@ docs/open-questions.md — never guess an answer to an open question.
 
 | Command | Meaning |
 | --- | --- |
-| TODO | No verify chain exists yet (docs-only repository). |
+| `npm run verify:fast` | lint + typecheck + unit/integration tests |
+| `npm run verify` | verify:fast + build |
+| `npm run verify:full` | = verify (E2E suite not added yet) |
 
-- Docs-only changes: no automated checks exist; report explicitly that
-  nothing was run.
 - Browser verification is mandatory for every important user-facing flow
   once the app exists; unit tests alone are not acceptance. Reference
   procedures: the V1 end-to-end flow (Initial.md §52) and the two-Workspace
@@ -85,12 +105,12 @@ docs/open-questions.md — never guess an answer to an open question.
 
 ## Deployment and post-deployment checks
 
-- TODO: nothing deploys yet. Direction: self-hosting target is
-  `docker compose up` or an equivalently simple documented flow
-  (Initial.md §17); the managed-SaaS host is undecided — test long-lived
-  request and background-job requirements before committing to one
-  (docs/architecture.md). Self-hosted mode must never require Stripe, the
-  hosted API or external telemetry (Initial.md §17).
+- Self-hosting target is `docker compose up` (Postgres + one-shot migrate +
+  app; groundwork committed). The managed-SaaS host is undecided — test
+  long-lived request and background-job requirements before committing to
+  one ([issue #3](https://github.com/pietervw/supportseal/issues/3)).
+  Self-hosted mode must never require Stripe, the hosted API or external
+  telemetry (Initial.md §17).
 
 ## Known non-obvious gotchas
 
