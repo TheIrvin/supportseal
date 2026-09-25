@@ -30,6 +30,9 @@ export async function createCheckoutSession(input: {
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
     "metadata[workspaceId]": input.workspaceId,
+    // Subscription events carry subscription metadata, not session metadata:
+    // stamp the workspace there so cancels/downgrades find it.
+    "subscription_data[metadata][workspaceId]": input.workspaceId,
   });
   if (input.customerEmail) body.set("customer_email", input.customerEmail);
 

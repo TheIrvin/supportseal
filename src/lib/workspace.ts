@@ -80,7 +80,7 @@ export async function requireWorkspace(nextPath = "/inbox"): Promise<WorkspaceCo
   }
   const membership = await getPrimaryMembership(user.id);
   if (!membership) {
-    redirect("/onboarding/create-workspace");
+    redirect("/onboarding");
   }
   return {
     user,

@@ -33,7 +33,7 @@ export function RegisterForm() {
       setPending(false);
       return;
     }
-    router.push("/onboarding/create-workspace");
+    router.push("/onboarding");
   }
 
   return (

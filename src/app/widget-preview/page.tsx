@@ -21,9 +21,9 @@ export const dynamic = "force-dynamic";
 export default async function WidgetPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ key?: string; availability?: string; embed?: string; previewOnly?: string; name?: string; color?: string }>;
+  searchParams: Promise<{ key?: string; availability?: string; embed?: string; previewOnly?: string; name?: string; color?: string; testToken?: string }>;
 }) {
-  const { key, availability, embed, previewOnly, name, color } = await searchParams;
+  const { key, availability, embed, previewOnly, name, color, testToken } = await searchParams;
   const product = key ? await loadWidgetProduct(key) : null;
   const away = availability === "AWAY";
   if (previewOnly === "1") {
@@ -98,12 +98,15 @@ export default async function WidgetPreviewPage({
         </div>
       </div>
 
-      {/* The real widget, in preview mode (no network, canned reply). */}
+      {/* The real widget. With a valid test token it runs LIVE (a real
+          conversation, granted only for 30 minutes from the service origin);
+          the widget tab uses preview mode instead. */}
       <script
         async
         src="/widget.js"
         data-key={product.widgetPublicKey}
-        data-preview="1"
+        data-preview={testToken ? undefined : "1"}
+        data-test-token={testToken}
         data-name={product.name}
         data-color={product.primaryColor}
         data-availability={away ? "AWAY" : "LIVE"}

@@ -131,19 +131,29 @@ export async function computeChecklist(workspaceId: string): Promise<ChecklistSt
 
 const TEST_TOKEN_TTL_MS = 30 * 60 * 1000;
 
-function testTokenSecret(): string {
-  return process.env.BETTER_AUTH_SECRET?.trim() || process.env.INBOUND_WEBHOOK_SECRET?.trim() || "dev-only-insecure-secret";
+function testTokenSecret(): string | null {
+  const secret = process.env.BETTER_AUTH_SECRET?.trim() || process.env.INBOUND_WEBHOOK_SECRET?.trim();
+  // Never fall back to a known constant: without a configured secret, test
+  // tokens are disabled entirely (issue + verify both refuse).
+  return secret || null;
 }
 
 export function issueWidgetTestToken(productId: string): { token: string; expiresAt: Date } {
+  const secret = testTokenSecret();
+  if (!secret) {
+    // No signing secret configured: the wizard shows the snippet instead of
+    // the live test page.
+    return { token: "", expiresAt: new Date(0) };
+  }
   const expiresAt = new Date(Date.now() + TEST_TOKEN_TTL_MS);
   const payload = `${productId}|${expiresAt.getTime()}`;
-  const mac = createHmac("sha256", testTokenSecret()).update(payload).digest("base64url");
+  const mac = createHmac("sha256", secret).update(payload).digest("base64url");
   return { token: `${Buffer.from(payload).toString("base64url")}.${mac}`, expiresAt };
 }
 
 export function verifyWidgetTestToken(token: string | null | undefined, productId: string): boolean {
-  if (!token) return false;
+  const secret = testTokenSecret();
+  if (!token || !secret) return false;
   const [payloadPart, mac] = token.split(".");
   if (!payloadPart || !mac) return false;
   let payload: string;
@@ -152,7 +162,7 @@ export function verifyWidgetTestToken(token: string | null | undefined, productI
   } catch {
     return false;
   }
-  const expected = createHmac("sha256", testTokenSecret()).update(payload).digest("base64url");
+  const expected = createHmac("sha256", secret).update(payload).digest("base64url");
   if (expected.length !== mac.length) return false;
   let diff = 0;
   for (let i = 0; i < expected.length; i += 1) diff |= expected.charCodeAt(i) ^ mac.charCodeAt(i);

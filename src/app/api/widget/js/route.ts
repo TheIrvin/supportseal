@@ -68,6 +68,7 @@ const LOADER_JS = String.raw`
 
   function isMobile() { return window.innerWidth < 640; }
 
+  var testTokenAttr = script.getAttribute('data-test-token') || '';
   function loadConfig() {
     if (previewMode) {
       config = {
@@ -79,7 +80,8 @@ const LOADER_JS = String.raw`
       return;
     }
     var url = serviceOrigin + '/api/widget/config?key=' + encodeURIComponent(key) +
-      '&host=' + encodeURIComponent(window.location.origin);
+      '&host=' + encodeURIComponent(window.location.origin) +
+      (testTokenAttr ? '&testToken=' + encodeURIComponent(testTokenAttr) : '');
     fetch(url)
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (data) {
@@ -125,10 +127,9 @@ const LOADER_JS = String.raw`
     frame = document.createElement('iframe');
     frame.className = 'panel';
     frame.title = config.name + ' support chat';
-    var testToken = script.getAttribute('data-test-token') || '';
     frame.src = serviceOrigin + '/widget?key=' + encodeURIComponent(key) +
       '&host=' + encodeURIComponent(window.location.origin) +
-      (testToken ? '&testToken=' + encodeURIComponent(testToken) : '') +
+      (testTokenAttr ? '&testToken=' + encodeURIComponent(testTokenAttr) : '') +
       (previewMode
         ? '&preview=1&name=' + encodeURIComponent(config.name) +
           '&color=' + encodeURIComponent(config.color) +

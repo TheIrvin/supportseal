@@ -91,6 +91,21 @@ describe("checklist derivation", () => {
 });
 
 describe("widget test tokens (design D8)", () => {
+  beforeAll(() => {
+    process.env.BETTER_AUTH_SECRET = "token-test-secret";
+  });
+  afterAll(() => {
+    delete process.env.BETTER_AUTH_SECRET;
+  });
+  it("refuses to issue without a configured secret", async () => {
+    const saved = process.env.BETTER_AUTH_SECRET;
+    delete process.env.BETTER_AUTH_SECRET;
+    delete process.env.INBOUND_WEBHOOK_SECRET;
+    const { issueWidgetTestToken: issue } = await import("@/lib/onboarding");
+    const disabled = issue("prod-x");
+    expect(disabled.token).toBe("");
+    process.env.BETTER_AUTH_SECRET = saved;
+  });
   it("round-trips for the issued product and expires", () => {
     const { token } = issueWidgetTestToken("prod-1");
     expect(verifyWidgetTestToken(token, "prod-1")).toBe(true);

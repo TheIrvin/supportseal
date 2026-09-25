@@ -75,8 +75,9 @@ export default async function BillingPage() {
           {usage.overLimit ? (
             <p className="rounded-md bg-warning-label px-3 py-2 text-sm text-warning">
               You are over this period&apos;s included conversations. Customer messages keep
-              flowing — nothing is lost and nothing is auto-upgraded — but new conversations beyond
-              the grace window ({usage.graceRemainingDays} days left) will need a plan change.
+              flowing — nothing is lost and nothing is auto-upgraded. The grace window
+              ({usage.graceRemainingDays} days) is a reminder to pick a plan; support intake never
+              stops.
             </p>
           ) : null}
 

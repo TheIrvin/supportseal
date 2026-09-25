@@ -1,8 +1,26 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { getAuth } from "@/lib/auth";
+import { isHostedMode } from "@/lib/hosting";
+import { prisma } from "@/lib/prisma";
 
 async function handle(request: NextRequest) {
+  // Self-hosted first run (FR-HOST-01): once the single Workspace exists,
+  // public sign-up is closed at the API level, not just in the UI — new
+  // users arrive by invitation.
+  if (
+    !isHostedMode() &&
+    request.method === "POST" &&
+    request.nextUrl.pathname.endsWith("/sign-up/email")
+  ) {
+    const workspaceCount = await prisma.workspace.count();
+    if (workspaceCount > 0) {
+      return NextResponse.json(
+        { code: "user-creation-disabled", message: "Registration is closed on this installation." },
+        { status: 422 },
+      );
+    }
+  }
   const auth = await getAuth();
   return auth.handler(request);
 }

@@ -113,15 +113,18 @@ export function isWidgetOriginAllowed(input: {
   // referer must still be the service origin, and the token grants nothing
   // beyond a normal visitor session.
   if (input.testToken && input.productId) {
-    const refererIsService =
-      !input.referer ||
-      (() => {
-        try {
-          return new URL(input.referer).origin === input.serviceOrigin;
-        } catch {
-          return false;
-        }
-      })();
+    // The token is bound to the service origin: the Referer must be present
+    // and be the service itself (the hosted test page). A missing or
+    // cross-site Referer is rejected, so a leaked token cannot be replayed
+    // from an arbitrary host.
+    let refererIsService = false;
+    if (input.referer) {
+      try {
+        refererIsService = new URL(input.referer).origin === input.serviceOrigin;
+      } catch {
+        refererIsService = false;
+      }
+    }
     if (refererIsService && verifyWidgetTestToken(input.testToken, input.productId)) {
       return true;
     }

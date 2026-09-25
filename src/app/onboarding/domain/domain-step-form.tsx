@@ -46,10 +46,17 @@ export function DomainStepForm({
     setLocalError(null);
   }
 
+  function hiddenValue(): string {
+    // Include a still-typed draft if it normalises, so nothing typed is lost.
+    const draftValue = normalize(draft);
+    const all = draftValue && !domains.includes(draftValue) ? [...domains, draftValue] : domains;
+    return all.join(", ");
+  }
+
   return (
     <div className="space-y-5">
       <form action={saveDomainsAction} className="space-y-4">
-        <input type="hidden" name="domains" value={domains.join(", ")} />
+        <input type="hidden" name="domains" value={hiddenValue()} />
         <input type="hidden" name="allowLocalhost" value={allowLocalhost ? "on" : ""} />
         <div>
           <label htmlFor="domain" className="text-sm font-medium text-heading">

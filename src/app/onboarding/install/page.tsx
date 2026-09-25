@@ -20,7 +20,10 @@ export default async function InstallStepPage() {
 
   const snippet = `<script\n  async\n  src="${appConfig.url}/widget.js"\n  data-key="${product.widgetPublicKey}"\n></script>`;
   const { token } = issueWidgetTestToken(product.id);
-  const testUrl = `/widget-preview?key=${encodeURIComponent(product.widgetPublicKey)}&testToken=${encodeURIComponent(token)}`;
+  const tokenEnabled = token !== "";
+  const testUrl = tokenEnabled
+    ? `/widget-preview?key=${encodeURIComponent(product.widgetPublicKey)}&testToken=${encodeURIComponent(token)}`
+    : null;
 
   return (
     <WizardShell step={4} heading="Install and test">
@@ -38,17 +41,24 @@ export default async function InstallStepPage() {
 
         <section className="space-y-2">
           <h3 className="text-sm font-medium text-heading">Test it</h3>
-          <div className="flex flex-wrap gap-3">
-            <a
-              href={testUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-10 items-center rounded-md border border-border-strong px-4 text-sm font-medium text-heading hover:bg-hover"
-            >
-              Open test page (new tab)
-            </a>
-            <span className="self-center text-xs text-muted">or embed the snippet and chat from your site.</span>
-          </div>
+          {testUrl ? (
+            <div className="flex flex-wrap gap-3">
+              <a
+                href={testUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-10 items-center rounded-md border border-border-strong px-4 text-sm font-medium text-heading hover:bg-hover"
+              >
+                Open test page (new tab)
+              </a>
+              <span className="self-center text-xs text-muted">or embed the snippet and chat from your site.</span>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              Embed the snippet on your site (or a local HTML page) and send a chat — the test
+              page needs a configured <code>BETTER_AUTH_SECRET</code> to sign test tokens.
+            </p>
+          )}
         </section>
 
         <WaitingCard productId={product.id} />

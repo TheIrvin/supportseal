@@ -1,7 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 import { isHostedMode } from "@/lib/hosting";
-import { prisma } from "@/lib/prisma";
 import { appConfig } from "@/lib/config";
 import { createCheckoutSession, stripeSecret } from "@/lib/stripe";
 import { getSessionUser } from "@/lib/session";
@@ -13,7 +12,7 @@ export const dynamic = "force-dynamic";
  * Hosted-only billing checkout (PR 15). Creates a Stripe Checkout session
  * for the Pro plan. Self-hosted mode has no billing at all (FR-HOST-01).
  */
-export async function POST(request: NextRequest) {
+export async function POST() {
   if (!isHostedMode()) {
     return NextResponse.json({ error: "not_available" }, { status: 404 });
   }
@@ -39,6 +38,5 @@ export async function POST(request: NextRequest) {
   if ("error" in session) {
     return NextResponse.json({ error: session.error }, { status: 502 });
   }
-  void prisma;
   return NextResponse.json({ url: session.url });
 }

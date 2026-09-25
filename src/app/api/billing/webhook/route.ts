@@ -33,26 +33,26 @@ export async function POST(request: NextRequest) {
   if (processed.size > 2000) processed.clear();
   processed.add(event.id);
 
-  const workspaceId = event.data?.object?.metadata?.workspaceId;
+  const object = event.data?.object ?? {};
+  const workspaceId = object.metadata?.workspaceId;
   if (workspaceId) {
-    if (
-      event.type === "checkout.session.completed" ||
-      event.type === "customer.subscription.updated" ||
-      event.type === "customer.subscription.created"
+    let target: "PRO" | "FREE" | null = null;
+    if (event.type === "checkout.session.completed") {
+      // Only a PAID completion upgrades (delayed methods can complete a
+      // session while payment is still unpaid).
+      target = (object as { payment_status?: string }).payment_status === "paid" ? "PRO" : null;
+    } else if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated"
     ) {
-      if (event.data.object.status !== "unpaid" && event.data.object.status !== "canceled") {
-        await prisma.workspace
-          .update({ where: { id: workspaceId }, data: { plan: "PRO" } })
-          .catch(() => undefined);
-      }
+      target = object.status === "active" || object.status === "trialing" ? "PRO" : "FREE";
+    } else if (event.type === "customer.subscription.deleted") {
+      target = "FREE";
     }
-    if (
-      event.type === "customer.subscription.deleted" ||
-      (event.type === "customer.subscription.updated" && event.data.object.status === "canceled")
-    ) {
-      await prisma.workspace
-        .update({ where: { id: workspaceId }, data: { plan: "FREE" } })
-        .catch(() => undefined);
+    if (target) {
+      // Let failures bubble (500) so Stripe retries — a charged customer
+      // must never be silently stuck on the wrong plan.
+      await prisma.workspace.update({ where: { id: workspaceId }, data: { plan: target } });
     }
   }
 

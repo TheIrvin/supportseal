@@ -82,11 +82,16 @@ export async function computeUsage(
   let graceEndsAt: Date | null = null;
   let graceRemainingDays: number | null = null;
   if (overLimit && plan.graceDays > 0) {
-    // Grace runs from the first day the limit was exceeded. V1 derives it
-    // from the period: the earliest moment usage could have passed the limit
-    // is approximated by the period start + limit days spread; documented as
-    // the period boundary + graceDays, which is deterministic and auditable.
-    graceEndsAt = new Date(period.end.getTime() + plan.graceDays * 24 * 60 * 60 * 1000);
+    // Grace starts when the (limit+1)-th conversation actually opened — the
+    // moment the allowance was crossed — not at the period boundary.
+    const crossing = await prisma.conversation.findFirst({
+      where: { workspaceId, createdAt: { gte: period.start, lt: period.end } },
+      orderBy: { createdAt: "asc" },
+      skip: limit!,
+      select: { createdAt: true },
+    });
+    const crossingAt = crossing?.createdAt ?? now;
+    graceEndsAt = new Date(crossingAt.getTime() + plan.graceDays * 24 * 60 * 60 * 1000);
     graceRemainingDays = Math.max(
       0,
       Math.ceil((graceEndsAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),

@@ -5,14 +5,16 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/cn";
 
-const tabs = [
+const BASE_TABS = [
   { href: "/settings/team", label: "Team" },
   { href: "/settings/products", label: "Products" },
-  ...(process.env.HOSTED_MODE === "1" ? [{ href: "/settings/billing", label: "Billing" }] : []),
-];
+] as const;
 
-export function SettingsNav() {
+export function SettingsNav({ hosted = false }: { hosted?: boolean }) {
   const pathname = usePathname();
+  const tabs = hosted
+    ? [...BASE_TABS, { href: "/settings/billing", label: "Billing" } as const]
+    : [...BASE_TABS];
 
   return (
     <nav className="flex gap-1 border-b border-border" aria-label="Settings">
