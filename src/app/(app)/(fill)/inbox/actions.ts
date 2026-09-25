@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { deliverAgentReplyIfRouted } from "@/lib/email/routing";
+
 import {
   addAgentMessage,
   setConversationStatus,
@@ -35,6 +37,15 @@ export async function sendMessageAction(input: {
     attachmentIds: input.attachmentIds,
   });
   if (!result.ok) return { error: result.error };
+  if (input.kind === "AGENT") {
+    // Best-effort email continuation (routing rule D5); failures are
+    // recorded on the delivery and never block the chat thread.
+    await deliverAgentReplyIfRouted({
+      workspaceId: ctx.workspace.id,
+      conversationId: input.conversationId,
+      messageId: result.messageId,
+    }).catch(() => undefined);
+  }
   revalidatePath(`/inbox/${input.conversationId}`);
   revalidatePath("/inbox");
   return {};

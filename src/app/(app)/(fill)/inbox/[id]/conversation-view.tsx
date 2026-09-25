@@ -80,11 +80,13 @@ export function ConversationView({
   availableTags,
   savedReplies,
   devContext,
+  failedDeliveryCount = 0,
 }: {
   conversation: ConversationViewData;
   availableTags: { id: string; name: string }[];
   savedReplies: { id: string; name: string; body: string }[];
   devContext: DevContextProp;
+  failedDeliveryCount?: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -253,6 +255,12 @@ export function ConversationView({
           </div>
         </header>
 
+        {failedDeliveryCount > 0 ? (
+          <p className="border-b border-border bg-danger-label px-4 py-2 text-sm text-danger">
+            {failedDeliveryCount} email {failedDeliveryCount === 1 ? "reply" : "replies"} could not be
+            delivered — the thread is still here; retry from your mail provider or reply again.
+          </p>
+        ) : null}
         <div
           ref={threadRef}
           className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4"

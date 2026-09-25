@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { getConversationDetail, listTags } from "@/lib/conversations";
+import { countFailedOutboundDeliveries, getConversationDetail, listTags } from "@/lib/conversations";
 import { orderContextForDisplay } from "@/lib/dev-context";
 import { listSavedReplies } from "@/lib/saved-replies";
 import { requireWorkspace } from "@/lib/workspace";
@@ -16,10 +16,11 @@ export default async function ConversationPage({
   const { id } = await params;
   const ctx = await requireWorkspace(`/inbox/${id}`);
 
-  const [conversation, tags, savedReplies] = await Promise.all([
+  const [conversation, tags, savedReplies, failedDeliveries] = await Promise.all([
     getConversationDetail({ workspaceId: ctx.workspace.id, conversationId: id }),
     listTags(ctx.workspace.id),
     listSavedReplies(ctx.workspace.id),
+    countFailedOutboundDeliveries(id),
   ]);
   if (!conversation) notFound();
 
@@ -59,6 +60,7 @@ export default async function ConversationPage({
       }}
       availableTags={tags}
       savedReplies={savedReplies.map((r) => ({ id: r.id, name: r.name, body: r.body }))}
+      failedDeliveryCount={failedDeliveries}
       devContext={{
         identifiedUserId: conversation.chatVisitors[0]?.externalUserId ?? null,
         entries: orderContextForDisplay(

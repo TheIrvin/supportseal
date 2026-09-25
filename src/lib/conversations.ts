@@ -150,7 +150,7 @@ export async function addAgentMessage(input: {
   body: string;
   kind?: "AGENT" | "NOTE";
   attachmentIds?: string[];
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+}): Promise<{ ok: true; messageId: string } | { ok: false; error: string }> {
   const body = input.body.trim();
   if (!body || body.length > MAX_BODY_LENGTH) {
     return { ok: false, error: "Message body is empty or too long." };
@@ -197,7 +197,7 @@ export async function addAgentMessage(input: {
     workspaceId: conversation.workspaceId,
     kind: "message",
   });
-  return { ok: true };
+  return { ok: true, messageId };
 }
 
 export async function setConversationStatus(input: {
@@ -329,6 +329,13 @@ export async function getConversationDetail(input: {
   });
   if (!conversation) return null;
   return conversation;
+}
+
+/** Failed outbound deliveries for a conversation (FR-EMAIL-03 visibility). */
+export async function countFailedOutboundDeliveries(conversationId: string): Promise<number> {
+  return prisma.emailDelivery.count({
+    where: { conversationId, direction: "OUTBOUND", status: "FAILED" },
+  });
 }
 
 // --- Tags -------------------------------------------------------------------
