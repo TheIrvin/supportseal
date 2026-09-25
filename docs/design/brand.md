@@ -283,5 +283,5 @@ Notes:
 ## Not in V1
 
 Brand illustration system · marketing-site art direction (marketing is out
-of V1) · custom font licensing (Public Sans stays) · per-Workspace
+of V1; launch direction in `marketing-site.md`) · custom font licensing (Public Sans stays) · per-Workspace
 white-labelling of the dashboard · high-contrast theme beyond AA.
