@@ -32,7 +32,7 @@ export function menuSections(role: "ADMIN" | "AGENT"): MenuSection[] {
       items: [
         { id: "products", label: "Products", href: "/settings/products", icon: IconSettings },
         { id: "team", label: "Team", href: "/settings/team", icon: IconSettings },
-        { id: "onboarding", label: "Get started", href: "/onboarding", icon: IconRocket },
+        { id: "onboarding", label: "Get started", href: "/onboarding/create-workspace", icon: IconRocket },
       ],
     });
   }

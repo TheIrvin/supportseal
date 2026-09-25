@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   addCustomerMessage,
   getConversationDetail,
+  upsertContact,
 } from "@/lib/conversations";
 
 export type WidgetProduct = {
@@ -120,6 +121,10 @@ export function isWidgetOriginAllowed(input: {
     }
   }
   return true;
+}
+
+export function visitorCookieName(productId: string): string {
+  return `ss_visitor_${productId}`;
 }
 
 export function hashVisitorToken(token: string): string {
@@ -245,8 +250,13 @@ export async function visitorSendMessage(input: {
   }
 
   if (!conversationId) {
-    const contact = await prisma.contact.create({
-      data: { workspaceId: input.product.workspaceId, email: input.visitor.email, name: input.visitor.name },
+    // Upsert: the visitor may have supplied an email (away form) that already
+    // belongs to a Workspace contact — reuse it instead of violating the
+    // unique [workspaceId, email] constraint.
+    const contact = await upsertContact({
+      workspaceId: input.product.workspaceId,
+      email: input.visitor.email,
+      name: input.visitor.name,
     });
     const conversation = await prisma.conversation.create({
       data: {

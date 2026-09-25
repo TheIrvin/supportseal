@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { cn } from "@/lib/cn";
 import { Header } from "@/components/layout/header";
 import { LayoutProvider, useLayout } from "@/components/layout/layout-provider";
@@ -27,8 +25,7 @@ function Shell({
   mode?: "page" | "fill";
   children: React.ReactNode;
 }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const { collapsed } = useLayout();
+  const { collapsed, mobileOpen, setMobileOpen } = useLayout();
 
   return (
     <div className="min-h-screen bg-body-bg">

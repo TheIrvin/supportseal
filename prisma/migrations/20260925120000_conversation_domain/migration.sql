@@ -116,3 +116,6 @@ ALTER TABLE "conversation_tags" ADD CONSTRAINT "conversation_tags_conversationId
 
 -- AddForeignKey
 ALTER TABLE "messages" ADD CONSTRAINT "messages_agentUserId_fkey" FOREIGN KEY ("agentUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "conversation_tags" ADD CONSTRAINT "conversation_tags_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "tags"("id") ON DELETE CASCADE ON UPDATE CASCADE;

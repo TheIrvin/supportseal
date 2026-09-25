@@ -10,11 +10,21 @@ import {
 } from "@/lib/conversations";
 import { requireWorkspace } from "@/lib/workspace";
 
+const MESSAGE_KINDS = ["AGENT", "NOTE"] as const;
+const CONVERSATION_STATUSES = ["OPEN", "PENDING", "CLOSED"] as const;
+
+function isOneOf<T extends string>(value: string, allowed: readonly T[]): value is T {
+  return allowed.some((item) => item === value);
+}
+
 export async function sendMessageAction(input: {
   conversationId: string;
   body: string;
-  kind: "AGENT" | "NOTE";
+  kind: string;
 }): Promise<{ error?: string }> {
+  if (!isOneOf(input.kind, MESSAGE_KINDS)) {
+    return { error: "Invalid message kind." };
+  }
   const ctx = await requireWorkspace(`/inbox/${input.conversationId}`);
   const result = await addAgentMessage({
     ctx,
@@ -30,8 +40,11 @@ export async function sendMessageAction(input: {
 
 export async function setStatusAction(input: {
   conversationId: string;
-  status: "OPEN" | "PENDING" | "CLOSED";
+  status: string;
 }): Promise<{ error?: string }> {
+  if (!isOneOf(input.status, CONVERSATION_STATUSES)) {
+    return { error: "Invalid status." };
+  }
   const ctx = await requireWorkspace(`/inbox/${input.conversationId}`);
   const result = await setConversationStatus({
     ctx,

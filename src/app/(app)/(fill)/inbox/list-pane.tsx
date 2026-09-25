@@ -14,8 +14,8 @@ import {
 import { cn } from "@/lib/cn";
 import { ProductChip, ProductMark } from "@/components/product-identity";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type ConversationItem = {
   id: string;
@@ -40,6 +40,15 @@ const STATUS_TABS = [
   { id: "PENDING", label: "Pending" },
   { id: "CLOSED", label: "Closed" },
 ] as const;
+
+function inboxListQuery(filters: { status: string; product: string; q: string; cursor?: string }) {
+  const params = new URLSearchParams();
+  if (!filters.q) params.set("status", filters.status);
+  if (filters.product) params.set("product", filters.product);
+  if (filters.q) params.set("q", filters.q);
+  if (filters.cursor) params.set("cursor", filters.cursor);
+  return `/api/inbox?${params.toString()}`;
+}
 
 export function visitorLabel(contact: { id: string; email: string | null; name: string | null }) {
   if (contact.name?.trim()) return contact.name.trim();
@@ -67,6 +76,7 @@ export function ListPane() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<InboxResponse | null>(null);
   const [error, setError] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchList = useCallback(
@@ -75,11 +85,7 @@ export function ListPane() {
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const params = new URLSearchParams();
-        if (!q) params.set("status", status);
-        if (product) params.set("product", product);
-        if (q) params.set("q", q);
-        const response = await fetch(`/api/inbox?${params.toString()}`, {
+        const response = await fetch(inboxListQuery({ status, product, q }), {
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("failed");
@@ -99,7 +105,32 @@ export function ListPane() {
     const microtask = queueMicrotask(() => void fetchList());
     void microtask;
     return () => abortRef.current?.abort();
-  }, [fetchList]);
+  }, [fetchList, pathname]);
+
+  async function loadMore() {
+    if (!data?.nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const response = await fetch(
+        inboxListQuery({ status, product, q, cursor: data.nextCursor }),
+      );
+      if (!response.ok) throw new Error("failed");
+      const page = (await response.json()) as InboxResponse;
+      setData((current) =>
+        current
+          ? {
+              items: [...current.items, ...page.items],
+              nextCursor: page.nextCursor,
+              statusCounts: current.statusCounts,
+            }
+          : page,
+      );
+    } catch {
+      // keep the current page; the button stays for a retry
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const updateParams = (mutate: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -220,23 +251,39 @@ export function ListPane() {
           <div className="flex justify-center p-6">
             <Spinner />
           </div>
-        ) : !data || data.items.length === 0 ? (
+        ) : data.items.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted">
             {q
               ? `No conversations match "${q}".`
               : `No ${status.toLowerCase()} conversations.`}
           </p>
         ) : (
-          <ul aria-label="Conversations">
-            {data.items.map((item) => (
-              <ConversationRow
-                key={item.id}
-                item={item}
-                selected={item.id === selectedId}
-                query={q}
-              />
-            ))}
-          </ul>
+          <>
+            <ul aria-label="Conversations">
+              {data.items.map((item) => (
+                <ConversationRow
+                  key={item.id}
+                  item={item}
+                  selected={item.id === selectedId}
+                  query={q}
+                />
+              ))}
+            </ul>
+            {data.nextCursor ? (
+              <div className="p-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => void loadMore()}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? <Spinner size={14} /> : null}
+                  {loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     </div>
@@ -290,15 +337,11 @@ function ConversationRow({
             color={item.product.primaryColor}
             className="min-w-0 [&>span:last-child]:truncate"
           />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <IconMessageCircle className="size-3.5" aria-label="Chat" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Chat</TooltipContent>
-          </Tooltip>
-          {item.channel === "EMAIL" ? <IconMail className="size-3.5" aria-label="Email" /> : null}
+          {item.channel === "EMAIL" ? (
+            <IconMail className="size-3.5" aria-label="Email" />
+          ) : (
+            <IconMessageCircle className="size-3.5" aria-label="Chat" />
+          )}
           {item.tags.slice(0, 2).map((tag) => (
             <Badge key={tag.id} variant="light" color="secondary" pill={false} className="px-1.5 py-0 text-[0.6875rem]">
               {tag.name}

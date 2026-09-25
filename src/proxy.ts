@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const PROTECTED_PREFIXES = ["/inbox", "/settings", "/onboarding", "/saved-replies"];
-const SESSION_COOKIE = "better-auth.session_token";
+const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
 
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -11,7 +11,7 @@ export default function proxy(request: NextRequest) {
   );
   if (!isProtected) return NextResponse.next();
 
-  const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
+  const hasSessionCookie = SESSION_COOKIES.some((name) => request.cookies.has(name));
   if (hasSessionCookie) return NextResponse.next();
 
   const loginUrl = new URL("/login", request.url);

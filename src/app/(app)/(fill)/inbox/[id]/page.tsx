@@ -35,8 +35,12 @@ export default async function ConversationPage({
           name: conversation.contact.name,
           email: conversation.contact.email,
         },
-        product: conversation.product,
-        productArchived: false,
+        product: {
+          id: conversation.product.id,
+          name: conversation.product.name,
+          primaryColor: conversation.product.primaryColor,
+        },
+        productArchived: conversation.product.archivedAt !== null,
         tags: conversation.tags.map((t) => ({ id: t.tagId, name: t.tag.name })),
         messages: conversation.messages.map((message) => ({
           id: message.id,

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { rateLimitWidgetIp } from "@/lib/widget-rate-limit";
 
 import {
   createVisitorSession,
@@ -8,14 +9,11 @@ import {
   isWidgetOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
+  visitorCookieName,
   visitorListMessages,
 } from "@/lib/widget";
 
 export const dynamic = "force-dynamic";
-
-function visitorCookieName(productId: string): string {
-  return `ss_visitor_${productId.slice(0, 8)}`;
-}
 
 export async function POST(request: NextRequest) {
   const key = request.nextUrl.searchParams.get("key") ?? "";
@@ -31,6 +29,9 @@ export async function POST(request: NextRequest) {
     serviceIsProduction: process.env.NODE_ENV === "production",
   });
   if (!allowed) return NextResponse.json({ error: "origin_not_allowed" }, { status: 403 });
+  if (!rateLimitWidgetIp(request)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
 
   const existingToken = request.cookies.get(visitorCookieName(product.id))?.value;
   const existing = await resolveVisitorSession(product, existingToken);
@@ -38,6 +39,8 @@ export async function POST(request: NextRequest) {
     const thread = await visitorListMessages({ product, visitor: existing });
     const availability = await getAvailabilityForProduct(product.workspaceId);
     return NextResponse.json({
+      name: product.name,
+      color: product.primaryColor,
       session: { email: existing.email, name: existing.name },
       availability,
       thread,
@@ -47,6 +50,8 @@ export async function POST(request: NextRequest) {
   const { token } = await createVisitorSession(product);
   const availability = await getAvailabilityForProduct(product.workspaceId);
   const response = NextResponse.json({
+    name: product.name,
+    color: product.primaryColor,
     session: { email: null, name: null },
     availability,
     thread: { conversationId: null, messages: [], status: "OPEN" },
@@ -86,6 +91,8 @@ export async function GET(request: NextRequest) {
   const availability = await getAvailabilityForProduct(product.workspaceId);
   const thread = await visitorListMessages({ product, visitor: session });
   return NextResponse.json({
+    name: productRow.name,
+    color: productRow.primaryColor,
     session: { email: session.email, name: session.name },
     availability,
     thread,

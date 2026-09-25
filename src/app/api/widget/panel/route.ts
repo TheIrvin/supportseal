@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { loadWidgetProduct } from "@/lib/widget";
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -10,16 +12,46 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get("key") ?? "";
   const host = request.nextUrl.searchParams.get("host") ?? "";
+  const product = await loadWidgetProduct(key);
+  const frameAncestors = buildFrameAncestors(product, request.nextUrl.origin);
+
   const html = PANEL_HTML.replace("__KEY__", escapeAttr(key)).replace("__HOST__", escapeAttr(host));
   return new NextResponse(html, {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
-      "x-frame-options": "ALLOWALL",
       "content-security-policy":
-        "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'",
+        `default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors ${frameAncestors}`,
     },
   });
+}
+
+/**
+ * Only allowlisted sites (plus the service itself, for the in-app preview)
+ * may frame the panel. Wildcard domains map to CSP host wildcards.
+ */
+function buildFrameAncestors(
+  product: { domains: string[] } | null,
+  serviceOrigin: string,
+): string {
+  const ancestors = new Set<string>(["'self'", serviceOrigin]);
+  const addHttpAndHttps = (host: string) => {
+    ancestors.add(`https://${host}`);
+    ancestors.add(`http://${host}`);
+  };
+  // Explicit localhost development path (FR-CHAT-01): port wildcards, http only.
+  const addLocalDev = () => {
+    ancestors.add("http://localhost:*");
+    ancestors.add("http://127.0.0.1:*");
+  };
+  if (process.env.NODE_ENV !== "production") addLocalDev();
+  for (const pattern of product?.domains ?? []) {
+    const rule = pattern.trim().toLowerCase();
+    if (rule.startsWith("*.")) addHttpAndHttps(`*.${rule.slice(2)}`);
+    else if (rule === "localhost" || rule === "127.0.0.1") addLocalDev();
+    else addHttpAndHttps(rule);
+  }
+  return [...ancestors].join(" ");
 }
 
 function escapeAttr(value: string): string {
@@ -111,7 +143,7 @@ const PANEL_HTML = `<!doctype html>
   var state = { messages: [], email: null, conversationId: null };
   var lastCount = 0;
   var pollTimer = null;
-  var hidden = false;
+  var hidden = true;
 
   var thread = document.getElementById('thread');
   var input = document.getElementById('input');
@@ -282,18 +314,22 @@ const PANEL_HTML = `<!doctype html>
   }
 
   function poll() {
-    if (previewMode || hidden) { reportUnread(); return; }
+    if (previewMode || document.hidden) { reportUnread(); return; }
     fetch(apiUrl('/api/widget/messages'), { credentials: 'include' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data || !data.thread) return;
-        var prev = state.messages.length;
-        state.messages = data.thread.messages || [];
-        state.conversationId = data.thread.conversationId;
-        if (JSON.stringify(state.messages) !== JSON.stringify([])) render();
-        var agentNew = state.messages.slice(prev).filter(function (m) { return m.kind === 'AGENT'; }).length;
-        if (state.messages.length !== prev || agentNew) reportUnread();
-        lastCount = state.messages.length;
+        var prev = state.messages;
+        var incoming = data.thread.messages || [];
+        var changed = prev.length !== incoming.length ||
+          (prev.length > 0 && prev[prev.length - 1].id !== incoming[incoming.length - 1].id);
+        if (changed) {
+          state.messages = incoming;
+          state.conversationId = data.thread.conversationId;
+          if (!hidden) render();
+          reportUnread();
+        }
+        lastCount = hidden ? lastCount : incoming.length;
       })
       .catch(function () {});
   }
@@ -304,6 +340,7 @@ const PANEL_HTML = `<!doctype html>
     }
   }
 
+
   function send() {
     var body = input.value.trim();
     if (!body) return;
@@ -311,6 +348,7 @@ const PANEL_HTML = `<!doctype html>
     input.style.height = 'auto';
     sendBtn.disabled = true;
     if (previewMode) {
+      sendBtn.disabled = false;
       state.messages.push({ id: 'p' + Date.now(), kind: 'CUSTOMER', body: body, createdAt: new Date().toISOString() });
       render();
       setTimeout(function () {

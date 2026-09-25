@@ -14,8 +14,5 @@ CREATE TABLE "saved_replies" (
 -- CreateIndex
 CREATE UNIQUE INDEX "saved_replies_workspaceId_name_key" ON "saved_replies"("workspaceId", "name");
 
--- CreateIndex
-CREATE INDEX "saved_replies_workspaceId_idx" ON "saved_replies"("workspaceId");
-
 -- AddForeignKey
 ALTER TABLE "saved_replies" ADD CONSTRAINT "saved_replies_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;

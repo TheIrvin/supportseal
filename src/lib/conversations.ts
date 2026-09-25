@@ -271,7 +271,7 @@ export async function getConversationDetail(input: {
   const conversation = await prisma.conversation.findFirst({
     where: { id: input.conversationId, workspaceId: input.workspaceId },
     include: {
-      product: { select: { id: true, name: true, primaryColor: true } },
+      product: { select: { id: true, name: true, primaryColor: true, archivedAt: true } },
       contact: true,
       tags: { include: { tag: true } },
       messages: {

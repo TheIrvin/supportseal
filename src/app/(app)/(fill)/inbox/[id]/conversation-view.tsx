@@ -209,6 +209,13 @@ export function ConversationView({
           })}
         </div>
 
+        {conversation.productArchived ? (
+          <div className="shrink-0 border-t border-border bg-secondary-label p-3 text-sm text-body">
+            {conversation.product.name} is archived. Incoming email bounces and new chats are
+            blocked. Unarchive it in Product settings to reply. Notes, tags and status changes
+            still work.
+          </div>
+        ) : (
         <div
           className={cn(
             "shrink-0 border-t border-border p-3",
@@ -305,6 +312,7 @@ export function ConversationView({
             </Button>
           </div>
         </div>
+        )}
       </div>
 
       <aside className="hidden w-80 shrink-0 overflow-y-auto border-s border-border bg-surface xl:block">

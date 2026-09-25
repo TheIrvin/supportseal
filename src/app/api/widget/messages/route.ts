@@ -1,12 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { rateLimitWidgetIp } from "@/lib/widget-rate-limit";
 import {
   isWidgetOriginAllowed,
   loadWidgetProduct,
   resolveVisitorSession,
   setVisitorEmail,
   touchVisitor,
+  visitorCookieName,
   visitorListMessages,
   visitorSendMessage,
 } from "@/lib/widget";
@@ -14,10 +16,6 @@ import {
 export const dynamic = "force-dynamic";
 
 const MIN_SEND_INTERVAL_MS = 800;
-
-function visitorCookieName(productId: string): string {
-  return `ss_visitor_${productId.slice(0, 8)}`;
-}
 
 async function guard(request: NextRequest) {
   const key = request.nextUrl.searchParams.get("key") ?? "";
@@ -41,18 +39,25 @@ async function guard(request: NextRequest) {
   return { product, visitor };
 }
 
-/** Send a visitor message (rate limited per visitor). */
 export async function POST(request: NextRequest) {
   const guarded = await guard(request);
   if ("error" in guarded) return guarded.error;
   const { product, visitor } = guarded;
 
-  const last = await prisma.chatVisitor.findUnique({
-    where: { id: visitor.visitorId },
-    select: { lastSeenAt: true },
-  });
-  if (last && Date.now() - last.lastSeenAt.getTime() < MIN_SEND_INTERVAL_MS) {
+  if (!rateLimitWidgetIp(request)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+  // Per-visitor spacing based on the last CUSTOMER message (lastSeenAt moves
+  // on every poll, so it cannot rate-limit sends).
+  if (visitor.conversationId) {
+    const lastCustomerMessage = await prisma.message.findFirst({
+      where: { conversationId: visitor.conversationId, kind: "CUSTOMER" },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+    if (lastCustomerMessage && Date.now() - lastCustomerMessage.createdAt.getTime() < MIN_SEND_INTERVAL_MS) {
+      return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    }
   }
 
   const payload = (await request.json().catch(() => null)) as
