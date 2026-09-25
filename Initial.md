@@ -2107,13 +2107,16 @@ Do not create fake testimonials.
 
 # 58. Naming
 
-The final product name is not decided.
+> Decided 2026-09-25: the product name is **SupportSeal**. The central
+> configurable brand name lives with the application configuration.
+
+The product name was not decided while engineering started.
 
 Do not block engineering on naming.
 
 Use a central configurable application/brand name.
 
-Avoid scattering a temporary name throughout:
+Avoid scattering the name throughout:
 
 * database tables
 * email templates

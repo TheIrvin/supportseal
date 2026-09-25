@@ -20,12 +20,12 @@ One support desk for everything you build: live chat and support email for each 
 - Let developers provide intentional context without automatic collection of sensitive application data.
 - Charge hosted customers primarily for support volume, without a per-Product tax or paid per-agent pricing.
 - Keep self-hosting viable without a dependency on the managed service, hosted billing or proprietary authentication.
-- Publish the core under AGPLv3, subject to clearing any concrete third-party licensing blocker; keep proprietary theme code and assets out of the published repository.
+- Publish the core under AGPLv3; the theme kit ([vauxey-theme](repository-discovery.md)) is original code with no licensing restrictions, so the blocker is cleared and the LICENSE file is added. Never copy PixInvent/Vuexy source itself.
 - Prefer a polished core workflow over a broad feature catalogue.
 
 ## V1 boundary
 
-V1 comprises Workspace and Admin/Agent access; multiple Products and domain-controlled widgets; a unified searchable inbox; anonymous live chat and email-based away replies; inbound and outbound Product support email; developer identify/context APIs; Conversation status, notes, tags and saved replies; attachments; onboarding; hosted usage/billing; and a deployable self-hosted edition. The same core support features are available in either hosting mode. Items Initial.md also attaches to V1/launch — the marketing site, analytics, draft legal documents and demo seeding — sit outside this boundary pending the scope decision in [open-questions.md](open-questions.md). See [FRD.md](FRD.md) for behaviour and [architecture.md](architecture.md) for implementation direction.
+V1 comprises Workspace and Admin/Agent access; multiple Products and domain-controlled widgets; a unified searchable inbox; anonymous live chat and email-based away replies; inbound and outbound Product support email; developer identify/context APIs; Conversation status, notes, tags and saved replies; attachments; onboarding; hosted usage/billing; and a deployable self-hosted edition. The same core support features are available in either hosting mode. Items Initial.md also attaches to V1/launch — the marketing site, analytics, draft legal documents and demo seeding — are decided (2026-09-25) to be launch-readiness work outside this boundary, done later and separately. See [FRD.md](FRD.md) for behaviour and [architecture.md](architecture.md) for implementation direction.
 
 ## Journeys and proof
 

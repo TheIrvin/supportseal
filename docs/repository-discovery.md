@@ -18,6 +18,6 @@ The target repository, [`pietervw/supportseal`](https://github.com/pietervw/supp
 
 ## Decisions to validate during implementation
 
-Check the current documentation and licences for chosen auth, email and UI dependencies; test a clean self-hosted install and chat reconnect; verify PostgreSQL-backed event delivery behind the target reverse proxy; compare inbound email provider capabilities before selecting one. The Vuexy/PixInvent redistribution right is **not established** by the presence of `vauxey-theme`; any public AGPL code must be original or appropriately licensed.
+Check the current documentation and licences for chosen auth, email and UI dependencies; test a clean self-hosted install and chat reconnect; verify PostgreSQL-backed event delivery behind the target reverse proxy; compare inbound email provider capabilities before selecting one. Resolved (2026-09-25): [`vauxey-theme`](https://github.com/pietervw/vauxey-theme) is the mapped theme repository — original React components with a Vuexy-inspired visual language and no licensing restrictions on reuse — so its kit may be copied into this AGPL repository; PixInvent/Vuexy source itself remains prohibited. Test-framework choice is tracked as [pietervw/supportseal#7](https://github.com/pietervw/supportseal/issues/7).
 
 The source of observed conventions is the repositories above, especially their root manifests and `AGENTS.md` files. This document records reusable constraints and source locations, not package versions or a snapshot of implementation progress.

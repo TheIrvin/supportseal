@@ -31,3 +31,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated prisma client
+/src/generated/
+
+# local dev database (PGlite)
+/.dev-data/
+
+# playwright
+/playwright-report/
+/test-results/
+.playwright-mcp/

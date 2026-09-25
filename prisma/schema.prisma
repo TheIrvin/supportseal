@@ -1,0 +1,390 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Authentication (better-auth, ADR-0002) -------------------------------
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships Membership[]
+  sessions    Session[]
+  accounts    Account[]
+  invitesSent Invite[]    @relation("InviteSentBy")
+  messages    Message[]   @relation("MessageAuthor")
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verifications")
+}
+
+// --- Workspace (tenant boundary) ------------------------------------------
+
+enum WorkspaceAvailability {
+  LIVE
+  AWAY
+}
+
+enum WorkspacePlan {
+  FREE
+  PRO
+}
+
+model Workspace {
+  id             String               @id @default(uuid())
+  name           String
+  plan           WorkspacePlan        @default(FREE)
+  availability   WorkspaceAvailability @default(LIVE)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  memberships Membership[]
+  invites     Invite[]
+  products    Product[]
+  contacts    Contact[]
+  conversations Conversation[]
+  tags        Tag[]
+  savedReplies SavedReply[]
+  attachments Attachment[]
+  emailDeliveries EmailDelivery[]
+
+  @@map("workspaces")
+}
+
+enum MembershipRole {
+  ADMIN
+  AGENT
+}
+
+model Membership {
+  id          String         @id @default(uuid())
+  userId      String
+  workspaceId String
+  role        MembershipRole
+  createdAt   DateTime       @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@unique([userId])
+  @@index([workspaceId])
+  @@map("memberships")
+}
+
+model Invite {
+  id          String         @id @default(uuid())
+  workspaceId String
+  email       String
+  role        MembershipRole
+  tokenHash   String         @unique
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime       @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("InviteSentBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("invites")
+}
+
+// --- Product ---------------------------------------------------------------
+
+model Product {
+  id                   String    @id @default(uuid())
+  workspaceId          String
+  name                 String
+  primaryColor         String    @default("#7367f0")
+  widgetPublicKey      String    @unique
+  inboundEmail         String?
+  inboundEmailVerified DateTime?
+  archivedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  domains   ProductDomain[]
+  conversations Conversation[]
+  chatVisitors ChatVisitor[]
+  attachments Attachment[]
+  emailDeliveries EmailDelivery[]
+
+  @@index([workspaceId])
+  @@map("products")
+}
+
+// --- Chat visitors (FR-CHAT-02) --------------------------------------------
+
+model ChatVisitor {
+  id             String    @id @default(uuid())
+  productId      String
+  tokenHash      String    @unique
+  originHostname String?
+  email          String?
+  name           String?
+  externalUserId String?
+  conversationId String?
+  createdConversationAt DateTime?
+  createdAt      DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  devContext     Json?
+
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@map("chat_visitors")
+}
+
+model ProductDomain {
+  id        String   @id @default(uuid())
+  productId String
+  domain    String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, domain])
+  @@index([productId])
+  @@map("product_domains")
+}
+
+// --- Contacts and conversations --------------------------------------------
+
+model Contact {
+  id          String    @id @default(uuid())
+  workspaceId String
+  email       String?
+  name        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId])
+  @@map("contacts")
+}
+
+enum ConversationChannel {
+  CHAT
+  EMAIL
+}
+
+enum ConversationStatus {
+  OPEN
+  PENDING
+  CLOSED
+}
+
+enum MessageKind {
+  CUSTOMER
+  AGENT
+  NOTE
+}
+
+model Conversation {
+  id                 String              @id @default(uuid())
+  workspaceId        String
+  productId          String
+  contactId          String
+  channel            ConversationChannel
+  status             ConversationStatus  @default(OPEN)
+  subject            String?
+  emailMessageId     String?
+  emailReplyToken    String?             @unique
+  lastMessageAt      DateTime            @default(now())
+  firstAgentReplyAt  DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  contact   Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  tags      ConversationTag[]
+  chatVisitors ChatVisitor[]
+
+  @@index([workspaceId, status, lastMessageAt])
+  @@index([workspaceId, productId])
+  @@index([contactId])
+  @@index([emailMessageId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String
+  kind           MessageKind
+  body           String
+  agentUserId    String?
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author       User?        @relation("MessageAuthor", fields: [agentUserId], references: [id], onDelete: SetNull)
+  attachments  Attachment[]
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+model Tag {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  createdAt   DateTime @default(now())
+
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversations ConversationTag[]
+
+  @@unique([workspaceId, name])
+  @@map("tags")
+}
+
+model ConversationTag {
+  id             String   @id @default(uuid())
+  conversationId String
+  tagId          String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  tag           Tag           @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, tagId])
+  @@map("conversation_tags")
+}
+
+model Attachment {
+  id             String    @id @default(uuid())
+  workspaceId    String
+  conversationId String?
+  productId      String
+  messageId      String?
+  uploadedByUserId String?
+  visitorId      String?
+  filename       String
+  contentType    String
+  size           Int
+  storageKey     String    @unique
+  createdAt      DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  message   Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([conversationId])
+  @@map("attachments")
+}
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum EmailDeliveryStatus {
+  RECEIVED
+  IGNORED
+  SENT
+  FAILED
+  REJECTED
+}
+
+model EmailDelivery {
+  id                String            @id @default(uuid())
+  workspaceId       String
+  productId         String
+  conversationId    String?
+  direction         EmailDirection
+  status            EmailDeliveryStatus
+  providerMessageId String?
+  agentMessageId    String?           @unique
+  fromAddress       String?
+  toAddress         String?
+  subject           String?
+  reason            String?
+  createdAt         DateTime          @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([direction, productId, providerMessageId])
+  @@index([conversationId])
+  @@index([productId])
+  @@map("email_deliveries")
+}
+
+model SavedReply {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  body        String
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, name])
+  @@map("saved_replies")
+}

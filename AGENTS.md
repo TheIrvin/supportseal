@@ -7,11 +7,31 @@ docs/open-questions.md — never guess an answer to an open question.
 
 ## Setup and exact commands
 
-- Docs-only repository: no code, no package manifest, no CI. There is nothing
-  to install, lint, typecheck, test or build yet.
-- TODO (foundation PR that adds the application): record install / dev /
-  lint / typecheck / test / build commands and the
-  verify:fast / verify / verify:full chain here.
+- Node ≥22 <25 (`.nvmrc` = 22), npm. `npm install` runs `postinstall` →
+  `prisma generate`.
+- Copy `.env.example` → `.env`. Dev: `npm run db:dev` (migrates the local
+  file-backed PGlite database at `.dev-data/`), then `npm run dev`. With a
+  real Postgres: set `DATABASE_URL`, use `npm run db:migrate`.
+- Build: `npm run build` (prisma generate + next build, standalone output),
+  then `npm run start`.
+- Path alias `@/*` → `src/*` (tsconfig + vitest). Next.js 16 App Router,
+  React 19, Tailwind CSS 4 with the vauxey-theme kit (`src/components`,
+  `src/styles/tokens.css`).
+- Prisma client output → `src/generated/prisma` (gitignored). After schema
+  changes: `npx prisma generate` and a migration via `npx prisma migrate dev`
+  against a real Postgres (or hand-write `prisma/migrations/<ts>_name/`
+  and replay with `npm run db:dev` + tests).
+
+## Verification matrix
+
+| Command | Meaning |
+| --- | --- |
+| `npm run verify:fast` | lint + typecheck + unit/integration tests |
+| `npm run verify` | verify:fast + build |
+| `npm run verify:full` | = verify (E2E suite not added yet) |
+
+- Single test file: `npm run test:run -- src/lib/__tests__/brand.test.ts`.
+- Integration tests run on in-memory PGlite (no external database needed).
 
 ## Architecture map
 
@@ -30,12 +50,14 @@ docs/open-questions.md — never guess an answer to an open question.
 ## Important invariants and safety constraints
 
 - Workspace isolation is a security boundary: every tenant-aware operation
-  must prove Workspace ownership (Initial.md §30, ADR-0001).
-- Never copy Vuexy/PixInvent source, assets or components into this AGPL
-  repository; the redistribution licence is not established (Initial.md §19,
-  docs/open-questions.md).
-- AGPLv3 is the intended licence but no LICENSE file exists yet
-  (docs/open-questions.md). Keep proprietary code out.
+  must prove Workspace ownership (Initial.md §30, ADR-0001). A self-hosted
+  deployment serves exactly one Workspace; additional Workspaces are blocked.
+- The UI kit derives from vauxey-theme (original components, no licensing
+  restrictions — docs/repository-discovery.md). Never copy Vuexy/PixInvent
+  source, assets or components into this AGPL repository.
+- Licence is AGPLv3 (LICENSE at the root).
+- SupportSeal is the product name; use the central configurable brand name
+  (application config), never scattered hard-coded names.
 
 ## Model routing and cost (Initial.md §42–47)
 
@@ -71,10 +93,10 @@ docs/open-questions.md — never guess an answer to an open question.
 
 | Command | Meaning |
 | --- | --- |
-| TODO | No verify chain exists yet (docs-only repository). |
+| `npm run verify:fast` | lint + typecheck + unit/integration tests |
+| `npm run verify` | verify:fast + build |
+| `npm run verify:full` | = verify (E2E suite not added yet) |
 
-- Docs-only changes: no automated checks exist; report explicitly that
-  nothing was run.
 - Browser verification is mandatory for every important user-facing flow
   once the app exists; unit tests alone are not acceptance. Reference
   procedures: the V1 end-to-end flow (Initial.md §52) and the two-Workspace
@@ -83,12 +105,12 @@ docs/open-questions.md — never guess an answer to an open question.
 
 ## Deployment and post-deployment checks
 
-- TODO: nothing deploys yet. Direction: self-hosting target is
-  `docker compose up` or an equivalently simple documented flow
-  (Initial.md §17); the managed-SaaS host is undecided — test long-lived
-  request and background-job requirements before committing to one
-  (docs/architecture.md). Self-hosted mode must never require Stripe, the
-  hosted API or external telemetry (Initial.md §17).
+- Self-hosting target is `docker compose up` (Postgres + one-shot migrate +
+  app; groundwork committed). The managed-SaaS host is undecided — test
+  long-lived request and background-job requirements before committing to
+  one ([issue #3](https://github.com/pietervw/supportseal/issues/3)).
+  Self-hosted mode must never require Stripe, the hosted API or external
+  telemetry (Initial.md §17).
 
 ## Known non-obvious gotchas
 
@@ -97,8 +119,8 @@ docs/open-questions.md — never guess an answer to an open question.
   side (Initial.md, "Durable project documents").
 - Commit `0594e5a` ("Update print statement from 'Hello' to 'Goodbye'")
   actually adds all of Initial.md — misleading label in history.
-- The final product name is undecided (Initial.md §58): do not scatter a
-  new temporary name through docs, code or filenames.
+- Deferred specs live as GitHub issues on pietervw/supportseal
+  (docs/open-questions.md has the pointers).
 
 ## Definition of done
 

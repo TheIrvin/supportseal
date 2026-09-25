@@ -1,7 +1,6 @@
 # SupportSeal
 
-**SupportSeal** is the working name (the final product name is undecided —
-Initial.md §58) for an open-source customer support platform for people who
+**SupportSeal** is an open-source customer support platform for people who
 build several independent products: one unified inbox, a chat widget and
 first-class support email per Product, deliberate developer/application
 context, and a choice between managed hosting and genuine self-hosting from
@@ -9,10 +8,36 @@ the same source. See [docs/PRD.md](docs/PRD.md) for the product promise.
 
 ## Status
 
-**Pre-code.** This repository currently contains project documents only —
-no application code, package manifest, CI or Docker setup yet. The intended
-starting stack (Next.js/TypeScript, PostgreSQL, Prisma) is direction, not a
-decision; see [docs/architecture.md](docs/architecture.md).
+**Early build.** Next.js 16 App Router + TypeScript, Tailwind CSS 4 with the
+[vauxey-theme](https://github.com/pietervw/vauxey-theme) kit, Prisma 7 +
+PostgreSQL (PGlite for instant local dev), Vitest. Docker/self-hosting
+groundwork is in place.
+
+### Local development
+
+```bash
+npm install          # also runs prisma generate
+npm run db:dev       # migrate the local PGlite database (.dev-data/)
+npm run dev          # http://localhost:3000 (no DATABASE_URL needed)
+```
+
+With a real Postgres instead: set `DATABASE_URL` in `.env` (copy from
+`.env.example`) and run `npm run db:migrate`.
+
+### Commands
+
+| Command | Meaning |
+| --- | --- |
+| `npm run verify:fast` | lint + typecheck + tests |
+| `npm run verify` | verify:fast + build |
+| `npm run verify:full` | verify (E2E suite not added yet) |
+
+### Self-hosting
+
+`docker compose up` runs Postgres, applies migrations once via the `migrate`
+target, then serves the app on http://localhost:3000 (health: `/api/health`).
+The full guide — environment reference, email setup, HTTPS proxy, backups and
+upgrades — is [docs/self-hosting.md](docs/self-hosting.md).
 
 ## Read this first
 
@@ -40,5 +65,6 @@ decision; see [docs/architecture.md](docs/architecture.md).
 
 ## Licence
 
-AGPLv3 is the intended licence ([docs/PRD.md](docs/PRD.md)). No LICENSE file
-exists yet — tracked in [docs/open-questions.md](docs/open-questions.md).
+AGPLv3 — see [LICENSE](LICENSE). The UI kit derives from
+[vauxey-theme](https://github.com/pietervw/vauxey-theme) (original components,
+no licensing restrictions); PixInvent/Vuexy source is never copied.
