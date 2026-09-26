@@ -86,6 +86,11 @@ enum WorkspacePlan {
   PRO
 }
 
+enum UsageNotificationLevel {
+  APPROACHING
+  EXCEEDED
+}
+
 model Workspace {
   id             String               @id @default(uuid())
   name           String
@@ -103,6 +108,7 @@ model Workspace {
   savedReplies SavedReply[]
   attachments Attachment[]
   emailDeliveries EmailDelivery[]
+  usageNotifications UsageNotification[]
 
   @@map("workspaces")
 }
@@ -387,4 +393,20 @@ model SavedReply {
 
   @@unique([workspaceId, name])
   @@map("saved_replies")
+}
+
+/// Dedupe key for allowance notifications (Workspace, period, level): one
+/// row per level notified per period; deleted again when a send fails so the
+/// next conversation retries (at-least-once, auditable).
+model UsageNotification {
+  id          String                 @id @default(uuid())
+  workspaceId String
+  period      String
+  level       UsageNotificationLevel
+  createdAt   DateTime               @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, period, level])
+  @@map("usage_notifications")
 }

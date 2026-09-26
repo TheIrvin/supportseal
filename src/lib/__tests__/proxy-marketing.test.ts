@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
 import proxy from "@/proxy";
+import { PRICING_UNSET, pricingConfig } from "@/config/pricing";
 
 function makeRequest(path: string) {
   return new NextRequest(new URL(`http://localhost:3000${path}`));
@@ -64,21 +65,32 @@ describe("proxy marketing gating", () => {
     });
   });
 
-  describe("hosted mode with unset public pricing values", () => {
+  describe("hosted production pricing readiness", () => {
     beforeEach(() => {
       process.env.HOSTED_MODE = "1";
     });
 
-    it("refuses the static pricing page in production instead of serving TBD", () => {
-      const originalNodeEnv = process.env.NODE_ENV;
+    it("serves the pricing page in production now that values are decided (issue #15)", () => {
       vi.stubEnv("NODE_ENV", "production");
       try {
-        // Values ship as PRICING_UNSET until the launch decision (issue #6).
+        const response = proxy(makeRequest("/pricing"));
+        expect(response.status).toBe(200);
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
+    it("still refuses the static pricing page if any public value is unset", () => {
+      const pro = pricingConfig.hostedPro as { monthlyPriceUsd: number | typeof PRICING_UNSET };
+      const previous = pro.monthlyPriceUsd;
+      pro.monthlyPriceUsd = PRICING_UNSET;
+      vi.stubEnv("NODE_ENV", "production");
+      try {
         const response = proxy(makeRequest("/pricing"));
         expect(response.status).toBe(503);
       } finally {
+        pro.monthlyPriceUsd = previous;
         vi.unstubAllEnvs();
-        void originalNodeEnv;
       }
     });
 

@@ -6,13 +6,17 @@ their block and link to the [shipped-feature ledger](shipped-features.md).
 Metadata has its own references. This is copy only; proposed public routes
 are not implemented by this document.
 
-Use the implemented Free/Pro model. Resolve `{proMonthlyPriceUSD}` from the
-configured monthly USD price, `{freeMonthlyConversations}` from the Free
-allowance and `{graceDays}` from the configured grace period before publication.
-Do not substitute guesses or implementation defaults for launch decisions.
-Hosted signup links require a running, configured hosted service. Self-hosting
-copy describes the included configuration; the SF-14 deployment caveat must be
-resolved before adding a stronger installation promise.
+Use the implemented Free/Pro model. Prices, allowances, agent limits and the
+grace period come from the single configuration source
+(`src/config/pricing.ts`, issue #15): Free $0 — 100 new Conversations per
+month, 1 agent; Pro $39/month — 1,000 new Conversations per month, unlimited
+agents and Products. Resolve `{proMonthlyPriceUSD}`, `{proMonthlyConversations}`,
+`{freeMonthlyConversations}` and `{graceDays}` from that module before
+publication, and never hard-code copies of its numbers. Pro must never be
+advertised as unlimited Conversations. Hosted signup links require a running,
+configured hosted service. Self-hosting copy describes the included
+configuration; the SF-14 deployment caveat must be resolved before adding a
+stronger installation promise.
 
 ## Home — `/`
 
@@ -148,8 +152,8 @@ Claims: [SF-11](shipped-features.md#sf-11--conversations-counted-once-ever),
 [SF-12](shipped-features.md#sf-12--hosted-plans-unlimited-products-and-no-seat-pricing),
 [SF-13](shipped-features.md#sf-13--free-self-hosting-and-open-source).
 
-Each Conversation counts once ever. Add unlimited Products and bring your
-team without per-seat pricing. Choose a hosted plan or self-host for free.
+Each Conversation counts once ever. Products are unlimited on every plan,
+with no per-seat pricing. Choose a hosted plan or self-host for free.
 
 **Primary CTA:** Start on Free · **Secondary CTA:** Explore self-hosting
 
@@ -161,10 +165,10 @@ Claims: [SF-12](shipped-features.md#sf-12--hosted-plans-unlimited-products-and-n
 | | Hosted Free | Hosted Pro | Self-hosted |
 | --- | --- | --- | --- |
 | Price | Free | {proMonthlyPriceUSD} USD / month | Free software |
-| Description | Start receiving and answering support messages. | An unlimited Conversation allowance for your Workspace. | Run the core support tools on your infrastructure. |
-| Conversations | {freeMonthlyConversations} new Conversations per month | Unlimited | No hosted Conversation allowance |
+| Description | Start receiving and answering support messages. | For Workspaces with sustained support volume. | Run the core support tools on your infrastructure. |
+| Conversations | {freeMonthlyConversations} new Conversations per month | {proMonthlyConversations} new Conversations per month | No hosted Conversation allowance |
 | Products | Unlimited | Unlimited | Unlimited |
-| Team | No per-seat pricing | No per-seat pricing | Unlimited agents |
+| Team | 1 agent | Unlimited agents | Unlimited agents |
 | CTA | Start on Free | Choose Pro | Read the self-hosting guide |
 
 Self-hosting has no software licence fee. You cover your infrastructure and
@@ -187,9 +191,9 @@ who has contacted you before.
 | Question | Answer | Claims |
 | --- | --- | --- |
 | Is there a charge for every message? | No. Usage counts Conversations. Sending more messages in the same Conversation does not increase the count. | [SF-11](shipped-features.md#sf-11--conversations-counted-once-ever) |
-| Is this a separate charge for each Conversation? | No. The hosted model uses plans: Free includes a monthly Conversation allowance, and Pro has unlimited Conversations for its subscription price. | [SF-12](shipped-features.md#sf-12--hosted-plans-unlimited-products-and-no-seat-pricing) |
-| What happens if I go over the Free allowance? | Incoming messages keep being accepted. Billing shows your usage, a {graceDays}-day grace window and an upgrade option. Going over the allowance does not automatically upgrade your plan. | [SF-12](shipped-features.md#sf-12--hosted-plans-unlimited-products-and-no-seat-pricing) |
-| Does adding a product or teammate change the price? | No. Products are unlimited, and there is no per-seat pricing. | [SF-12](shipped-features.md#sf-12--hosted-plans-unlimited-products-and-no-seat-pricing) |
+| Is this a separate charge for each Conversation? | No. Hosted plans include a monthly Conversation allowance: Free includes {freeMonthlyConversations} and Pro {proMonthlyConversations} new Conversations per month. | [SF-12](shipped-features.md#sf-12--hosted-plans-unlimited-products-and-no-seat-pricing) |
+| What happens if I go over my allowance? | Incoming messages keep being accepted. Billing shows your usage, a {graceDays}-day grace window and plan options. Going over the allowance never blocks messages, never automatically upgrades your plan and never causes a surprise bill. For sustained overage, arrange a higher-volume plan. | [SF-12](shipped-features.md#sf-12--hosted-plans-unlimited-products-and-no-seat-pricing) |
+| Does adding a product or teammate change the price? | No per-product and no per-seat charges. Products are unlimited on every plan; Free includes one agent and Pro has unlimited agents. | [SF-12](shipped-features.md#sf-12--hosted-plans-unlimited-products-and-no-seat-pricing) |
 | Can I self-host for free? | Yes. The AGPLv3 software has no self-hosting licence fee. You provide and maintain the infrastructure and email setup. | [SF-13](shipped-features.md#sf-13--free-self-hosting-and-open-source) |
 
 ## Self-host / open source — `/self-host`

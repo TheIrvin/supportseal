@@ -3,6 +3,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { sendBounce } from "@/lib/email/outbound";
 import { addCustomerMessage, upsertContact } from "@/lib/conversations";
+import { notifyAllowanceInBackground } from "@/lib/usage-notifications";
 import {
   AttachmentError,
   storeAttachment,
@@ -393,6 +394,8 @@ export async function processInboundEmail(input: {
       throw error;
     });
     createdConversation = true;
+    // Hosted only, fire-and-forget: never blocks or fails intake (FR-USE-02).
+    notifyAllowanceInBackground(workspaceId);
   } else if (providerMessageId && !conversation.emailMessageId) {
     // In a thread, remember the root/first inbound Message-ID for future replies.
     await prisma.conversation.update({

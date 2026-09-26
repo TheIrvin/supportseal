@@ -90,17 +90,27 @@ describe("marketing features page", () => {
 describe("marketing pricing page", () => {
   const html = renderToStaticMarkup(<PricingPage />);
 
-  it("shows the model, not invented numbers", () => {
+  it("renders the decided plan numbers from the config source (issue #15)", () => {
     expect(html).toContain("Each Conversation counts once ever");
-    expect(html).toContain("Unlimited");
-    expect(html).toContain("No per-seat pricing");
-    expect(html).not.toMatch(/\$\s?\d/); // no dollar figures until Pete decides (issue #6)
+    expect(html).toContain("$39.00"); // Pro monthly price from pricingConfig
+    expect(html).toContain("1,000"); // Pro monthly Conversations
+    expect(html).toContain("100"); // Free monthly Conversations
+    expect(html).toContain("1 agent"); // Free agent limit
+    expect(html).toContain("Unlimited agents"); // Pro + self-hosted
+    expect(html).toContain("no per-seat pricing"); // pricing principle stays true
   });
 
-  it("marks every undecided number as TBD with its config path", () => {
-    expect(html).toContain('data-config-key="pricingConfig.hostedPro.monthlyPriceUsd"');
-    expect(html).toContain('data-config-key="pricingConfig.hostedFree.monthlyConversations"');
-    expect((html.match(/TBD/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  it("never advertises unlimited Conversations or undecided numbers", () => {
+    expect(html).not.toMatch(/unlimited Conversations/i);
+    expect(html).not.toContain("TBD");
+    expect(html).not.toContain("data-config-key");
+  });
+
+  it("states the overage semantics: grace, no auto-upgrade, no surprise bills, higher-volume plan", () => {
+    expect(html).toContain("If you go over your allowance");
+    expect(html).toContain("never automatically upgrades");
+    expect(html).toContain("never causes a surprise bill");
+    expect(html).toContain("arrange a higher-volume plan");
   });
 
   it("explains counting with Counted/Not counted labels (never colour alone)", () => {

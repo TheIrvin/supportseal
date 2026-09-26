@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatCount, PLANS } from "@/config/pricing";
 import { isHostedMode } from "@/lib/hosting";
 import { computeUsage } from "@/lib/usage";
 import { requireWorkspace } from "@/lib/workspace";
@@ -19,6 +20,13 @@ export default async function BillingPage() {
     usage.limit !== null && usage.limit > 0
       ? Math.min(100, Math.round((usage.conversationsOpened / usage.limit) * 100))
       : null;
+  // Server-computed so the blurb sees the same env overrides as enforcement
+  // (client bundles cannot read them); never says "unlimited Conversations".
+  const upgradeBlurb = `Unlimited Products and agents, ${
+    PLANS.pro.monthlyConversations === null
+      ? "no Conversation allowance"
+      : `${formatCount(PLANS.pro.monthlyConversations)} new Conversations per month`
+  }. Manage or cancel any time.`;
 
   return (
     <div className="space-y-6">
@@ -81,7 +89,7 @@ export default async function BillingPage() {
             </p>
           ) : null}
 
-          {planId === "FREE" ? <UpgradeButton /> : null}
+          {planId === "FREE" ? <UpgradeButton blurb={upgradeBlurb} /> : null}
         </CardContent>
       </Card>
     </div>

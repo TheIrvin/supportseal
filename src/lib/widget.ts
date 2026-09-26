@@ -11,6 +11,7 @@ import {
   type VisitorIdentity,
 } from "@/lib/dev-context";
 import { prisma } from "@/lib/prisma";
+import { notifyAllowanceInBackground } from "@/lib/usage-notifications";
 import {
   addCustomerMessage,
   getConversationDetail,
@@ -335,6 +336,8 @@ export async function visitorSendMessage(input: {
       },
     });
     conversationId = conversation.id;
+    // Hosted only, fire-and-forget: never blocks or fails intake (FR-USE-02).
+    notifyAllowanceInBackground(input.product.workspaceId);
     await prisma.chatVisitor.update({
       where: { id: input.visitor.visitorId },
       data: { conversationId, createdConversationAt: new Date() },

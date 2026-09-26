@@ -188,26 +188,39 @@ site, analytics, legal drafts and demo environment are separate launch work.
 
 ## SF-12 — Hosted plans, unlimited Products and no seat pricing
 
-- **Claim:** Hosted plans use Conversation volume. The implemented Free plan
-  has a configurable monthly allowance; Pro has unlimited Conversations.
-  Products and agents have no configured count limits or per-unit charges.
-  Billing shows usage, allowance/grace information and an upgrade option.
-  Crossing the allowance does not block incoming messages or auto-upgrade.
+- **Claim:** Hosted plans use Conversation volume with a single configuration
+  source for prices and limits (`src/config/pricing.ts`, issue #15): Free $0 —
+  100 new Conversations per month and 1 agent; Pro $39/month — 1,000 new
+  Conversations per month, unlimited agents and unlimited Products. Pro is
+  never advertised as unlimited Conversations. Billing shows usage,
+  allowance/grace information and an upgrade option, and Workspace admins are
+  emailed once per period as the allowance is approached and when exceeded.
+  Crossing the allowance does not block incoming messages or auto-upgrade, and
+  never causes a surprise bill; sustained overage is handled by arranging a
+  higher-volume plan.
 - **Implementation:** [plans and usage](../../src/lib/usage.ts),
+  [pricing configuration](../../src/config/pricing.ts),
+  [allowance notifications](../../src/lib/usage-notifications.ts),
   [billing page](../../src/app/(app)/(page)/settings/billing/page.tsx),
   [checkout](../../src/app/api/billing/checkout/route.ts),
   [subscription handling](../../src/app/api/billing/webhook/route.ts),
   [Stripe request](../../src/lib/stripe.ts) (one subscription item, no metered
-  message/seat/Product quantities), plus SF-01 and SF-09 creation paths.
-- **Tests:** [usage.test.ts](../../src/lib/__tests__/usage.test.ts): Free allowance,
-  grace, unlimited Pro, nonblocking intake and signature checking. No full
-  live checkout test or exhaustive unlimited-Product/agent test is asserted.
+  message/seat/Product quantities), plan agent limits on invites in
+  [workspace](../../src/lib/workspace.ts), plus SF-01 and SF-09 creation paths.
+- **Tests:** [usage.test.ts](../../src/lib/__tests__/usage.test.ts): Free
+  allowance, grace, finite Pro allowance, nonblocking intake and signature
+  checking; [usage-notifications.test.ts](../../src/lib/__tests__/usage-notifications.test.ts):
+  approaching/exceeded admin emails, dedupe per level and period,
+  self-hosted skip; [pricing.test.ts](../../src/config/__tests__/pricing.test.ts):
+  decided tier shape; [workspace.test.ts](../../src/lib/__tests__/workspace.test.ts):
+  Free agent-limit invite blocking. No full live checkout test is asserted.
   Requirement: FR-USE-02; [Initial.md §§21–23](../../Initial.md).
 - **Boundary:** This is a plan model, not a shipped per-Conversation overage
-  charge. No invented tier, annual discount, trial, card requirement or paid
-  add-on. Prices, Free allowance and grace duration stay placeholders. Managed
-  service availability and production Stripe configuration are not established
-  by this branch; public hosted CTAs require an operating service.
+  charge. Prices, allowances and agent limits are launch decisions recorded in
+  the config module (issues #6/#15); the Stripe price object is configured per
+  deployment via `STRIPE_PRO_PRICE_ID`. Managed service availability and
+  production Stripe configuration are not established by this branch; public
+  hosted CTAs require an operating service.
 
 ## SF-13 — Free self-hosting and open source
 
