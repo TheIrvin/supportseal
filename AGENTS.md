@@ -48,10 +48,11 @@ docs/open-questions.md — never guess an answer to an open question.
   ADR-0002). Prisma schema at `prisma/schema.prisma`; client output →
   `src/generated/prisma` (gitignored). CI: `.github/workflows/ci.yml`;
   dev scripts in `scripts/` (`dev-db.mjs`, `seed-dev.ts`).
-- Still pending from the direction docs: the ADR-0003 realtime spike
-  (two processes behind a reverse proxy, [issue
-  #2](https://github.com/pietervw/supportseal/issues/2)) and the managed-SaaS
-  host decision ([issue #3](https://github.com/pietervw/supportseal/issues/3)).
+- Decided from the direction docs: realtime delivery (ADR-0003 accepted;
+  [issue #2](https://github.com/pietervw/supportseal/issues/2)) and the
+  hosted-tier host — the existing Coolify/Hetzner fleet for now, a dedicated
+  small Hetzner VPS once paying customers arrive ([issue
+  #3](https://github.com/pietervw/supportseal/issues/3)).
 - Document map: docs/PRD.md (why/scope) and docs/FRD.md (observable V1
   behaviour, stable requirement IDs) are canonical; Initial.md is the master
   prompt (mission, full V1 scope, process rules) and yields to the PRD/FRD
@@ -123,9 +124,9 @@ docs/open-questions.md — never guess an answer to an open question.
 
 - Self-hosting target is `docker compose up` (Postgres + one-shot migrate +
   app; groundwork committed) — full guide in [docs/self-hosting.md](docs/self-hosting.md).
-  The managed-SaaS host is undecided — test
-  long-lived request and background-job requirements before committing to
-  one ([issue #3](https://github.com/pietervw/supportseal/issues/3)).
+  The hosted tier runs on the existing Coolify/Hetzner fleet for now, moving
+  to a dedicated small Hetzner VPS once paying customers arrive (decision and
+  comparison in [issue #3](https://github.com/pietervw/supportseal/issues/3)).
   Self-hosted mode must never require Stripe, the hosted API or external
   telemetry (Initial.md §17).
 
