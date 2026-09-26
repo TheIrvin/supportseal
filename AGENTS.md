@@ -1,8 +1,9 @@
 # SupportSeal agent guide
 
 Open-source customer support platform for people building several products
-(working name — see README.md). Pre-code: documents only. Product behaviour
-questions go to docs/PRD.md / docs/FRD.md; anything undecided lives in
+(SupportSeal is the product name; centrally configured in
+`src/config/site.ts` — never hard-code it). Product behaviour questions go
+to docs/PRD.md / docs/FRD.md; anything undecided lives in
 docs/open-questions.md — never guess an answer to an open question.
 
 ## Setup and exact commands
@@ -35,17 +36,27 @@ docs/open-questions.md — never guess an answer to an open question.
 
 ## Architecture map
 
-- No application code yet. Intended direction (docs/architecture.md, ADRs):
-  modular monolith + separately bundled chat widget; Next.js/TypeScript with
-  PostgreSQL and Prisma as the reasonable starting stack (confirm at the
-  spike); hosted multi-Workspace, self-hosted single-Workspace in V1
-  (ADR-0001); SSE realtime proposed pending the two-process/reverse-proxy
-  spike (ADR-0003); email behind provider adapters (ADR-0004); independent
-  self-hostable auth (ADR-0002).
+- Modular monolith (Next.js 16 App Router, React 19) + separately bundled
+  chat widget. Dashboard routes in `src/app/(app)`, auth pages in
+  `src/app/(auth)`, API routes in `src/app/api`, onboarding and widget
+  preview under `src/app/`. Route protection lives in `src/proxy.ts`.
+- Domain modules in `src/lib/`: workspace, products, conversations,
+  saved-replies, attachments, usage (billing metering), stripe, `email/`
+  (inbound/outbound adapters), widget, events (SSE delivery), dev-context.
+  UI kit from vauxey-theme in `src/components` + `src/styles/tokens.css`.
+- Auth is better-auth in-process against Prisma (`src/lib/auth.ts`,
+  ADR-0002). Prisma schema at `prisma/schema.prisma`; client output →
+  `src/generated/prisma` (gitignored). CI: `.github/workflows/ci.yml`;
+  dev scripts in `scripts/` (`dev-db.mjs`, `seed-dev.ts`).
+- Still pending from the direction docs: the ADR-0003 realtime spike
+  (two processes behind a reverse proxy, [issue
+  #2](https://github.com/pietervw/supportseal/issues/2)) and the managed-SaaS
+  host decision ([issue #3](https://github.com/pietervw/supportseal/issues/3)).
 - Document map: docs/PRD.md (why/scope) and docs/FRD.md (observable V1
   behaviour, stable requirement IDs) are canonical; Initial.md is the master
   prompt (mission, full V1 scope, process rules) and yields to the PRD/FRD
-  on conflicts; docs/open-questions.md tracks decisions pending Pete.
+  on conflicts; docs/open-questions.md records decisions taken and defaults
+  Pete can override.
 
 ## Important invariants and safety constraints
 
@@ -102,8 +113,8 @@ docs/open-questions.md — never guess an answer to an open question.
   `npx playwright install chromium` once and free ports 3100/3101/3200/1025.
   On hosts where the pinned Chromium cannot run, set
   `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to a working build.
-- Browser verification is mandatory
-  once the app exists; unit tests alone are not acceptance. Reference
+- Browser verification is mandatory for every important user-facing flow;
+  unit tests alone are not acceptance. Reference
   procedures: the V1 end-to-end flow (Initial.md §52) and the two-Workspace
   cross-tenant sanity test (Initial.md §63). Cross-Workspace access
   attempts must fail.
@@ -111,7 +122,8 @@ docs/open-questions.md — never guess an answer to an open question.
 ## Deployment and post-deployment checks
 
 - Self-hosting target is `docker compose up` (Postgres + one-shot migrate +
-  app; groundwork committed). The managed-SaaS host is undecided — test
+  app; groundwork committed) — full guide in [docs/self-hosting.md](docs/self-hosting.md).
+  The managed-SaaS host is undecided — test
   long-lived request and background-job requirements before committing to
   one ([issue #3](https://github.com/pietervw/supportseal/issues/3)).
   Self-hosted mode must never require Stripe, the hosted API or external
@@ -129,8 +141,8 @@ docs/open-questions.md — never guess an answer to an open question.
 
 ## Definition of done
 
-- Docs-only PRs: state explicitly that no automated checks exist and none
-  were run.
+- Docs-only PRs: lint + build still apply where the toolchain covers the
+  changed files; otherwise state explicitly which checks were run.
 - PR opened for Pete to merge — the merge is the deploy trigger; never push
   `main` directly.
 - Target <600 meaningful changed lines per PR (Initial.md §48).
