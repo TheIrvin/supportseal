@@ -13,7 +13,9 @@ const MIGRATIONS_DIR = path.join(process.cwd(), "prisma", "migrations");
 
 async function run() {
   const { PGlite } = await import("@electric-sql/pglite");
-  const dbPath = path.join(process.cwd(), ".dev-data", "pglite.db");
+  const dbPath = path.isAbsolute(process.env.PGLITE_PATH?.trim() || "")
+    ? process.env.PGLITE_PATH.trim()
+    : path.join(process.cwd(), process.env.PGLITE_PATH?.trim() || path.join(".dev-data", "pglite.db"));
   await fs.mkdir(path.dirname(dbPath), { recursive: true });
 
   const db = new PGlite(dbPath);
