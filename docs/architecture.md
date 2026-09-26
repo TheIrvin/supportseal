@@ -16,7 +16,7 @@ Persist Conversations, Messages and usage events as first-class records; use bou
 
 ## Delivery and integrations
 
-The intended direction — a server-to-client event stream for new chat/inbox events, durable message writes before notifying clients, resumable cursors and a polling fallback — remains provisional until the validation spike (two app processes behind a reverse proxy) accepts [ADR-0003](adr/0003-realtime-delivery.md), which stays at status Proposed until then. Browser submissions use normal authenticated requests. Start with PostgreSQL as the coordination point; prove this across more than one app process before scaling out.
+The delivery direction — a server-to-client event stream for new chat/inbox events, durable message writes before notifying clients, resumable cursors and a polling fallback — was validated by the two-process reverse-proxy spike and [ADR-0003](adr/0003-realtime-delivery.md) is accepted (2026-09-26; measurements in [issue #2](https://github.com/pietervw/supportseal/issues/2)). Browser submissions use normal authenticated requests. PostgreSQL stays the coordination point — in-process notification plus bounded database polling today, with `LISTEN`/`NOTIFY` as the measured upgrade path; no Redis by default.
 
 Put email providers behind inbound/outbound adapters. Authenticate inbound webhooks, deduplicate provider deliveries, parse and sanitise mail, and thread by validated headers or secure reply identifiers. Persist outgoing work and delivery outcome so failures are visible and retriable. Compare providers for both hosted and self-hosted use; do not require the managed provider for self-hosters. See [ADR-0004](adr/0004-email-boundary.md).
 

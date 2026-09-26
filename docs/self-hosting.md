@@ -34,7 +34,7 @@ Copy `.env.example` and fill in at least the required values:
 
 | Variable | Required | Notes |
 | -------- | -------- | ----- |
-| `DATABASE_URL` | yes | e.g. `postgresql://supportseal:pass@db:5432/supportseal` |
+| `DATABASE_URL` | yes | e.g. `postgresql://supportseal:pass@db:5432/supportseal`. If you point this at your own PostgreSQL instead of the compose `db` service, it must run with `timezone=UTC` (and a clock in sync with the app host) — the app logs a `[db-alignment]` error at boot otherwise, because message-stream cursors depend on it. |
 | `BETTER_AUTH_SECRET` | yes | `openssl rand -base64 32`. Signs sessions **and** widget test tokens. |
 | `NEXT_PUBLIC_APP_URL` | yes | Public origin, e.g. `https://support.example.com` (drives embed snippets, emails, auth). |
 | `NEXT_PUBLIC_APP_NAME` | no | Brand name shown in the UI (defaults to SupportSeal). |
@@ -62,11 +62,19 @@ Stripe variables are hosted-mode only and are never needed here.
 
 ## HTTPS / reverse proxy
 
-Terminate TLS in front of the app (Caddy, Traefik, nginx). Two requirements:
+Terminate TLS in front of the app (Caddy, Traefik, nginx). Three requirements:
 
 - **SSE must not be buffered** — the app already sends
-  `X-Accel-Buffering: no`; for nginx also set
-  `proxy_buffering off;` and `proxy_read_timeout 3600s;` for `/api/`.
+  `X-Accel-Buffering: no`, which measured sufficient through a stock
+  nginx config (no extra directives required); `proxy_buffering off;`
+  and a raised `proxy_read_timeout` for `/api/` are harmless extra
+  headroom.
+- **Never gzip `text/event-stream`** — compressing the event stream at
+  the proxy holds messages back even when buffering is disabled
+  (measured in the ADR-0003 spike). Exclude `text/event-stream` from
+  `gzip_types` (nginx) or the `encode` matcher (Caddy). The app's 15 s
+  heartbeats keep idle streams alive past default 60 s proxy read
+  timeouts on their own.
 - Preserve the `Host` header and pass `X-Forwarded-For` (used by the
   widget's per-IP rate limiter).
 
