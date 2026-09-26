@@ -145,3 +145,22 @@ issue links back to its owning document:
 | Deployment host | [architecture.md](architecture.md) | [#3](https://github.com/pietervw/supportseal/issues/3) |
 | Test framework | [repository-discovery.md](repository-discovery.md) | [#7](https://github.com/pietervw/supportseal/issues/7) |
 | Free-tier limits | pricing configuration (centralised in the application) — decided in [#15](https://github.com/pietervw/supportseal/issues/15), recorded in `src/config/pricing.ts` | [#6](https://github.com/pietervw/supportseal/issues/6) | |
+
+## 8. First email provider
+
+ADR-0004 requires comparing hosted provider candidates for inbound
+parsing, signatures, attachment limits, deliverability, local testing and
+cost before selecting the first provider. Tracked as
+[#4](https://github.com/pietervw/supportseal/issues/4).
+
+**Resolved (Pete, 2026-09-26):** Postmark. The comparison of Postmark,
+Mailgun, SendGrid and Amazon SES is in
+[#4](https://github.com/pietervw/supportseal/issues/4). Postmark won on
+its parsed-JSON inbound webhook (full threading headers, reply
+stripping, plus-addressing, spam/SPF signals, message IDs for
+idempotency), inbound retry and error visibility, transactional
+deliverability and local-testing story. The adapter boundary stays
+provider-neutral per [ADR-0004](adr/0004-email-boundary.md) — the ADR
+records the selection only. Self-hosted deployments remain
+provider-independent ([self-hosting.md](self-hosting.md)). The hosted
+subprocessor row for #14 is "Postmark (ActiveCampaign LLC)".
