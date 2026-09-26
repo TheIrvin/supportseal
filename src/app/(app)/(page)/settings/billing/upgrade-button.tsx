@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function UpgradeButton() {
+export function UpgradeButton({ blurb }: { blurb: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,9 +34,7 @@ export function UpgradeButton() {
         {pending ? "Starting checkout…" : "Upgrade to Pro"}
       </button>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
-      <p className="text-xs text-muted">
-        Unlimited products, agents and conversations. Manage or cancel any time.
-      </p>
+      <p className="text-xs text-muted">{blurb}</p>
     </div>
   );
 }

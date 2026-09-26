@@ -404,24 +404,28 @@ still screenshot-led.
 
 ## Pricing (`/pricing`)
 
-No prices are decided (issue
-[#6](https://github.com/pietervw/supportseal/issues/6)). The page shows the
-**model**; every number renders from config and is visibly marked until set.
+Prices and limits are decided (issues #6/#15) and live only in
+`src/config/pricing.ts` (see "Pricing configuration"); the page renders every
+number from that module and never states its own.
 
 ### Pricing configuration
 
-- One pricing module (proposed `src/config/pricing.ts`) is the only source
+- One pricing module (`src/config/pricing.ts`) is the only source
   of plan names, prices, allowances, grace days, agent limits and currency.
-  It takes allowance and grace values from `PLANS` in `src/lib/usage.ts`
-  (or `usage.ts` moves its values there), so **the marketing page and the
-  usage meter read the same numbers**. No dollar amounts in page
-  components (Initial.md §24).
+  `PLANS` lives there and is re-exported by `src/lib/usage.ts`, so **the
+  marketing page, the usage meter and invite enforcement read the same
+  numbers**. No dollar amounts in page components (Initial.md §24).
 - Currency: USD (Initial.md §23), formatted with `Intl.NumberFormat`.
+- **Decided values** (issues #6/#15): Free $0 — 100 new Conversations per
+  month, 1 agent; Pro $39/month — 1,000 new Conversations per month,
+  unlimited agents and Products. Pro is never advertised as unlimited
+  Conversations.
 - **Unset values** need their own explicit marker in config, distinct from
-  `null` (which `usage.ts` already uses for "unlimited"). They render as a
+  `null` (which means "unlimited"). They render as a
   `Badge` (`secondary`, `light`) reading "TBD", with `data-config-key` set
-  to the config path so a reviewer can find it. A hosted production build must fail if any value shown on
-  the pricing page is unset, so "TBD" can never reach customers.
+  to the config path so a reviewer can find it. A hosted production build
+  must fail if any value shown on the pricing page is unset, so "TBD" can
+  never reach customers.
 - In this doc: `{cfg: pricing.plans.free.priceUsd}` etc.
 
 ### Layout
@@ -458,8 +462,9 @@ on mobile with the self-hosted card last.
   unless annual pricing exists in config.
 - "Unlimited" appears only for values that are truly unlimited in config and
   enforcement (Initial.md §57). A `null` limit in config renders
-  "Unlimited"; an unset value renders "TBD". Hosted agent and Conversation
-  limits are unresolved (M2). The self-hosted column states what
+  "Unlimited"; an unset value renders "TBD". Conversation allowances are
+  finite on both hosted plans (M2 resolved); only Products (both plans) and
+  agents (Pro) are unlimited. The self-hosted column states what
   `docs/self-hosting.md` documents: unlimited Products and agents, one
   Workspace.
 - The self-hosted card states what self-hosting costs you (your own
@@ -748,11 +753,11 @@ Tracked in [open-questions.md](../open-questions.md), "Marketing site".
 
 - **M1** Serve the marketing site only in hosted mode (default), or behind
   its own `MARKETING_SITE` flag so it can run on any deployment?
-- **M2** Pricing shape vs current config: `src/lib/usage.ts` gives Pro
-  unlimited Conversations (`monthlyConversations: null`) and neither plan an
-  agent limit. That doesn't match "priced by Conversation volume" for paid
-  tiers, and Initial.md §21 suggests one agent on Free. Needs Pete's tier
-  shape and numbers (issue #6) before the pricing page can ship.
+- **M2** Pricing shape vs current config: resolved (Pete, 2026-09-26, issue
+  #15). Free $0 — 100 new Conversations/month, 1 agent; Pro $39/month —
+  1,000 new Conversations/month, unlimited agents and Products; never
+  advertised as unlimited Conversations. `src/config/pricing.ts` is the
+  single source for prices and limits.
 - **M3** Privacy and Terms pages must exist before hosted sign-up is
   promoted publicly; they're deferred with the legal drafts. Launch order?
 - **M4** Changelog via GitHub Releases (default), or a page on the site?

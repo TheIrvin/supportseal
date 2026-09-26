@@ -1,6 +1,9 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createTestUser, startTestDb, stopTestDb, type TestDb } from "@/test/integration-db";
+import { PLANS } from "@/config/pricing";
 import {
   acceptInvite,
   createInvite,
@@ -193,5 +196,119 @@ describe("invites", () => {
     expect(
       await db.prisma.invite.findFirst({ where: { email: "fresh@example.com" } }),
     ).toBeNull();
+  });
+});
+
+describe("plan agent limits (hosted, issue #15: Free 1 agent, Pro unlimited)", () => {
+  async function seedHostedWorkspace(plan: "FREE" | "PRO") {
+    const admin = await createTestUser(db.prisma, { email: "founder@example.com" });
+    const workspace = await db.prisma.workspace.create({
+      data: { name: "Acme", plan, memberships: { create: { userId: admin.id, role: "ADMIN" } } },
+    });
+    return { admin, workspaceId: workspace.id };
+  }
+
+  beforeEach(() => {
+    process.env.HOSTED_MODE = "1";
+  });
+
+  afterEach(() => {
+    process.env.HOSTED_MODE = "";
+  });
+
+  it("blocks invites beyond the Free plan's single member", async () => {
+    const { admin, workspaceId } = await seedHostedWorkspace("FREE");
+    const blocked = await createInvite({
+      workspaceId,
+      actorUserId: admin.id,
+      actorRole: "ADMIN",
+      email: "teammate@example.com",
+      role: "AGENT",
+    });
+    expect(blocked).toEqual({
+      ok: false,
+      error: expect.stringContaining("Upgrade to Pro for unlimited agents"),
+    });
+  });
+
+  it("counts live pending invites against the limit", async () => {
+    const originalAgents = PLANS.free.agents;
+    PLANS.free.agents = 2;
+    try {
+      const { admin, workspaceId } = await seedHostedWorkspace("FREE");
+      const first = await createInvite({
+        workspaceId,
+        actorUserId: admin.id,
+        actorRole: "ADMIN",
+        email: "first@example.com",
+        role: "AGENT",
+      });
+      expect(first.ok).toBe(true); // 1 member + 1 pending < 2
+
+      const second = await createInvite({
+        workspaceId,
+        actorUserId: admin.id,
+        actorRole: "ADMIN",
+        email: "second@example.com",
+        role: "AGENT",
+      });
+      expect(second).toEqual({
+        ok: false,
+        error: expect.stringContaining("includes 2 team members"),
+      });
+    } finally {
+      PLANS.free.agents = originalAgents;
+    }
+  });
+
+  it("allows invites on Pro (unlimited agents)", async () => {
+    const { admin, workspaceId } = await seedHostedWorkspace("PRO");
+    const allowed = await createInvite({
+      workspaceId,
+      actorUserId: admin.id,
+      actorRole: "ADMIN",
+      email: "teammate@example.com",
+      role: "AGENT",
+    });
+    expect(allowed.ok).toBe(true);
+  });
+
+  it("re-checks the limit when an invite is accepted", async () => {
+    const { admin, workspaceId } = await seedHostedWorkspace("FREE");
+    // Bypass createInvite: a pre-limit invite lingering after the cap hit.
+    const token = "legacy-invite-token";
+    await db.prisma.invite.create({
+      data: {
+        workspaceId,
+        email: "legacy@example.com",
+        role: "AGENT",
+        tokenHash: createHash("sha256").update(token).digest("hex"),
+        invitedById: admin.id,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    const legacy = await createTestUser(db.prisma, { email: "legacy@example.com" });
+    const accepted = await acceptInvite({ token, userId: legacy.id, email: legacy.email });
+    expect(accepted).toEqual({
+      ok: false,
+      error: expect.stringContaining("Upgrade to Pro for unlimited agents"),
+    });
+  });
+
+  it("self-hosted mode never limits agents (no hosted plans)", async () => {
+    process.env.HOSTED_MODE = "";
+    const { admin, workspaceId } = await seedHostedWorkspace("FREE");
+    const teammate = await createTestUser(db.prisma, { email: "teammate@example.com" });
+    await db.prisma.membership.create({
+      data: { userId: teammate.id, workspaceId, role: "AGENT" },
+    });
+    const allowed = await createInvite({
+      workspaceId,
+      actorUserId: admin.id,
+      actorRole: "ADMIN",
+      email: "another@example.com",
+      role: "AGENT",
+    });
+    expect(allowed.ok).toBe(true);
   });
 });

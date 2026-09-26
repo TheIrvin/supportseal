@@ -1,6 +1,7 @@
 import { notifyConversationEvent } from "@/lib/events";
 import { linkAttachmentToMessage } from "@/lib/attachments";
 import { prisma } from "@/lib/prisma";
+import { notifyAllowanceInBackground } from "@/lib/usage-notifications";
 import type { WorkspaceContext } from "@/lib/workspace";
 
 export type ConversationStatus = "OPEN" | "PENDING" | "CLOSED";
@@ -76,6 +77,8 @@ export async function createConversation(input: {
       subject: input.subject?.trim() || null,
     },
   });
+  // Hosted only, fire-and-forget: never blocks or fails intake (FR-USE-02).
+  notifyAllowanceInBackground(input.workspaceId);
   return { ok: true, conversationId: conversation.id };
 }
 

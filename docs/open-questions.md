@@ -48,7 +48,7 @@ questions".
 | # | Question | **Default** (if any) |
 | --- | --- | --- |
 | M1 | Serve marketing only in hosted mode, or behind its own flag? | **Default:** hosted mode only; self-hosted `/` unchanged |
-| M2 | Hosted tier shape: `usage.ts` gives Pro unlimited Conversations and no agent limits, unlike volume-based paid tiers and Initial.md §21's "one agent on Free" | None: needs Pete (issue [#6](https://github.com/pietervw/supportseal/issues/6)); blocks the pricing page |
+| M2 | Hosted tier shape: `usage.ts` gives Pro unlimited Conversations and no agent limits, unlike volume-based paid tiers and Initial.md §21's "one agent on Free" | **Resolved (Pete, 2026-09-26, issue [#15](https://github.com/pietervw/supportseal/issues/15)):** Free $0 — 100 new Conversations/month, 1 agent; Pro $39/month — 1,000 new Conversations/month, unlimited agents and Products; never advertised as unlimited Conversations. Recorded in `src/config/pricing.ts` (single source), FR-USE-02, marketing copy and SF-12 |
 | M3 | Privacy/Terms pages before public hosted sign-up | None: launch-order decision |
 | M4 | Changelog: GitHub Releases or a site page | **Default:** GitHub Releases, link hidden until the first release |
 | M5 | Run the real widget on the marketing site (dogfooding) | None |
@@ -144,4 +144,4 @@ issue links back to its owning document:
 | Email provider | [ADR-0004](adr/0004-email-boundary.md) | [#4](https://github.com/pietervw/supportseal/issues/4) |
 | Deployment host | [architecture.md](architecture.md) | [#3](https://github.com/pietervw/supportseal/issues/3) |
 | Test framework | [repository-discovery.md](repository-discovery.md) | [#7](https://github.com/pietervw/supportseal/issues/7) |
-| Free-tier limits | pricing configuration (centralised in the application) | [#6](https://github.com/pietervw/supportseal/issues/6) | |
+| Free-tier limits | pricing configuration (centralised in the application) — decided in [#15](https://github.com/pietervw/supportseal/issues/15), recorded in `src/config/pricing.ts` | [#6](https://github.com/pietervw/supportseal/issues/6) | |

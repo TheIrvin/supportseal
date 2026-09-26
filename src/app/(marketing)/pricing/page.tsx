@@ -13,7 +13,13 @@ import { ScreenshotFrame } from "@/components/marketing/screenshot-frame";
 import { Section, SectionHeading } from "@/components/marketing/section";
 import { CORE_CAPABILITIES } from "@/config/hosting-comparison";
 import { isHostedMode } from "@/lib/hosting";
-import { assertPricingCompleteForHostedProduction, formatUsd, pricingConfig } from "@/config/pricing";
+import {
+  assertPricingCompleteForHostedProduction,
+  formatAgentLimit,
+  formatCount,
+  formatUsd,
+  pricingConfig,
+} from "@/config/pricing";
 import { siteConfig } from "@/config/site";
 
 // A hosted production build must fail while any public pricing value is
@@ -84,22 +90,20 @@ const FAQ_ITEMS = [
   },
   {
     question: "Is this a separate charge for each Conversation?",
-    answer:
-      "No. The hosted model uses plans: Free includes a monthly Conversation allowance, and Pro has unlimited Conversations for its subscription price.",
-  },
-  {
-    question: "What happens if I go over the Free allowance?",
     answer: (
       <>
-        Incoming messages keep being accepted. Billing shows your usage, a {pricingConfig.graceDays}-day
-        grace window and an upgrade option. Going over the allowance does not automatically upgrade
-        your plan.
+        No. Hosted plans include a monthly Conversation allowance: Free includes <MonthlyConversations plan="free" />{" "}
+        and Pro <MonthlyConversations plan="pro" /> new Conversations per month.
       </>
     ),
   },
   {
+    question: "What happens if I go over my allowance?",
+    answer: <OverageExplanation />,
+  },
+  {
     question: "Does adding a product or teammate change the price?",
-    answer: "No. Products are unlimited, and there is no per-seat pricing.",
+    answer: "No per-product and no per-seat charges. Products are unlimited on every plan; Free includes one agent and Pro has unlimited agents.",
   },
   {
     question: "Can I self-host for free?",
@@ -108,14 +112,18 @@ const FAQ_ITEMS = [
   },
 ];
 
-type PlanCell = { text: string } | { included: true } | { unset: string };
+type PlanCell = { text: string } | { included: true } | { config: "free" | "pro" };
 
 const COMPARISON_COLUMNS = ["Hosted Free", "Hosted Pro", "Self-hosted"];
 
 const COMPARISON_ROWS: Array<{ label: string; cells: [PlanCell, PlanCell, PlanCell] }> = [
   {
     label: "Conversations per month",
-    cells: [{ unset: "pricingConfig.hostedFree.monthlyConversations" }, { text: "Unlimited" }, { text: "No hosted Conversation allowance" }],
+    cells: [
+      { config: "free" },
+      { config: "pro" },
+      { text: "No hosted Conversation allowance" },
+    ],
   },
   {
     label: "Products",
@@ -123,7 +131,11 @@ const COMPARISON_ROWS: Array<{ label: string; cells: [PlanCell, PlanCell, PlanCe
   },
   {
     label: "Team",
-    cells: [{ text: "No per-seat pricing" }, { text: "No per-seat pricing" }, { text: "Unlimited agents" }],
+    cells: [
+      { text: formatAgentLimit(pricingConfig.hostedFree.agents) },
+      { text: formatAgentLimit(pricingConfig.hostedPro.agents) },
+      { text: "Unlimited agents" },
+    ],
   },
   ...CORE_CAPABILITIES.map((capability) => ({
     label: capability,
@@ -143,6 +155,27 @@ const COMPARISON_ROWS: Array<{ label: string; cells: [PlanCell, PlanCell, PlanCe
   },
 ];
 
+function MonthlyConversations({ plan }: { plan: "free" | "pro" }) {
+  const hosted = plan === "free" ? "hostedFree" : "hostedPro";
+  return (
+    <ConfigValue
+      value={pricingConfig[hosted].monthlyConversations}
+      configKey={`pricingConfig.${hosted}.monthlyConversations`}
+      format={formatCount}
+    />
+  );
+}
+
+function OverageExplanation() {
+  return (
+    <>
+      Incoming messages keep being accepted. Billing shows your usage, a {pricingConfig.graceDays}-day grace
+      window and plan options. Going over the allowance never blocks messages, never automatically upgrades
+      your plan and never causes a surprise bill. For sustained overage, arrange a higher-volume plan.
+    </>
+  );
+}
+
 function ComparisonCell({ cell }: { cell: PlanCell }) {
   if ("included" in cell) {
     return (
@@ -152,9 +185,7 @@ function ComparisonCell({ cell }: { cell: PlanCell }) {
       </span>
     );
   }
-  if ("unset" in cell) {
-    return <ConfigValue value={pricingConfig.hostedFree.monthlyConversations} configKey={cell.unset} />;
-  }
+  if ("config" in cell) return <MonthlyConversations plan={cell.config} />;
   return <>{cell.text}</>;
 }
 
@@ -210,7 +241,7 @@ export default function PricingPage() {
             Pricing around the Conversations you handle
           </h1>
           <p className="mt-5 text-[1.2rem] leading-[1.6] text-body">
-            Each Conversation counts once ever. Add unlimited Products and bring your team without
+            Each Conversation counts once ever. Products are unlimited on every plan, with no
             per-seat pricing. Choose a hosted plan or self-host for free.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -238,11 +269,7 @@ export default function PricingPage() {
                 <div className="flex gap-2">
                   <dt className="text-muted">Conversations:</dt>
                   <dd className="text-body">
-                    <ConfigValue
-                      value={pricingConfig.hostedFree.monthlyConversations}
-                      configKey="pricingConfig.hostedFree.monthlyConversations"
-                    />{" "}
-                    new Conversations per month
+                    <MonthlyConversations plan="free" /> new Conversations per month
                   </dd>
                 </div>
                 <div className="flex gap-2">
@@ -251,7 +278,7 @@ export default function PricingPage() {
                 </div>
                 <div className="flex gap-2">
                   <dt className="text-muted">Team:</dt>
-                  <dd className="text-body">No per-seat pricing</dd>
+                  <dd className="text-body">{formatAgentLimit(pricingConfig.hostedFree.agents)}</dd>
                 </div>
               </dl>
               <div className="mt-6 pt-2">
@@ -274,12 +301,14 @@ export default function PricingPage() {
                 <span className="text-[0.933rem] text-muted">USD / month</span>
               </p>
               <p className="mt-2 text-[0.933rem] text-muted">
-                An unlimited Conversation allowance for your Workspace.
+                For Workspaces with sustained support volume.
               </p>
               <dl className="mt-5 flex flex-col gap-2.5 text-[0.9375rem]">
                 <div className="flex gap-2">
                   <dt className="text-muted">Conversations:</dt>
-                  <dd className="text-body">Unlimited</dd>
+                  <dd className="text-body">
+                    <MonthlyConversations plan="pro" /> new Conversations per month
+                  </dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="text-muted">Products:</dt>
@@ -287,7 +316,7 @@ export default function PricingPage() {
                 </div>
                 <div className="flex gap-2">
                   <dt className="text-muted">Team:</dt>
-                  <dd className="text-body">No per-seat pricing</dd>
+                  <dd className="text-body">{formatAgentLimit(pricingConfig.hostedPro.agents)}</dd>
                 </div>
               </dl>
               <div className="mt-6 pt-2">
@@ -360,13 +389,11 @@ export default function PricingPage() {
 
       {/* If you go over */}
       <Section band="surface">
-        <SectionHeading title="If you go over the Free allowance" />
+        <SectionHeading title="If you go over your allowance" />
         <div className="mt-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
           <div className="max-w-[40rem] text-[1.067rem] leading-[1.65] text-body">
             <p>
-              Incoming messages keep being accepted. Billing shows your usage, a{" "}
-              {pricingConfig.graceDays}-day grace window and an upgrade option. Going over the
-              allowance does not automatically upgrade your plan.
+              <OverageExplanation />
             </p>
           </div>
           <ScreenshotFrame
@@ -394,7 +421,7 @@ export default function PricingPage() {
 
       <CtaBand
         title="Pricing around the Conversations you handle"
-        lead="Each Conversation counts once ever. Add unlimited Products and bring your team without per-seat pricing. Choose a hosted plan or self-host for free."
+        lead="Each Conversation counts once ever. Products are unlimited on every plan, with no per-seat pricing. Choose a hosted plan or self-host for free."
         primary={{ label: "Start on Free", href: "/register" }}
         secondary={{ label: "Explore self-hosting", href: "/open-source" }}
       />

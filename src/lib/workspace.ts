@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 import { redirect } from "next/navigation";
 
+import { PLANS, planForWorkspace } from "@/config/pricing";
 import { isHostedMode } from "@/lib/hosting";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser, type SessionUser } from "@/lib/session";
@@ -15,6 +16,23 @@ export type WorkspaceContext = {
 };
 
 export const INVITE_EXPIRY_DAYS = 7;
+
+/** Hosted agent cap from PLANS. Null means unlimited (self-hosted, or a plan with no cap). */
+async function agentLimitForWorkspace(workspaceId: string): Promise<number | null> {
+  if (!isHostedMode()) return null;
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { plan: true },
+  });
+  if (!workspace) return null;
+  return planForWorkspace(workspace.plan).agents;
+}
+
+function planFullError(limit: number): string {
+  const planName = limit === PLANS.free.agents ? PLANS.free.name : "current";
+  const members = limit === 1 ? "member" : "members";
+  return `The ${planName} plan includes ${limit} team ${members}. Upgrade to Pro for unlimited agents.`;
+}
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -126,6 +144,21 @@ export async function createInvite(input: {
     return { ok: false, error: "Enter a valid email address." };
   }
 
+  // Members plus live pending invites, so stacked invites cannot pass the cap.
+  const now = new Date();
+  const agentLimit = await agentLimitForWorkspace(input.workspaceId);
+  if (agentLimit !== null) {
+    const [members, pendingInvites] = await Promise.all([
+      prisma.membership.count({ where: { workspaceId: input.workspaceId } }),
+      prisma.invite.count({
+        where: { workspaceId: input.workspaceId, acceptedAt: null, expiresAt: { gt: now } },
+      }),
+    ]);
+    if (members + pendingInvites >= agentLimit) {
+      return { ok: false, error: planFullError(agentLimit) };
+    }
+  }
+
   const existingMember = await prisma.membership.findFirst({
     where: { workspaceId: input.workspaceId, user: { email } },
   });
@@ -138,7 +171,7 @@ export async function createInvite(input: {
       workspaceId: input.workspaceId,
       email,
       acceptedAt: null,
-      expiresAt: { gt: new Date() },
+      expiresAt: { gt: now },
     },
   });
   if (pending) {
@@ -235,8 +268,16 @@ export async function acceptInvite(input: {
     };
   }
 
+  // Re-check under a Workspace advisory lock so concurrent accepts cannot pass the cap.
+  const agentLimit = await agentLimitForWorkspace(invite.workspaceId);
+
   try {
-    await prisma.$transaction(async (tx) => {
+    const rejection = await prisma.$transaction(async (tx) => {
+      if (agentLimit !== null) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"supportseal-agent-limit-" + invite.workspaceId}))`;
+        const members = await tx.membership.count({ where: { workspaceId: invite.workspaceId } });
+        if (members >= agentLimit) return planFullError(agentLimit);
+      }
       await tx.membership.create({
         data: {
           userId: input.userId,
@@ -248,7 +289,9 @@ export async function acceptInvite(input: {
         where: { id: invite.id },
         data: { acceptedAt: new Date() },
       });
+      return null;
     });
+    if (rejection) return { ok: false, error: rejection };
   } catch (error) {
     // One-membership-per-account is enforced at the database level; surface
     // it as a friendly error instead of a 500.

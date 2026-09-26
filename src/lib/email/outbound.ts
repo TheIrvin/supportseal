@@ -2,6 +2,7 @@ import nodemailer, { type Transporter } from "nodemailer";
 
 import { prisma } from "@/lib/prisma";
 import { appConfig } from "@/lib/config";
+import { siteConfig } from "@/config/site";
 
 /**
  * Outbound email (ADR-0004, FR-EMAIL-02/03). Replies go out via the managed
@@ -176,6 +177,36 @@ export async function sendBounce(input: {
       "X-Auto-Response-Suppress": "All",
     },
   });
+}
+
+/**
+ * Transactional system email to an operator (e.g. Workspace admin allowance
+ * notices). Not a customer reply and not tied to a Conversation, so it has no
+ * EmailDelivery row; callers keep their own audit record. Record-only when
+ * SMTP is not configured.
+ */
+export async function sendSystemEmail(input: {
+  to: string;
+  subject: string;
+  text: string;
+}): Promise<{ ok: true; delivered: boolean } | { ok: false; delivered: false; error: string }> {
+  const transport = getTransport();
+  if (!transport) return { ok: true, delivered: false };
+  try {
+    await transport.sendMail({
+      from: `"${escapeDisplayName(siteConfig.name)}" <${managedSender()}>`,
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      headers: {
+        "Auto-Submitted": "auto-generated",
+        "X-Auto-Response-Suppress": "All",
+      },
+    });
+    return { ok: true, delivered: true };
+  } catch (error) {
+    return { ok: false, delivered: false, error: error instanceof Error ? error.message : "send failed" };
+  }
 }
 
 /** Default outbound subject for a conversation (re: threading, not matching). */

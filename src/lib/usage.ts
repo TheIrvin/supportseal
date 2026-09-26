@@ -8,8 +8,8 @@ import { PLANS, type Plan, type PlanId } from "@/config/pricing";
  * The Conversations table IS the auditable ledger; this module derives usage
  * from it rather than maintaining a second event stream that could drift.
  *
- * Plan limits live in `src/config/pricing.ts` (single source shared with the
- * public pricing page) and are re-exported here for existing callers.
+ * Plan limits live in `src/config/pricing.ts` (shared with the pricing page
+ * and invite checks) and are re-exported here for existing callers.
  */
 export { PLANS, hostedPlans } from "@/config/pricing";
 export type { Plan, PlanId } from "@/config/pricing";

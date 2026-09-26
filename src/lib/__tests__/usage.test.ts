@@ -91,9 +91,9 @@ describe("usage metering (FR-USE-01: counted once ever)", () => {
     const finalUsage = await computeUsage(workspace.id, "free", now);
     expect(finalUsage.conversationsCountedAllTime).toBe(3);
 
-    // pro: unlimited
+    // pro: finite allowance (issue #15), not unlimited Conversations
     const pro = await computeUsage(workspace.id, "pro", now);
-    expect(pro.limit).toBeNull();
+    expect(pro.limit).toBe(1000);
     expect(pro.overLimit).toBe(false);
 
     // usage never blocks intake (FR-USE-02)
