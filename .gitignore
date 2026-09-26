@@ -42,3 +42,4 @@ next-env.d.ts
 /playwright-report/
 /test-results/
 .playwright-mcp/
+/tests/e2e/.runtime/
