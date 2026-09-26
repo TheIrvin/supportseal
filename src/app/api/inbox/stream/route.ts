@@ -48,18 +48,31 @@ export async function GET(request: NextRequest) {
       });
 
       // Slow database tick: wakes the inbox when another app process wrote
-      // (its events never reach this process's bus).
+      // (its events never reach this process's bus). The baseline is seeded
+      // at connect: a null baseline on the first tick would silently swallow
+      // every write that lands between connect and the first tick
+      // (ADR-0003 spike finding, issue #2).
+      const readSignature = async (): Promise<string> => {
+        const rows = await prisma.conversation.findMany({
+          where: { workspaceId },
+          orderBy: { updatedAt: "desc" },
+          take: 20,
+          select: { id: true, updatedAt: true },
+        });
+        return rows.map((r) => `${r.id}:${r.updatedAt.getTime()}`).join("|");
+      };
       let lastSignature: string | null = null;
+      void readSignature()
+        .then((signature) => {
+          lastSignature ??= signature;
+        })
+        .catch(() => {
+          // transient DB error: the first tick seeds the baseline instead
+        });
       const dbTick = setInterval(async () => {
         if (closed) return;
         try {
-          const rows = await prisma.conversation.findMany({
-            where: { workspaceId },
-            orderBy: { updatedAt: "desc" },
-            take: 20,
-            select: { id: true, updatedAt: true },
-          });
-          const signature = rows.map((r) => `${r.id}:${r.updatedAt.getTime()}`).join("|");
+          const signature = await readSignature();
           if (lastSignature !== null && signature !== lastSignature) {
             send("conversation", { conversationId: "*", kind: "refresh" });
           }
