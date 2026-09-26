@@ -6,9 +6,16 @@ import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export default async function RootPage() {
+/**
+ * Self-hosted root entry: `proxy.ts` rewrites `/` here when HOSTED_MODE is
+ * unset, preserving the pre-marketing behaviour (first-run → /register,
+ * otherwise → /inbox). In hosted mode the marketing home is served at `/`
+ * and a direct visit to /start is bounced back there.
+ */
+export default async function StartPage() {
+  if (isHostedMode()) redirect("/");
   const user = await getSessionUser();
-  if (!user && !isHostedMode()) {
+  if (!user) {
     const workspaceCount = await prisma.workspace.count();
     if (workspaceCount === 0) redirect("/register");
   }

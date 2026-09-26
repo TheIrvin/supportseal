@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { PLANS, type Plan, type PlanId } from "@/config/pricing";
 
 /**
  * Usage metering and plan limits (FR-USE-01/02). A billable Conversation is
@@ -6,40 +7,12 @@ import { prisma } from "@/lib/prisma";
  * opened; replies, reopening and chat-to-email continuation never re-count.
  * The Conversations table IS the auditable ledger; this module derives usage
  * from it rather than maintaining a second event stream that could drift.
+ *
+ * Plan limits live in `src/config/pricing.ts` (single source shared with the
+ * public pricing page) and are re-exported here for existing callers.
  */
-export type PlanId = "free" | "pro";
-
-export type Plan = {
-  id: PlanId;
-  name: string;
-  monthlyConversations: number | null; // null = unlimited
-  graceDays: number;
-};
-
-function envInt(name: string, fallback: number): number {
-  const parsed = Number.parseInt(process.env[name]?.trim() ?? "", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-export const PLANS: Record<PlanId, Plan> = {
-  free: {
-    id: "free",
-    name: "Free",
-    monthlyConversations: envInt("FREE_TIER_CONVERSATION_LIMIT", 100),
-    graceDays: envInt("USAGE_GRACE_DAYS", 14),
-  },
-  pro: {
-    id: "pro",
-    name: "Pro",
-    monthlyConversations: null,
-    graceDays: 0,
-  },
-};
-
-/** Plan ids allowed in hosted checkout (self-hosted never bills). */
-export function hostedPlans(): Plan[] {
-  return [PLANS.free, PLANS.pro];
-}
+export { PLANS, hostedPlans } from "@/config/pricing";
+export type { Plan, PlanId } from "@/config/pricing";
 
 export type UsageSummary = {
   plan: Plan;
@@ -81,13 +54,13 @@ export async function computeUsage(
   const overLimit = limit !== null && inPeriod > limit;
   let graceEndsAt: Date | null = null;
   let graceRemainingDays: number | null = null;
-  if (overLimit && plan.graceDays > 0) {
+  if (overLimit && limit !== null && plan.graceDays > 0) {
     // Grace starts when the (limit+1)-th conversation actually opened — the
     // moment the allowance was crossed — not at the period boundary.
     const crossing = await prisma.conversation.findFirst({
       where: { workspaceId, createdAt: { gte: period.start, lt: period.end } },
       orderBy: { createdAt: "asc" },
-      skip: limit!,
+      skip: limit,
       select: { createdAt: true },
     });
     const crossingAt = crossing?.createdAt ?? now;

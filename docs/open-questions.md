@@ -39,6 +39,23 @@ design review list.
 | D2a | Replying in an archived Product's Conversations | **Default:** read-only until the Product is unarchived (notes, tags and status still work) | Customer replies would bounce and the widget no longer loads, so replies could not continue | `design/conversation-view.md`, `support-inbox.md`, `product-settings.md` |
 | D9a | Which part of the page URL | **Default:** origin plus path; query string and fragment stripped; developers may send a full URL via `context()` | Query strings often carry tokens or emails (FR-SEC-02) | `design/chat-widget.md`, `conversation-view.md` |
 
+## Marketing site (2026-09-25)
+
+Raised by [design/marketing-site.md](design/marketing-site.md) (launch
+readiness, outside V1). Details and context are in that doc's "Open
+questions".
+
+| # | Question | **Default** (if any) |
+| --- | --- | --- |
+| M1 | Serve marketing only in hosted mode, or behind its own flag? | **Default:** hosted mode only; self-hosted `/` unchanged |
+| M2 | Hosted tier shape: `usage.ts` gives Pro unlimited Conversations and no agent limits, unlike volume-based paid tiers and Initial.md §21's "one agent on Free" | None: needs Pete (issue [#6](https://github.com/pietervw/supportseal/issues/6)); blocks the pricing page |
+| M3 | Privacy/Terms pages before public hosted sign-up | None: launch-order decision |
+| M4 | Changelog: GitHub Releases or a site page | **Default:** GitHub Releases, link hidden until the first release |
+| M5 | Run the real widget on the marketing site (dogfooding) | None |
+| M6 | Demo seed (Initial.md §53) is required for all screenshots | None: scheduling |
+| M7 | Commit the screenshot-capture script? | **Default:** not committed; procedure documented in the design doc |
+| M8 | Keep a "Not yet" section on `/features` | **Default:** keep |
+
 ## 1. V1 scope: marketing site, analytics, legal drafts, demo data
 
 Initial.md requires for V1/launch: the marketing site (§26, §62 "marketing
