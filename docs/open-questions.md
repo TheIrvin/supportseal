@@ -113,8 +113,8 @@ repository.
 repository, with no licensing restrictions. Its original components, tokens
 and helpers may be copied into SupportSeal; PixInvent/Vuexy source still
 must not be. How it is used is in [design/](design/) (baseline commit
-`46e0cc7`). AGENTS.md's guardrail wording still needs a matching follow-up
-edit.
+`46e0cc7`). AGENTS.md's guardrail wording reflects this: the vauxey-theme
+kit may be copied; PixInvent/Vuexy source may not.
 
 ## 5. AGPLv3 LICENSE file
 
@@ -127,9 +127,9 @@ README.md's licence section links it.
 **Resolved (Pete, 2026-09-25):** SupportSeal is the real product name. The
 brand is mint green; the palette, tokens and logo direction are in
 [design/brand.md](design/brand.md). The name stays centrally configured
-(`siteConfig.name`, per Initial.md §58) rather than scattered through code,
-tables or templates. README.md and AGENTS.md still call it a working name
-and need a follow-up edit.
+(`src/config/site.ts` → `brand.name`, per Initial.md §58) rather than
+scattered through code, tables or templates. README.md and AGENTS.md now
+use the name accordingly.
 
 ## 7. Tracking of deferred specs
 
