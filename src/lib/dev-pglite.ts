@@ -8,7 +8,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
-export const PGLITE_PATH = ".dev-data/pglite.db";
+export const PGLITE_PATH = process.env.PGLITE_PATH?.trim() || ".dev-data/pglite.db";
 
 /**
  * Boot the file-backed PGlite dev database and cache the PrismaClient on
