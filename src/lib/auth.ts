@@ -1,7 +1,9 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 
+import { brand } from "@/lib/brand";
 import { appConfig } from "@/lib/config";
+import { sendSystemEmail } from "@/lib/email/outbound";
 import { resolvePrisma } from "@/lib/prisma";
 
 function safeHost(url: string): string | undefined {
@@ -34,6 +36,58 @@ function createAuth() {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
+      // Password reset (#22, ADR-0002): the link better-auth generates points
+      // at its own callback route, which redirects to /reset-password with
+      // the token. Delivery goes through the provider-neutral system email
+      // boundary (ADR-0004) — record-only when SMTP is not configured.
+      sendResetPassword: async ({ user, url }) => {
+        const result = await sendSystemEmail({
+          to: user.email,
+          subject: `Reset your ${brand.name} password`,
+          text: [
+            `Hi ${user.name},`,
+            ``,
+            `We received a request to reset the password for your ${brand.name} account (${user.email}).`,
+            ``,
+            `Reset your password: ${url}`,
+            ``,
+            `This link expires in one hour and can only be used once.`,
+            `If you did not request this, you can ignore this email — your password stays unchanged.`,
+          ].join("\n"),
+        });
+        if (result.ok) {
+          if (!result.delivered) {
+            // better-auth's background runner swallows rejections and always
+            // answers the request with success, so an undelivered reset email
+            // can only be surfaced here. Dev logs the link itself (the only
+            // way to exercise the flow without SMTP); production logs without
+            // the bearer-token URL.
+            if (process.env.NODE_ENV !== "production") {
+              console.log(`[auth] password reset for ${user.email} (no SMTP, dev): ${url}`);
+            } else {
+              console.error(
+                `password reset email to ${user.email} was not delivered (SMTP not configured) — token created but never sent`,
+              );
+            }
+          }
+        } else {
+          console.error(`password reset email to ${user.email} failed: ${result.error}`);
+        }
+      },
+      // A completed reset also sweeps every outstanding reset link for the
+      // account (better-auth consumes only the submitted token).
+      onPasswordReset: async ({ user }) => {
+        await resolvePrisma()
+          .verification.deleteMany({
+            where: { identifier: { startsWith: "reset-password:" }, value: user.id },
+          })
+          .catch((error) => {
+            console.error(`failed to sweep reset tokens for user ${user.id}:`, error);
+          });
+      },
+      // A completed reset invalidates existing sessions (containment when the
+      // reset follows an account compromise).
+      revokeSessionsOnPasswordReset: true,
     },
     session: {
       expiresIn: 60 * 60 * 24 * 30,
