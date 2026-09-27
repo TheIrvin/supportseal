@@ -31,7 +31,13 @@ export function ForgotPasswordForm() {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     if (result.error) {
-      setError("Could not send the reset email. Check the address and try again.");
+      // better-auth rate-limits this endpoint (3 requests / minute per IP in
+      // production); a 429 means "wait", not "wrong address".
+      if (result.error.status === 429) {
+        setError("Too many attempts. Please wait a minute and try again.");
+      } else {
+        setError("Could not send the reset email. Check the address and try again.");
+      }
       setPending(false);
       return;
     }

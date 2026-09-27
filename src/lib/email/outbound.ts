@@ -180,10 +180,10 @@ export async function sendBounce(input: {
 }
 
 /**
- * Transactional system email to an operator (e.g. Workspace admin allowance
- * notices). Not a customer reply and not tied to a Conversation, so it has no
- * EmailDelivery row; callers keep their own audit record. Record-only when
- * SMTP is not configured.
+ * Transactional system email not tied to a Conversation (e.g. Workspace
+ * admin allowance notices, end-user auth mail such as password resets).
+ * Not a customer reply, so it has no EmailDelivery row; callers keep
+ * their own audit record. Record-only when SMTP is not configured.
  */
 export async function sendSystemEmail(input: {
   to: string;

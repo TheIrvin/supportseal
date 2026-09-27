@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,17 @@ import { authClient } from "@/lib/auth-client";
  * Complete a password reset (#22, ADR-0002). better-auth's callback route
  * redirects here as /reset-password?token=… on success or
  * ?error=INVALID_TOKEN for an expired/used/unknown token; completing the
- * form revokes existing sessions (revokeSessionsOnPasswordReset).
+ * form revokes existing sessions (revokeSessionsOnPasswordReset). On
+ * success the consumed token is replaced with ?reset=complete so it does
+ * not linger in the address bar or history.
  */
 export function ResetPasswordForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const invalid = searchParams.get("error") === "INVALID_TOKEN" || !token;
+  const complete = searchParams.get("reset") === "complete";
+  const invalid =
+    searchParams.get("error") === "INVALID_TOKEN" || (!token && !complete);
 
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -50,6 +55,7 @@ export function ResetPasswordForm() {
     }
     setDone(true);
     setPending(false);
+    router.replace("/reset-password?reset=complete");
   }
 
   if (invalid) {
@@ -82,7 +88,7 @@ export function ResetPasswordForm() {
           For your security, every signed-in session is signed out when the
           password changes.
         </p>
-        {done ? (
+        {done || complete ? (
           <div className="space-y-4">
             <p className="text-body">Your password has been updated.</p>
             <Button asChild className="w-full">
