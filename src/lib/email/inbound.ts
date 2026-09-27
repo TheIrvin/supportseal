@@ -34,6 +34,21 @@ export function secretMatches(candidate: string | null | undefined): boolean {
   return timingSafeEqual(a, b);
 }
 
+/**
+ * Credential candidates from an `Authorization: Basic …` header. Postmark
+ * cannot set custom headers or sign webhooks; its documented protection is
+ * HTTP Basic Auth embedded in the webhook URL, so either side of the
+ * credential may carry the shared secret. The auth-scheme is matched
+ * case-insensitively per RFC 7235.
+ */
+export function basicAuthSecretCandidates(header: string | null | undefined): string[] {
+  const match = /^basic\s+(.+)$/iu.exec(header?.trim() ?? "");
+  if (!match) return [];
+  const decoded = Buffer.from(match[1], "base64").toString("utf8");
+  const colon = decoded.indexOf(":");
+  return colon >= 0 ? [decoded.slice(0, colon), decoded.slice(colon + 1)] : [decoded];
+}
+
 export type InboundAttachmentInput = {
   filename: string;
   contentType: string;

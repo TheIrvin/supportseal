@@ -3,14 +3,35 @@ import nodemailer, { type Transporter } from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { appConfig } from "@/lib/config";
 import { siteConfig } from "@/config/site";
+import { postmarkTransport } from "@/lib/email/providers/postmark";
 
 /**
  * Outbound email (ADR-0004, FR-EMAIL-02/03). Replies go out via the managed
  * sender "{Product} Support <no-reply@…>" with a Reply-To that routes back to
- * the conversation's reply token, so customers stay in the thread. SMTP is
- * configured through SMTP_URL (self-hosters bring their own provider); with
- * no SMTP_URL every send is recorded but not delivered (dev mode).
+ * the conversation's reply token, so customers stay in the thread. Delivery
+ * is provider-neutral: Postmark (POSTMARK_SERVER_TOKEN, the hosted provider)
+ * takes precedence, then SMTP via SMTP_URL (self-hosters bring their own
+ * provider); with neither, every send is recorded but not delivered (dev
+ * mode).
  */
+
+/**
+ * Provider-neutral outbound payload: whatever a provider needs to deliver a
+ * mail, expressed without provider concepts (ADR-0004 boundary).
+ */
+export type OutboundPayload = {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  headers: Record<string, string>;
+  attachments?: Array<{ filename: string; contentType: string; content: Buffer }>;
+};
+
+/** A provider transport behind the outbound boundary (SMTP, Postmark, …). */
+export type OutboundTransport = {
+  send(payload: OutboundPayload): Promise<{ messageId: string | null }>;
+};
 export type OutboundMessage = {
   to: string;
   subject: string;
@@ -53,19 +74,44 @@ function escapeDisplayName(name: string): string {
   );
 }
 
-const globalForTransport = globalThis as unknown as { __supportsealTransport?: Transporter };
+const globalForTransport = globalThis as unknown as {
+  __supportsealTransport?: Transporter;
+  __supportsealSmtpTransport?: Transporter;
+};
 
-function getTransport(): Transporter | null {
-  // Test-injected transport wins; otherwise SMTP_URL decides.
-  if (globalForTransport.__supportsealTransport) return globalForTransport.__supportsealTransport;
-  const smtpUrl = process.env.SMTP_URL?.trim();
-  if (!smtpUrl) return null;
-  const transport = nodemailer.createTransport(smtpUrl);
-  globalForTransport.__supportsealTransport = transport;
-  return transport;
+/** Adapt a nodemailer transport to the provider-neutral send seam. */
+function nodemailerTransport(transport: Transporter): OutboundTransport {
+  return {
+    send: async (payload) => {
+      const info = await transport.sendMail({
+        from: payload.from,
+        to: payload.to,
+        subject: payload.subject,
+        text: payload.text,
+        headers: payload.headers,
+        ...(payload.attachments && payload.attachments.length > 0
+          ? { attachments: payload.attachments }
+          : {}),
+      });
+      return { messageId: info.messageId ?? null };
+    },
+  };
 }
 
-/** Test seam: inject a transport (or null to force record-only mode). */
+function getTransport(): OutboundTransport | null {
+  // Test-injected transport wins; then Postmark (hosted provider); then SMTP.
+  if (globalForTransport.__supportsealTransport) {
+    return nodemailerTransport(globalForTransport.__supportsealTransport);
+  }
+  const postmark = postmarkTransport();
+  if (postmark) return postmark;
+  const smtpUrl = process.env.SMTP_URL?.trim();
+  if (!smtpUrl) return null;
+  globalForTransport.__supportsealSmtpTransport ??= nodemailer.createTransport(smtpUrl);
+  return nodemailerTransport(globalForTransport.__supportsealSmtpTransport);
+}
+
+/** Test seam: inject a transport (or null to fall back to env provider config). */
 export function setTransportForTest(transport: Transporter | null): void {
   globalForTransport.__supportsealTransport = transport ?? undefined;
 }
@@ -99,34 +145,26 @@ export async function sendReplyEmail(input: {
 
   const transport = getTransport();
   if (!transport) {
-    // Dev / no-SMTP mode: record the send so the flow is auditable.
-    await recordDelivery(input, null, "SENT", joinReason("no SMTP configured — recorded only", input.note));
+    // Dev / no-provider mode: record the send so the flow is auditable.
+    await recordDelivery(input, null, "SENT", joinReason("no email provider configured — recorded only", input.note));
     return { ok: true, providerMessageId: null, delivered: false };
   }
 
   try {
-    const info = await transport.sendMail({
+    const { messageId } = await transport.send({
       from: sender,
       to: input.message.to,
       subject: input.message.subject,
       text: input.message.text,
       headers,
-      ...(input.message.attachments && input.message.attachments.length > 0
-        ? {
-            attachments: input.message.attachments.map((a) => ({
-              filename: a.filename,
-              contentType: a.contentType,
-              content: a.content,
-            })),
-          }
-        : {}),
+      attachments: input.message.attachments,
     });
     try {
-      await recordDelivery(input, info.messageId ?? null, "SENT", input.note, input.message.to);
+      await recordDelivery(input, messageId, "SENT", input.note, input.message.to);
     } catch {
       // The customer already has the mail; never report this as FAILED.
     }
-    return { ok: true, providerMessageId: info.messageId ?? null, delivered: true };
+    return { ok: true, providerMessageId: messageId, delivered: true };
   } catch (error) {
     const reason = error instanceof Error ? error.message : "send failed";
     await recordDelivery(input, null, "FAILED", reason, input.message.to).catch(() => undefined);
@@ -167,7 +205,7 @@ export async function sendBounce(input: {
 }): Promise<void> {
   const transport = getTransport();
   if (!transport) return; // record-only: nothing to send
-  await transport.sendMail({
+  await transport.send({
     from: `Mail Delivery Subsystem <${managedSender()}>`,
     to: input.toAddress,
     subject: `Undeliverable: ${input.originalSubject ?? "your message"}`,
@@ -183,7 +221,8 @@ export async function sendBounce(input: {
  * Transactional system email not tied to a Conversation (e.g. Workspace
  * admin allowance notices, end-user auth mail such as password resets).
  * Not a customer reply, so it has no EmailDelivery row; callers keep
- * their own audit record. Record-only when SMTP is not configured.
+ * their own audit record. Delivered through the same provider boundary
+ * (Postmark API or SMTP); record-only when no provider is configured.
  */
 export async function sendSystemEmail(input: {
   to: string;
@@ -193,7 +232,7 @@ export async function sendSystemEmail(input: {
   const transport = getTransport();
   if (!transport) return { ok: true, delivered: false };
   try {
-    await transport.sendMail({
+    await transport.send({
       from: `"${escapeDisplayName(siteConfig.name)}" <${managedSender()}>`,
       to: input.to,
       subject: input.subject,

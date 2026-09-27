@@ -39,7 +39,8 @@ function createAuth() {
       // Password reset (#22, ADR-0002): the link better-auth generates points
       // at its own callback route, which redirects to /reset-password with
       // the token. Delivery goes through the provider-neutral system email
-      // boundary (ADR-0004) — record-only when SMTP is not configured.
+      // boundary (ADR-0004) — Postmark API or SMTP; record-only when no
+      // provider is configured.
       sendResetPassword: async ({ user, url }) => {
         const result = await sendSystemEmail({
           to: user.email,
