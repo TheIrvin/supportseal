@@ -136,9 +136,12 @@ on trademark or domain availability), the name **stays SupportSeal** and
 the official domain is **supportseal.app** (free at the 2026-09-29 RDAP
 check; Pete registers it). `supportseal.com` is held by a domain investor
 (GoDaddy, sale-listed, created 2025-08) and is not pursued for now. The
-exact host layout (apex marketing site vs an `app.` subdomain for the
-dashboard) is decided at deployment — tracked by issue
-[#23](https://github.com/pietervw/supportseal/issues/23).
+host layout is decided the same day: **single origin** — marketing,
+dashboard, widget and API all on `https://supportseal.app` (runbook:
+[hosted-deployment.md](hosted-deployment.md); `app.supportseal.app` stays
+reserved for a future split). Issue
+[#23](https://github.com/pietervw/supportseal/issues/23) resolves via the
+`NEXT_PUBLIC_APP_URL` deployment value — `trustedOrigins` is dynamic.
 
 ## 7. Tracking of deferred specs
 
