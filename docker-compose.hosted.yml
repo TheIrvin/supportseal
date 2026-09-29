@@ -1,0 +1,42 @@
+# Hosted (Coolify) deployment shape: one-shot migrate + app, built from this
+# repository. Postgres is NOT included — the managed tier uses the
+# Coolify-created `supportseal-db` resource; its URL arrives via DATABASE_URL.
+# Self-hosters use docker-compose.yml instead (it bundles Postgres).
+# Required environment (see docs/hosted-deployment.md): DATABASE_URL,
+# BETTER_AUTH_SECRET, NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_APP_NAME, HOSTED_MODE,
+# INBOUND_WEBHOOK_SECRET.
+services:
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+      HOSTED_MODE: ${HOSTED_MODE}
+      INBOUND_WEBHOOK_SECRET: ${INBOUND_WEBHOOK_SECRET}
+      INBOUND_EMAIL_DOMAIN: ${INBOUND_EMAIL_DOMAIN:-}
+      OUTBOUND_EMAIL_LOCAL: ${OUTBOUND_EMAIL_LOCAL:-no-reply}
+    expose:
+      - "3000"
+    volumes:
+      - supportseal-uploads:/app/.dev-data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  supportseal-uploads:

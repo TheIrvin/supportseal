@@ -32,13 +32,26 @@ investor-held and not pursued.
 
 ## Coolify app
 
-- Build from this repository (Dockerfile `runner` target; the compose
-  `migrate` target is the one-shot `prisma migrate deploy`).
-- Persistent volume for attachments (`STORAGE_DIR`, default path
-  `.dev-data/uploads` in the container).
-- PostgreSQL 17 with `timezone=UTC` (compose service or Coolify database).
-- **Backups from day one**: Coolify's scheduled Postgres backup (S3) or a
-  cron `pg_dump` off-box.
+The hosted tier deploys as a **Docker Compose resource** built from
+`docker-compose.hosted.yml` (one-shot `migrate` + `app`; no bundled
+Postgres — the Coolify `supportseal-db` resource provides it). The Cloud
+API cannot create applications from private Git repositories, so the
+resource is created once in the panel:
+
+1. Project **SupportSeal** → New Resource → **Docker Compose** → GitHub →
+   `pietervw/supportseal`, branch `main`, compose file
+   `docker-compose.hosted.yml`.
+2. Set the environment variables from the table below on the resource
+   (resource env; `${VAR}` in the compose is substituted from them, which
+   also covers the `NEXT_PUBLIC_*` build args).
+3. On the `app` service, set the domain `https://supportseal.app`
+   (Coolify's Traefik handles the Let's Encrypt certificate) and deploy.
+
+Post-deploy, lifecycle (env updates, restarts, status) is manageable via
+the Cloud API (`/api/v1/services/...`). Attachments persist in the
+`supportseal-uploads` volume. **Backups from day one**: enable the
+scheduled backup on `supportseal-db` (Coolify S3 backup or off-box cron
+`pg_dump`).
 
 ## Environment (hosted mode)
 
@@ -69,6 +82,8 @@ tracked in [issue #23] is resolved by this deployment value.
   and uncompressed (heartbeats every 15 s; check `text/event-stream`
   responses are not gzipped).
 - `/api/health` green after deploy; first signup flow works end to end.
+- Boot log shows no `[db-alignment]` error (Postgres must be UTC —
+  postgres:17-alpine default; verify on first boot).
 - Postmark and Stripe webhook URLs (when configured) point at
   `https://supportseal.app/api/...` and are reachable (DNS-only or
   proxied — both pass webhooks).
