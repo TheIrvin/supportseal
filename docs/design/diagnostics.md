@@ -39,8 +39,8 @@ data, rendered as text" rules as `identify()` / `context()`
 1. **Off unless an Admin turns it on**, per Product (Initial.md §12). No
    Workspace-wide or instance-wide default-on.
 2. **Nothing leaves the browser unless the visitor sends a message.**
-   Events wait in an in-memory buffer. A visitor who never contacts
-   support sends nothing, and no Conversation is created by diagnostics.
+   Events wait in an in-memory buffer, and diagnostics never create a
+   Conversation.
 3. **Allowlist, not blocklist.** The collector reads only the fields listed
    under [What is captured](#what-is-captured). Redaction is a second line
    of defence for secrets that end up inside those fields (error messages,
@@ -70,10 +70,13 @@ What's collected · What's never collected · Your disclosure duties
   form with explicit Save and the sticky save bar.
 - **Turning on** opens a confirm `Dialog` before saving. It lists what is
   collected and what is never collected (the two lists below, verbatim),
-  states that the Admin's own privacy notice must tell their visitors, and
-  links to the Privacy Policy and the Hosted and self-hosted data
-  responsibility page (`/legal/privacy`, `/legal/data-responsibility`).
-  Button "Enable diagnostics". Wording of the duty sentence comes from
+  and states that the Admin's own privacy notice must tell their visitors.
+  Hosted mode links to the Privacy Policy and the Hosted and self-hosted
+  data responsibility page (`/legal/privacy`, `/legal/data-responsibility`).
+  Self-hosted mode doesn't serve `/legal` (`src/proxy.ts`), and those pages
+  don't apply to operators, so it instead states that the operator is
+  responsible for their own notices and links to the self-hosting guide
+  (`siteConfig.selfHostingGuideUrl`). Button "Enable diagnostics". Wording of the duty sentence comes from
   legal review (see [Disclosure](#visitor-disclosure-and-consent)).
 - **Turning off** saves immediately (no dialog). The server rejects new
   snapshots for that Product at once; widgets stop collecting on their next
@@ -122,9 +125,14 @@ host page                              service origin
 - **Transport**: when the visitor sends a message (live chat or away form),
   the panel posts `ss:diag-request` to the loader and waits up to 250 ms
   for `ss:diag-snapshot`. No reply, or an empty buffer, sends the message
-  without diagnostics. **Diagnostics never delay or block a message.**
-  Both directions use the existing exact-origin `postMessage` checks
-  (`event.origin === serviceOrigin`, explicit `targetOrigin`).
+  without diagnostics. **Diagnostics never block a message, and never add
+  more than that 250 ms wait.**
+  Message checks follow the existing loader/panel pattern: the loader
+  accepts `ss:diag-request` only when `event.origin === serviceOrigin`,
+  and posts the snapshot with `targetOrigin` set to `serviceOrigin`, so
+  only the panel can receive it. The panel accepts `ss:diag-snapshot`
+  only when `event.source === window.parent` (the host origin varies, so
+  it can't match on origin). The request itself carries no data.
 - **Ingestion**: the optional `diagnostics` field rides on the existing
   `POST /api/widget/messages` request, behind that route's existing gates
   (widget request origin, Product key, domain allowlist, rate limit,
@@ -134,12 +142,15 @@ host page                              service origin
 - **Invalid or oversized diagnostics never reject the message.** The
   Message is stored, the snapshot is dropped, and the response says so
   (`diagnostics: "rejected"` with a reason code such as `disabled`,
-  `too_large` or `invalid`). The server logs the reason code and Product
-  ID only, never snapshot content. This makes the drop visible without
-  failing the customer's message.
+  `too_large`, `invalid` or `limit`). The server logs the reason code and
+  Product ID only, never snapshot content.
 - **Developer runtime switch**: `SupportSealWidget.diagnostics(false)`
   pauses collection and clears the buffer; `diagnostics(true)` resumes. It
-  uses the same queue as `identify()` / `context()`. It can only narrow
+  is handled in the host-page loader, where the collector lives, and is
+  not forwarded to the panel. Like `identify()` / `context()` it is also
+  accepted through the pre-load `SupportSealWidget.q` queue; the loader
+  remembers the latest value and applies it when the collector starts, so
+  a pause issued before the collector loads still holds. It can only narrow
   what the Product setting allows, never enable a disabled Product. This
   is the hook a site's own consent manager uses.
 
@@ -152,7 +163,7 @@ All fields below, and only these. Every string passes the
 | --- | --- | --- |
 | JavaScript error | `name`, `message`, `stack` (parsed to at most 20 frames of function name, file URL, line, column), page path at the time, timestamp, repeat count | `window` `error` event (`event.error`, or `event.message` and location when no Error object) |
 | Unhandled promise rejection | as above when the reason is an `Error`; a redacted string when it's a string; otherwise just the type (`"[non-error rejection: object]"`) | `window` `unhandledrejection` |
-| Warning | first 5 arguments of `console.warn` and `console.error`: strings, numbers and booleans as text; an `Error` as `name: message`; anything else as `[object]` | a narrow wrapper on `console.warn` and `console.error` only (*default*, see [Q3](#open-questions)) |
+| Warning | first 5 arguments of `console.warn` and `console.error`: primitives (strings, numbers and booleans) as text; an `Error` as `name: message`; anything else as `[object]` | a narrow wrapper on `console.warn` and `console.error` only (*default*, see [Q3](#open-questions)) |
 | Network failure | method, URL, status (`0` when the request failed without a response), timestamp, repeat count | wrappers on `fetch` and `XMLHttpRequest` that look only at method, URL and final status |
 | Environment (one per snapshot) | page URL (origin plus path), viewport width × height in CSS px, device pixel ratio, application version | collector plus the visitor's stored developer context |
 | Browser and OS (one per snapshot) | browser family and major version; OS family and major version | parsed **server-side** from the message request's `User-Agent` header. The raw string is not stored |
@@ -160,23 +171,24 @@ All fields below, and only these. Every string passes the
 Details:
 
 - **Network failure** means status ≥ 400 or no response. Requests to the
-  SupportSeal service origin are excluded, which avoids feedback loops.
+  widget's service origin are excluded, which avoids feedback loops.
   Aborted requests (`AbortError`) are excluded as normal app behaviour.
   Failed resource loads (`<img>`, `<script>` tags) are excluded in this
   slice.
 - **Page URL** uses the D9a rule already used for the recorded page:
-  origin plus path, no query or fragment. The same rule applies to every
-  URL in a snapshot, including network URLs and stack-frame file URLs.
+  origin plus path, no user info, query or fragment. The same reduction
+  applies to every URL in a snapshot that parses, including network URLs
+  and stack-frame file URLs (see [Redaction](#redaction)).
 - **Application version** is the `appVersion` (or `buildVersion`/`version`)
   key from the visitor's existing developer context, copied into the
   snapshot at attach time so later `context()` calls don't rewrite
   history. If none is set, the snapshot shows "Not provided". There is no
   new version API.
 - **Wrappers** keep the host page's behaviour intact: they call the
-  original first, preserve `this` and arguments, return the original
-  result or promise unchanged, and never throw (any collector failure is
+  original first, preserve `this` and arguments, and return the original
+  result or promise unchanged. They never throw. Any collector failure is
   caught inside the collector and disables the collector for the rest of
-  the page load). They never clone, read or wait on a request or response
+  the page load. They never clone, read or wait on a request or response
   body, and never touch headers.
 - **Error objects** are read for `name`, `message` and `stack` only. The
   collector never enumerates an error's other properties, because library
@@ -216,8 +228,9 @@ resets it).
    `console.log`, `console.info`, `console.debug` hooks) and fails on any
    match. Adding a banned read then requires deliberately changing the
    test, which a reviewer sees. (Snapshots cross to the panel by
-   `postMessage` structured clone, and the client size check sums string
-   lengths, so the collector needs neither `JSON.stringify` nor `.value`.)
+   `postMessage` structured clone, and the client size check is an
+   estimate from string lengths (see [Size bounds](#size-bounds)), so the
+   collector needs neither `JSON.stringify` nor `.value`.)
 3. **Redaction** in the browser before buffering and **again on the
    server** before storage, using the same rule set and fixture corpus.
 4. **Schema validation** on the server: unknown fields are dropped, types
@@ -235,7 +248,7 @@ Applied in this order to every captured string:
 
 | Rule | Replacement |
 | --- | --- |
-| Any URL (in fields or inside messages/stacks): drop user info, query and fragment | `https://app.example.com/reports` |
+| In a field, message or stack, a URL that parses keeps origin plus path; user info, query and fragment are dropped. Text that does not parse as a URL is unchanged by this rule. Later rules still apply | `https://u:p@app.example.com/reports?t=abc#x` → `https://app.example.com/reports` |
 | `Bearer …`, `Basic …`, `Authorization: …` | `Bearer [redacted]` |
 | JWT-shaped values (three base64url parts separated by dots, first starting `eyJ`) | `[token]` |
 | `key=value` / `key: value` / `"key":"value"` where the key matches `password`, `passwd`, `pwd`, `secret`, `token`, `api[_-]?key`, `access[_-]?key`, `auth`, `session`, `cookie`, `card`, `cvv`, `cvc`, `iban`, `ssn` (case-insensitive, also inside compound keys like `x-api-key`) | `key=[redacted]` |
@@ -244,8 +257,10 @@ Applied in this order to every captured string:
 | High-entropy tokens: ≥ 32 hex characters, or ≥ 24 characters of `[A-Za-z0-9_-]` mixing letters and digits (this also covers UUIDs and most provider keys) | `[token]` |
 | URL path segments matching the email, token or UUID rules | `/reset/[token]` |
 
-Then truncate: messages 500 characters, each stack 20 frames and 2,000
-characters, each URL 300 characters (the existing page-URL cap).
+Then strip control characters other than newline and tab (they would
+inflate serialized size and can confuse display), and truncate: messages
+500 characters, each stack 20 frames and 2,000 characters, each URL 300
+characters (the existing page-URL cap).
 
 Redaction favours over-redaction: a mangled order ID is a small support
 cost; a leaked reset token is a security incident. Rules are tested with a
@@ -262,7 +277,7 @@ Firebase JWTs, Axios error messages that embed URLs).
 | Buffer | last 50 distinct events per page load, oldest dropped first |
 | Deduplication | same kind + message + top stack frame (or method + URL + status) collapse into one event with a count and first/last seen |
 | Window | only events from the last 30 minutes before the message are attached |
-| Snapshot size | ≤ 32 KB serialized. Client trims oldest events to fit; server rejects anything larger (`too_large`) |
+| Snapshot size | ≤ 32 KB serialized, measured by the server (authoritative), which rejects anything larger (`too_large`). The client can't serialize (see the ban gate), so it trims oldest events until a conservative estimate (summed string lengths plus 128 bytes per event) is ≤ 24 KB. With control characters stripped, that keeps real snapshots under the server cap |
 | Per message | at most one snapshot. After the first message of a page load, later snapshots carry only events not already sent, and are skipped when there are none |
 | Per Conversation | at most 100 snapshots; further ones are rejected (`limit`) |
 | Rate | covered by the existing widget IP rate limit and per-message rule; no separate diagnostics endpoint exists to abuse |
@@ -504,15 +519,19 @@ Pete-overridable. Summary in `docs/open-questions.md`, "Diagnostics".
   message; never alone.
 - **Collector loading**: *default:* separate bundle, loaded only when the
   Product is enabled; ≤ 4 KB gzip.
-- **Warnings**: *default:* narrow `console.warn`/`console.error` wrapper,
-  primitive arguments only ([Q3](#open-questions)).
+- **Warnings**: *default:* narrow `console.warn`/`console.error` wrapper;
+  primitives as text, an `Error` as `name: message`, anything else as
+  `[object]` ([Q3](#open-questions)).
 - **Browser/OS**: *default:* parsed server-side from `User-Agent`; raw
   string not stored.
 - **Bounds**: *default:* 50 events, 30-minute window, 32 KB per snapshot,
   100 snapshots per Conversation.
-- **Retention**: *default:* 30 days, hidden on expiry, purged
-  opportunistically ([Q2](#open-questions), [Q4](#open-questions)).
-- **Visibility**: *default:* all Workspace roles that can see the
+- **Retention**: *default:* 30 days from capture, fixed in this slice,
+  hidden once expired ([Q2](#open-questions)).
+- **Purge**: *default:* every read hides expired rows; each insert deletes
+  up to 100 expired snapshots for that Product. Quiet Products keep those
+  hidden rows until a scheduled purge exists ([Q4](#open-questions)).
+- **Visibility**: *default:* Agents and Admins who can see the
   Conversation.
 - **Widget notice**: *default:* one-line notice while enabled; wording
   from legal review ([Q1](#open-questions)).
