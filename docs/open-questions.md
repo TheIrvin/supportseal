@@ -131,6 +131,15 @@ brand is mint green; the palette, tokens and logo direction are in
 scattered through code, tables or templates. README.md and AGENTS.md now
 use the name accordingly.
 
+**Update (Pete, 2026-09-29):** after a rename shortlist (challengers lost
+on trademark or domain availability), the name **stays SupportSeal** and
+the official domain is **supportseal.app** (free at the 2026-09-29 RDAP
+check; Pete registers it). `supportseal.com` is held by a domain investor
+(GoDaddy, sale-listed, created 2025-08) and is not pursued for now. The
+exact host layout (apex marketing site vs an `app.` subdomain for the
+dashboard) is decided at deployment — tracked by issue
+[#23](https://github.com/pietervw/supportseal/issues/23).
+
 ## 7. Tracking of deferred specs
 
 **Resolved (Pete, 2026-09-25):** deferred specs are tracked as GitHub issues

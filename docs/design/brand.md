@@ -6,6 +6,12 @@ defines the palette, design tokens and logo direction. It replaces
 vauxey-theme's placeholder violet primary (`#7367f0`) and its purple-tinted
 neutrals everywhere in the SupportSeal app.
 
+**Domain (Pete, 2026-09-29):** the official domain is
+[supportseal.app](https://supportseal.app) — the name stays SupportSeal after
+a rename shortlist; `supportseal.com` is investor-held and not pursued. Host
+layout (apex vs `app.` subdomain) is decided at deployment
+([issue #23](https://github.com/pietervw/supportseal/issues/23)).
+
 **Theme baseline:** vauxey-theme (`pietervw/vauxey-theme` `main` @
 `46e0cc7`, paths relative to `src/`). Tokens live in `styles/tokens.css`
 (light on `:root`, dark on `.dark`) and are mapped to Tailwind in
