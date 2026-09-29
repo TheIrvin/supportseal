@@ -2,9 +2,10 @@
 # repository. Postgres is NOT included — the managed tier uses the
 # Coolify-created `supportseal-db` resource; its URL arrives via DATABASE_URL.
 # Self-hosters use docker-compose.yml instead (it bundles Postgres).
-# Required environment (see docs/hosted-deployment.md): DATABASE_URL,
-# BETTER_AUTH_SECRET, NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_APP_NAME, HOSTED_MODE,
-# INBOUND_WEBHOOK_SECRET.
+# Public (non-secret) hosted values are baked in here; the three secrets
+# (DATABASE_URL, BETTER_AUTH_SECRET, INBOUND_WEBHOOK_SECRET) are set as
+# resource env in Coolify and substituted at deploy — see
+# docs/hosted-deployment.md.
 services:
   migrate:
     build:
@@ -19,14 +20,14 @@ services:
       context: .
       target: runner
       args:
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
-        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+        NEXT_PUBLIC_APP_URL: https://supportseal.app
+        NEXT_PUBLIC_APP_NAME: SupportSeal
     environment:
       DATABASE_URL: ${DATABASE_URL}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
-      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
-      HOSTED_MODE: ${HOSTED_MODE}
+      NEXT_PUBLIC_APP_URL: https://supportseal.app
+      NEXT_PUBLIC_APP_NAME: SupportSeal
+      HOSTED_MODE: "1"
       INBOUND_WEBHOOK_SECRET: ${INBOUND_WEBHOOK_SECRET}
       INBOUND_EMAIL_DOMAIN: ${INBOUND_EMAIL_DOMAIN:-}
       OUTBOUND_EMAIL_LOCAL: ${OUTBOUND_EMAIL_LOCAL:-no-reply}
@@ -34,6 +35,19 @@ services:
       - "3000"
     volumes:
       - supportseal-uploads:/app/.dev-data/uploads
+    labels:
+      # Routing is owned by this compose (Coolify Cloud's API cannot set
+      # service domains); Traefik is Coolify's proxy on the shared box.
+      - traefik.enable=true
+      - traefik.http.routers.supportseal-web.rule=Host(`supportseal.app`) || Host(`www.supportseal.app`)
+      - traefik.http.routers.supportseal-web.entrypoints=web
+      - traefik.http.routers.supportseal-web.middlewares=supportseal-https
+      - traefik.http.middlewares.supportseal-https.redirectscheme.scheme=https
+      - traefik.http.routers.supportseal-app.rule=Host(`supportseal.app`) || Host(`www.supportseal.app`)
+      - traefik.http.routers.supportseal-app.entrypoints=websecure
+      - traefik.http.routers.supportseal-app.tls.certresolver=letsencrypt
+      - traefik.http.routers.supportseal-app.service=supportseal-app
+      - traefik.http.services.supportseal-app.loadbalancer.server.port=3000
     depends_on:
       migrate:
         condition: service_completed_successfully

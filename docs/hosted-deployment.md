@@ -34,21 +34,27 @@ investor-held and not pursued.
 
 The hosted tier deploys as a **Docker Compose resource** built from
 `docker-compose.hosted.yml` (one-shot `migrate` + `app`; no bundled
-Postgres — the Coolify `supportseal-db` resource provides it). The Cloud
-API cannot create applications from private Git repositories, so the
-resource is created once in the panel:
+Postgres — the Coolify `supportseal-db` resource provides it). The
+compose file bakes in the public hosted values (URL, name, `HOSTED_MODE`)
+and owns routing via Traefik labels (`supportseal.app` + `www`,
+Let's Encrypt) — Coolify Cloud's API cannot set service domains.
 
-1. Project **SupportSeal** → New Resource → **Docker Compose** → GitHub →
-   `pietervw/supportseal`, branch `main`, compose file
-   `docker-compose.hosted.yml`.
-2. Set the environment variables from the table below on the resource
-   (resource env; `${VAR}` in the compose is substituted from them, which
-   also covers the `NEXT_PUBLIC_*` build args).
-3. On the `app` service, set the domain `https://supportseal.app`
-   (Coolify's Traefik handles the Let's Encrypt certificate) and deploy.
+What the Cloud API **cannot** do: clone a private Git repository
+(application creation uses anonymous clones) or store environment
+variables. So the one-time manual steps are:
 
-Post-deploy, lifecycle (env updates, restarts, status) is manageable via
-the Cloud API (`/api/v1/services/...`). Attachments persist in the
+1. Create the compose resource in the panel (project **SupportSeal** →
+   New Resource → Docker Compose → GitHub `pietervw/supportseal` @
+   `main`, file `docker-compose.hosted.yml`), or make the repository
+   public and create it via the API (`/api/v1/applications/public` —
+   done once already; it deploys via `/api/v1/applications/{uuid}/start`).
+2. Add the three secret env vars on the resource's Environment tab
+   (resource env; `${VAR}` substitution covers the compose):
+   `DATABASE_URL` (from `supportseal-db`'s internal URL),
+   `BETTER_AUTH_SECRET`, `INBOUND_WEBHOOK_SECRET` (`openssl rand`).
+
+Post-deploy, lifecycle (restarts, status, deletes) works via the Cloud
+API (`/api/v1/applications/...`). Attachments persist in the
 `supportseal-uploads` volume. **Backups from day one**: enable the
 scheduled backup on `supportseal-db` (Coolify S3 backup or off-box cron
 `pg_dump`).
