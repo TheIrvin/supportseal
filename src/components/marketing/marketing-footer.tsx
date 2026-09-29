@@ -4,6 +4,7 @@ import { IconArrowUpRight } from "@tabler/icons-react";
 import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { siteConfig } from "@/config/site";
+import { publicLegalLinks } from "@/content/legal";
 import { brand } from "@/lib/brand";
 
 function ExternalFooterLink({ href, label }: { href: string; label: string }) {
@@ -32,12 +33,14 @@ function InternalFooterLink({ href, label }: { href: string; label: string }) {
 
 /**
  * Public marketing footer (docs/design/marketing-site.md, "Global frame").
- * Privacy, Terms and Changelog links appear only once those pages/releases
- * exist — no dead links (open questions M3/M4). The "Company" column is
- * omitted until a contact address is configured.
+ * Legal links appear only once the legal pages are operative (issue #14) and
+ * Changelog once a release exists — no dead links, and no drafts presented
+ * as policies (open questions M3/M4). The "Company" column is omitted until a
+ * contact address is configured.
  */
 export function MarketingFooter() {
   const year = new Date().getFullYear();
+  const legalLinks = publicLegalLinks();
   return (
     <footer className="border-t border-border bg-surface text-muted">
       <div className="mx-auto w-full max-w-[80rem] px-5 py-12 sm:px-8 lg:py-16">
@@ -82,6 +85,19 @@ export function MarketingFooter() {
               </li>
             </ul>
           </nav>
+
+          {legalLinks.length > 0 ? (
+            <nav aria-label="Legal">
+              <h2 className="text-[0.867rem] font-semibold tracking-[0.04em] text-heading">Legal</h2>
+              <ul className="mt-4 flex flex-col gap-3">
+                {legalLinks.map((link) => (
+                  <li key={link.href}>
+                    <InternalFooterLink href={link.href} label={link.label} />
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ) : null}
         </div>
 
         <div className="mt-12 flex items-center justify-between gap-4 border-t border-border pt-6">

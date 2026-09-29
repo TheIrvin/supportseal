@@ -116,9 +116,10 @@ Four columns on `lg`, two on `sm`, one on mobile. Background `bg-surface`,
    `LICENSE` on GitHub.
 2. Product: Features, Pricing, Changelog (when it exists).
 3. Open source: GitHub, Self-hosting guide, Licence.
-4. Company: Contact `[copy: footer.contact]`, Privacy, Terms. **Privacy and
-   Terms render only when the legal pages exist** (legal drafts are deferred;
-   open question M3). No dead links.
+4. Company: Contact `[copy: footer.contact]`, Privacy, Terms. **Legal links
+   render only when the legal pages are operative**: the drafts under
+   `/legal` (issue #14) stay unlinked, noindex and out of the sitemap until
+   `legalConfig.operative` is set (open question M3). No dead links.
 
 Bottom row: `© {year} {name}` and the theme toggle again (consistent place
 for users who scroll to the end).

@@ -35,7 +35,10 @@ export default function proxy(request: NextRequest) {
     if (pathname === "/") {
       return NextResponse.rewrite(new URL(SELF_HOSTED_ROOT_ENTRY, request.url));
     }
-    if (marketingPages.some((page) => page.href === pathname)) {
+    // The legal pages are the hosted service's policies; on an operator's
+    // own installation they would misstate who is responsible for the data.
+    const legalPath = pathname === "/legal" || pathname.startsWith("/legal/");
+    if (legalPath || marketingPages.some((page) => page.href === pathname)) {
       return NextResponse.redirect(new URL("/inbox", request.url));
     }
   }

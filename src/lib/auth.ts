@@ -1,6 +1,10 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 
+import {
+  AGENT_SESSION_EXPIRES_IN_SECONDS,
+  AGENT_SESSION_UPDATE_AGE_SECONDS,
+} from "@/config/session-lifetimes";
 import { brand } from "@/lib/brand";
 import { appConfig } from "@/lib/config";
 import { sendSystemEmail } from "@/lib/email/outbound";
@@ -91,8 +95,8 @@ function createAuth() {
       revokeSessionsOnPasswordReset: true,
     },
     session: {
-      expiresIn: 60 * 60 * 24 * 30,
-      updateAge: 60 * 60 * 24,
+      expiresIn: AGENT_SESSION_EXPIRES_IN_SECONDS,
+      updateAge: AGENT_SESSION_UPDATE_AGE_SECONDS,
     },
   });
 }

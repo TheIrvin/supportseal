@@ -1,3 +1,4 @@
+import { publicLegalLinks } from "@/content/legal";
 import { isHostedMode } from "@/lib/hosting";
 import { prisma } from "@/lib/prisma";
 import { RegisterForm } from "./register-form";
@@ -21,6 +22,7 @@ export default async function RegisterPage() {
         </div>
       );
     }
+    return <RegisterForm />;
   }
-  return <RegisterForm />;
+  return <RegisterForm legalLinks={publicLegalLinks()} />;
 }

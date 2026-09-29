@@ -49,7 +49,7 @@ questions".
 | --- | --- | --- |
 | M1 | Serve marketing only in hosted mode, or behind its own flag? | **Default:** hosted mode only; self-hosted `/` unchanged |
 | M2 | Hosted tier shape: `usage.ts` gives Pro unlimited Conversations and no agent limits, unlike volume-based paid tiers and Initial.md §21's "one agent on Free" | **Resolved (Pete, 2026-09-26, issue [#15](https://github.com/pietervw/supportseal/issues/15)):** Free $0 — 100 new Conversations/month, 1 agent; Pro $39/month — 1,000 new Conversations/month, unlimited agents and Products; never advertised as unlimited Conversations. Recorded in `src/config/pricing.ts` (single source), FR-USE-02, marketing copy and SF-12 |
-| M3 | Privacy/Terms pages before public hosted sign-up | None: launch-order decision |
+| M3 | Privacy/Terms pages before public hosted sign-up | None: launch-order decision. Drafts exist under `/legal` ([#14](https://github.com/pietervw/supportseal/issues/14)), marked draft and noindex, and are linked from nothing public until Pete sets `legalConfig.operative` in `src/config/legal.ts` after legal review; tests and the build refuse that while placeholders remain |
 | M4 | Changelog: GitHub Releases or a site page | **Default:** GitHub Releases, link hidden until the first release |
 | M5 | Run the real widget on the marketing site (dogfooding) | None |
 | M6 | Demo seed (Initial.md §53) is required for all screenshots | None: scheduling |
