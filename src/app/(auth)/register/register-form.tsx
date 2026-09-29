@@ -10,7 +10,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 
-export function RegisterForm() {
+type LegalLink = { slug: string; label: string; href: string };
+
+function LegalLinkTo({ links, slug }: { links: LegalLink[]; slug: string }) {
+  const link = links.find((candidate) => candidate.slug === slug);
+  if (!link) throw new Error(`Signup legal notice is missing the ${slug} document.`);
+  return (
+    <Link href={link.href} className="text-primary underline underline-offset-2">
+      {link.label}
+    </Link>
+  );
+}
+
+/** Rendered only when the hosted legal pages are operative (issue #14). */
+function SignupLegalNotice({ links }: { links: LegalLink[] }) {
+  if (links.length === 0) return null;
+  return (
+    <p className="text-xs text-muted" data-signup-legal-notice="">
+      By creating an account, you agree to the <LegalLinkTo links={links} slug="terms" /> and{" "}
+      <LegalLinkTo links={links} slug="acceptable-use" />, and acknowledge the{" "}
+      <LegalLinkTo links={links} slug="privacy" />.
+    </p>
+  );
+}
+
+export function RegisterForm({ legalLinks = [] }: { legalLinks?: LegalLink[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -65,6 +89,7 @@ export function RegisterForm() {
             <p className="mt-1 text-xs text-muted">At least 8 characters.</p>
           </div>
           {error ? <p className="text-sm text-danger">{error}</p> : null}
+          <SignupLegalNotice links={legalLinks} />
           <Button className="w-full" type="submit" disabled={pending}>
             {pending ? "Creating account…" : "Sign up"}
           </Button>

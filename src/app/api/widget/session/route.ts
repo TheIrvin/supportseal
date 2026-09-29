@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { VISITOR_COOKIE_MAX_AGE_SECONDS } from "@/config/session-lifetimes";
 import { prisma } from "@/lib/prisma";
 import { rateLimitWidgetIp } from "@/lib/widget-rate-limit";
 import { sessionOriginMatches } from "@/lib/widget";
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     secure: true,
     partitioned: true,
     path: "/",
-    maxAge: 60 * 60 * 24 * 365,
+    maxAge: VISITOR_COOKIE_MAX_AGE_SECONDS,
   });
   return response;
 }
