@@ -22,8 +22,10 @@ investor-held and not pursued.
 
 ## DNS (Cloudflare)
 
-1. `A` record (and `AAAA` if the box has IPv6): `supportseal.app` → the
-   fleet box's public IP (see the Coolify server entry).
+1. `A` record (and `AAAA` if the box has IPv6) for **both** `supportseal.app`
+   and `www.supportseal.app` → the fleet box's public IP (see the Coolify
+   server entry). The Traefik certificate covers apex + `www`; HTTP-01 fails
+   if either name does not resolve.
 2. Start **DNS-only** (grey cloud) so Coolify's Let's Encrypt/Traefik can
    issue the certificate via HTTP-01.
 3. Cloudflare proxy (orange cloud) is optional afterwards. If enabled:
@@ -50,8 +52,15 @@ variables. So the one-time manual steps are:
    done once already; it deploys via `/api/v1/applications/{uuid}/start`).
 2. Add the three secret env vars on the resource's Environment tab
    (resource env; `${VAR}` substitution covers the compose):
-   `DATABASE_URL` (from `supportseal-db`'s internal URL),
+   `DATABASE_URL` (copy **Internal URL** from the `supportseal-db` resource —
+   the hostname is the database resource UUID, not the display name),
    `BETTER_AUTH_SECRET`, `INBOUND_WEBHOOK_SECRET` (`openssl rand`).
+3. Enable **Configuration → Advanced → Connect To Predefined Network**
+   so the compose stack can reach the standalone `supportseal-db` container
+   on Coolify's shared `coolify` network (without this, `migrate` fails
+   with Prisma `P1001`), then **redeploy** — network membership applies only
+   when containers are recreated; toggling after a failed deploy does nothing
+   until the next deploy.
 
 Post-deploy, lifecycle (restarts, status, deletes) works via the Cloud
 API (`/api/v1/applications/...`). Attachments persist in the

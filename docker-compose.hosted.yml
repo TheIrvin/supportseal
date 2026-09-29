@@ -39,12 +39,18 @@ services:
       # Routing is owned by this compose (Coolify Cloud's API cannot set
       # service domains); Traefik is Coolify's proxy on the shared box.
       - traefik.enable=true
+      # Pin Traefik to the compose stack network (Coolify names it after
+      # COOLIFY_RESOURCE_UUID). Required once Connect To Predefined Network
+      # also attaches the container to `coolify` for Postgres.
+      - traefik.docker.network=${COOLIFY_RESOURCE_UUID}
       - traefik.http.routers.supportseal-web.rule=Host(`supportseal.app`) || Host(`www.supportseal.app`)
-      - traefik.http.routers.supportseal-web.entrypoints=web
+      - traefik.http.routers.supportseal-web.entrypoints=http
       - traefik.http.routers.supportseal-web.middlewares=supportseal-https
+      - traefik.http.routers.supportseal-web.service=supportseal-app
       - traefik.http.middlewares.supportseal-https.redirectscheme.scheme=https
       - traefik.http.routers.supportseal-app.rule=Host(`supportseal.app`) || Host(`www.supportseal.app`)
-      - traefik.http.routers.supportseal-app.entrypoints=websecure
+      - traefik.http.routers.supportseal-app.entrypoints=https
+      - traefik.http.routers.supportseal-app.tls=true
       - traefik.http.routers.supportseal-app.tls.certresolver=letsencrypt
       - traefik.http.routers.supportseal-app.service=supportseal-app
       - traefik.http.services.supportseal-app.loadbalancer.server.port=3000
