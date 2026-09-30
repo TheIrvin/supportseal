@@ -56,6 +56,19 @@ questions".
 | M7 | Commit the screenshot-capture script? | **Default:** not committed; procedure documented in the design doc |
 | M8 | Keep a "Not yet" section on `/features` | **Default:** keep |
 
+## Diagnostics (V2 design, 2026-09-29)
+
+Raised by [design/diagnostics.md](design/diagnostics.md) (V2, not V1).
+Details and the full list of defaults are in that doc's "Decisions and
+defaults" and "Open questions".
+
+| # | Question | **Default** (if any) |
+| --- | --- | --- |
+| Q1 | Notice or consent: is a customer-controlled switch plus a widget notice enough, or is a "wait for consent" mode and/or visitor opt-out needed (legal, GDPR/UK GDPR review)? | **Default:** notice line plus the developer pause hook (`diagnostics(false)` pauses and clears the buffer; `diagnostics(true)` resumes); wording from legal review |
+| Q2 | Retention period for diagnostic snapshots | **Default:** 30 days, fixed until configurable retention lands |
+| Q3 | Capture "warnings" via a narrow `console.warn`/`console.error` wrapper, or drop warnings from the slice? | **Default:** narrow wrapper; primitives as text, an `Error` as `name: message`, anything else as `[object]` |
+| Q4 | Add a scheduled purge job (new infrastructure) or accept hidden-until-purged expired rows? | **Default:** read-time expiry filter plus bounded purge on ingest; no new job |
+
 ## 1. V1 scope: marketing site, analytics, legal drafts, demo data
 
 Initial.md requires for V1/launch: the marketing site (§26, §62 "marketing
