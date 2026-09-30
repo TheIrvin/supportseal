@@ -229,8 +229,8 @@ resets it).
    match. Adding a banned read then requires deliberately changing the
    test, which a reviewer sees. (Snapshots cross to the panel by
    `postMessage` structured clone, and the client size check is an
-   estimate from string lengths (see [Size bounds](#size-bounds)), so the
-   collector needs neither `JSON.stringify` nor `.value`.)
+   escape-aware string-length estimate (see [Size bounds](#size-bounds)),
+   so the collector needs neither `JSON.stringify` nor `.value`.)
 3. **Redaction** in the browser before buffering and **again on the
    server** before storage, using the same rule set and fixture corpus.
 4. **Schema validation** on the server: unknown fields are dropped, types
@@ -277,7 +277,7 @@ Firebase JWTs, Axios error messages that embed URLs).
 | Buffer | last 50 distinct events per page load, oldest dropped first |
 | Deduplication | same kind + message + top stack frame (or method + URL + status) collapse into one event with a count and first/last seen |
 | Window | only events from the last 30 minutes before the message are attached |
-| Snapshot size | ≤ 32 KB serialized, measured by the server (authoritative), which rejects anything larger (`too_large`). The client can't serialize (see the ban gate), so it trims oldest events until a conservative estimate (summed string lengths plus 128 bytes per event) is ≤ 24 KB. With control characters stripped, that keeps real snapshots under the server cap |
+| Snapshot size | ≤ 32 KB serialized, measured by the server (authoritative). The client can't serialize (see the ban gate), so it trims oldest events until an escape-aware estimate is ≤ 24 KB: for each string, count every `"` or `\` as two characters (JSON escaping) and every other character as one, then add 128 bytes per event for keys and punctuation. The server, if a payload still exceeds 32 KB after re-redaction, trims oldest events to fit before storing; it only rejects (`too_large`) when even a single remaining event cannot fit |
 | Per message | at most one snapshot. After the first message of a page load, later snapshots carry only events not already sent, and are skipped when there are none |
 | Per Conversation | at most 100 snapshots; further ones are rejected (`limit`) |
 | Rate | covered by the existing widget IP rate limit and per-message rule; no separate diagnostics endpoint exists to abuse |
@@ -447,7 +447,8 @@ Stable IDs for the build thread. Each is testable.
   every rule has passing positive and negative fixtures.
 - **DX-07 Server authority.** A hand-crafted payload with unredacted
   secrets, extra fields, oversized strings or > 32 KB is re-redacted,
-  stripped or rejected server-side; the message is still stored.
+  trimmed to fit, or rejected (`too_large` only when a single event cannot
+  fit) server-side; the message is still stored.
 - **DX-08 No send without a message.** Loading and using the page with
   errors, without sending a message, produces no diagnostics network
   request and no Conversation.
