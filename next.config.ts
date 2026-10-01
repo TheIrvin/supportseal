@@ -29,6 +29,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/widget.js", destination: "/api/widget/js" },
       { source: "/widget", destination: "/api/widget/panel" },
+      { source: "/widget-diagnostics.js", destination: "/api/widget/diagnostics-js" },
     ];
   },
   // LAN dev access (same convention as vauxey-theme): allow this machine's LAN

@@ -12,6 +12,7 @@ export type ProductWithDomains = {
   inboundEmail: string | null;
   inboundEmailVerified: Date | null;
   archivedAt: Date | null;
+  diagnosticsEnabledAt: Date | null;
   createdAt: Date;
   domains: { id: string; domain: string }[];
 };
@@ -65,6 +66,7 @@ function toProductWithDomains(product: {
   inboundEmail: string | null;
   inboundEmailVerified: Date | null;
   archivedAt: Date | null;
+  diagnosticsEnabledAt: Date | null;
   createdAt: Date;
   domains: { id: string; domain: string }[];
 }): ProductWithDomains {
@@ -256,4 +258,44 @@ export async function archiveProduct(input: {
   });
   if (updated.count === 0) return { ok: false, error: "Product not found." };
   return { ok: true };
+}
+
+/**
+ * Browser diagnostics switch (docs/design/diagnostics.md "Enabling it"):
+ * Admin-only per Product, off by default. The timestamp records when
+ * disclosure duties began; disabling keeps existing snapshots until they
+ * expire.
+ */
+export async function setProductDiagnostics(input: {
+  ctx: WorkspaceContext;
+  productId: string;
+  enabled: boolean;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    assertAdmin(input.ctx);
+  } catch (error) {
+    return { ok: false, error: (error as Error).message };
+  }
+
+  const updated = await prisma.product.updateMany({
+    where: { id: input.productId, workspaceId: input.ctx.workspace.id },
+    data: input.enabled
+      ? { diagnosticsEnabledAt: new Date(), diagnosticsEnabledById: input.ctx.user.id }
+      : { diagnosticsEnabledAt: null, diagnosticsEnabledById: null },
+  });
+  if (updated.count === 0) return { ok: false, error: "Product not found." };
+  return { ok: true };
+}
+
+/** Who enabled diagnostics and when, for "Enabled by {Admin} on {date}". */
+export async function getDiagnosticsEnabler(input: {
+  workspaceId: string;
+  productId: string;
+}): Promise<{ name: string; at: Date } | null> {
+  const product = await prisma.product.findFirst({
+    where: { id: input.productId, workspaceId: input.workspaceId },
+    select: { diagnosticsEnabledAt: true, diagnosticsEnabledBy: { select: { name: true } } },
+  });
+  if (!product?.diagnosticsEnabledAt) return null;
+  return { name: product.diagnosticsEnabledBy?.name ?? "an admin", at: product.diagnosticsEnabledAt };
 }

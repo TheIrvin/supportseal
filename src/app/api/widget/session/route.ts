@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       color: product.primaryColor,
       session: { email: existing.email, name: existing.name },
       availability,
+      ...(product.diagnosticsEnabledAt ? { diagnostics: true } : {}),
       thread,
     });
   }
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
     token,
     session: { email: null, name: null },
     availability,
+    ...(product.diagnosticsEnabledAt ? { diagnostics: true } : {}),
     thread: { conversationId: null, messages: [], status: "OPEN" },
   });
   response.cookies.set(visitorCookieName(product.id), token, {
@@ -103,6 +105,7 @@ export async function GET(request: NextRequest) {
     widgetPublicKey: productRow.widgetPublicKey,
     workspaceId: productRow.workspaceId,
     domains: productRow.domains.map((d) => d.domain),
+    diagnosticsEnabledAt: productRow.diagnosticsEnabledAt,
   };
 
   const token = visitorTokenFromRequest(request, product.id);
@@ -116,6 +119,7 @@ export async function GET(request: NextRequest) {
     color: productRow.primaryColor,
     session: { email: session.email, name: session.name },
     availability,
+    ...(product.diagnosticsEnabledAt ? { diagnostics: true } : {}),
     thread,
   });
 }
