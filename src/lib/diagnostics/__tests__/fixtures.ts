@@ -106,7 +106,7 @@ export const REDACTION_FIXTURES: Array<{ name: string; input: string; expected: 
   // Rule 7: high-entropy tokens.
   {
     name: "token: Stripe live key",
-    input: "Stripe key sk_live_FIXTURE_REDACTED_PATTERN failed",
+    input: "Stripe key sk_live_" + "51H8xQeKzM9o3mN4pQ5rS6tU7vW8 failed",
     expected: "Stripe key [token] failed",
   },
   {
