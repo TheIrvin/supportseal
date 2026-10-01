@@ -34,14 +34,18 @@ const SENSITIVE_KEY_RE =
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const EMAIL_TEST_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/u;
 const JWT_RE = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
-// "Authorization: Basic dXNlcjpwYXNz" — scheme plus credentials, both dropped.
-// Runs before the scheme rule so its own output is never re-redacted.
-const AUTH_HEADER_RE = /\bAuthorization\s*:\s*\S+(?:\s+[A-Za-z0-9._~+/=-]+)?/gi;
-const AUTH_SCHEME_RE = /\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi;
+// "Authorization: Basic dXNlcjpwYXNz" (scheme plus credentials, both
+// dropped) and standalone "Bearer/Basic <token>" in one alternation: the
+// header form is listed first so its own output is never re-redacted.
+const AUTH_RE =
+  /(\bAuthorization\s*:\s*\S+(?:\s+[A-Za-z0-9._~+/=-]+)?|\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+)/gi;
 const CARD_CANDIDATE_RE = /(?:\d[ -]?){12,18}\d/g;
 const HEX_TOKEN_RE = /(?<![0-9A-Za-z_-])[0-9A-Fa-f]{32,}(?![0-9A-Za-z_-])/g;
 const HEX_TOKEN_TEST_RE = /^[0-9A-Fa-f]{32,}$/u;
 const MIXED_TOKEN_RE = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{24,}(?![A-Za-z0-9_-])/g;
+// AWS access key IDs are 20 uppercase-alnum characters — below the
+// high-entropy threshold, so they need their own shape.
+const AWS_KEY_RE = /\bAKIA[0-9A-Z]{16}\b/g;
 const UUID_RE =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u;
 // key + separator only; the value is measured separately so a preceding
@@ -130,8 +134,7 @@ function redactKeyValuePairs(text: string): string {
 export function redactString(input: string): string {
   let text = input
     .replace(URL_RE, reduceUrl)
-    .replace(AUTH_HEADER_RE, "Bearer [redacted]")
-    .replace(AUTH_SCHEME_RE, "Bearer [redacted]")
+    .replace(AUTH_RE, "Bearer [redacted]")
     .replace(JWT_RE, "[token]");
 
   text = text.replace(JSON_KV_RE, (whole, key: string, sep: string) =>
@@ -148,6 +151,7 @@ export function redactString(input: string): string {
         : candidate;
     })
     .replace(HEX_TOKEN_RE, "[token]")
+    .replace(AWS_KEY_RE, "[token]")
     .replace(MIXED_TOKEN_RE, (candidate) =>
       /[A-Za-z]/u.test(candidate) && /\d/u.test(candidate) ? "[token]" : candidate,
     )

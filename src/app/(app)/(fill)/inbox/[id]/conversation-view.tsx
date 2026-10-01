@@ -45,11 +45,6 @@ type Message = {
   createdAt: string;
   authorName: string | null;
   attachments?: Array<{ id: string; filename: string; contentType: string; size: number }>;
-  diagnostics?: {
-    errorCount: number;
-    warningCount: number;
-    networkFailureCount: number;
-  } | null;
 };
 
 export type ConversationViewData = {
@@ -305,9 +300,7 @@ export function ConversationView({
                 <MessageBubble
                   message={message}
                   snapshot={
-                    message.diagnostics
-                      ? (diagnostics.snapshots.find((s) => s.messageId === message.id) ?? null)
-                      : null
+                    diagnostics.snapshots.find((s) => s.messageId === message.id) ?? null
                   }
                   onOpenSnapshot={setOpenSnapshot}
                 />
@@ -502,7 +495,6 @@ export function ConversationView({
 
       <SnapshotSheet
         snapshot={openSnapshot}
-        open={openSnapshot !== null}
         onOpenChange={(open) => {
           if (!open) setOpenSnapshot(null);
         }}

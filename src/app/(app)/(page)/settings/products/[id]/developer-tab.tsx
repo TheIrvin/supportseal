@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { siteConfig } from "@/config/site";
 import { setDiagnosticsAction, deleteDiagnosticsAction } from "../actions";
+import { toast } from "sonner";
 
 type DeveloperProduct = {
   id: string;
@@ -69,21 +70,25 @@ export function DeveloperTab({ product }: { product: DeveloperProduct }) {
     }
     // Turning off saves immediately, no dialog (design "Enabling it").
     startTransition(async () => {
-      await setDiagnosticsAction(product.id, false);
+      const result = await setDiagnosticsAction(product.id, false);
+      if (result.error) toast.error(result.error);
     });
   }
 
   function enable() {
     setConfirmOpen(false);
     startTransition(async () => {
-      await setDiagnosticsAction(product.id, true);
+      const result = await setDiagnosticsAction(product.id, true);
+      if (result.error) toast.error(result.error);
     });
   }
 
   function deleteAll() {
     setDeleteOpen(false);
     startTransition(async () => {
-      await deleteDiagnosticsAction(product.id);
+      const result = await deleteDiagnosticsAction(product.id);
+      if (result.error) toast.error(result.error);
+      else toast("Diagnostics deleted");
     });
   }
 

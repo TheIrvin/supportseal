@@ -210,7 +210,7 @@ export function normalizeSnapshot(
   const pageUrl = boundedString(env.pageUrl, REDACTION_LIMITS.url);
   const viewportWidth = boundedInt(env.viewportWidth, 0, 100_000);
   const viewportHeight = boundedInt(env.viewportHeight, 0, 100_000);
-  const devicePixelRatio = boundedFloat(env.devicePixelRatio, 0.5, 20);
+  const devicePixelRatio = boundedFloat(env.devicePixelRatio, 0.1, 20);
   if (
     pageUrl === null ||
     viewportWidth === null ||
@@ -274,12 +274,4 @@ export function normalizeSnapshot(
     droppedCount: Math.min(dropped, DIAGNOSTICS_LIMITS.maxDroppedCount),
   };
   return { ok: true, snapshot };
-}
-
-/** Plain-text rendering for Copy as text and logs (agent view). */
-export function snapshotEventLabel(event: DiagEvent): string {
-  if (event.kind === "network") {
-    return `${event.method} ${event.url} → ${event.status}`;
-  }
-  return event.message ?? "";
 }

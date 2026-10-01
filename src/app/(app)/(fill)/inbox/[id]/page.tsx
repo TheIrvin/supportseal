@@ -29,7 +29,6 @@ export default async function ConversationPage({
     listSnapshotsForConversation(ctx.workspace.id, conversation.id),
     hasExpiredSnapshotsForConversation(ctx.workspace.id, conversation.id),
   ]);
-  const snapshotsByMessage = new Map(snapshots.map((snapshot) => [snapshot.messageId, snapshot]));
 
   return (
     <ConversationView
@@ -63,16 +62,6 @@ export default async function ConversationPage({
             contentType: a.contentType,
             size: a.size,
           })),
-          diagnostics: snapshotsByMessage.has(message.id)
-            ? (() => {
-                const snapshot = snapshotsByMessage.get(message.id)!;
-                return {
-                  errorCount: snapshot.errorCount,
-                  warningCount: snapshot.warningCount,
-                  networkFailureCount: snapshot.networkFailureCount,
-                };
-              })()
-            : null,
         })),
       }}
       availableTags={tags}

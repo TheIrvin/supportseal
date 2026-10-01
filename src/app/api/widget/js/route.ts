@@ -206,6 +206,11 @@ const LOADER_JS = String.raw`
         frame.contentWindow.postMessage({ type: 'ss:diag-snapshot', snapshot: snapshot }, serviceOrigin);
       }
     }
+    // The message send failed: give the snapshot's events back to the buffer
+    // so the visitor's retry carries them.
+    if (event.data.type === 'ss:diag-restore') {
+      try { if (window.__ssDiag) window.__ssDiag.restore(); } catch (e) { /* never surfaced */ }
+    }
   });
 
   window.addEventListener('resize', positionPanel);

@@ -125,6 +125,11 @@ export const REDACTION_FIXTURES: Array<{ name: string; input: string; expected: 
     expected: "user [token] not found",
   },
   {
+    name: "token: bare AWS access key ID",
+    input: "credentials AKIAIOSFODNN7EXAMPLE rejected",
+    expected: "credentials [token] rejected",
+  },
+  {
     name: "token: plain words unchanged",
     input: "the supportseal_widget_launcher is fine",
     expected: "the supportseal_widget_launcher is fine",

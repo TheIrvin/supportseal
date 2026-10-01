@@ -62,8 +62,15 @@ export async function attachSnapshotInTransaction(
       expiresAt: retentionDate(now),
     },
   });
-  await purgeExpiredForProductInTransaction(tx, input.productId, now);
   return { attached: true };
+}
+
+/**
+ * Bounded opportunistic purge (retention): deliberately OUTSIDE the message
+ * transaction — a purge hiccup must never roll back a visitor message.
+ */
+export async function purgeExpiredForProduct(productId: string, now = new Date()): Promise<number> {
+  return prisma.$transaction(async (tx) => purgeExpiredForProductInTransaction(tx, productId, now));
 }
 
 /** Delete up to DIAGNOSTICS_PURGE_BATCH expired snapshots for a Product. */

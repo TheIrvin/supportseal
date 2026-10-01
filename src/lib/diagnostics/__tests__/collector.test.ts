@@ -19,6 +19,7 @@ type CollectorExports = {
     startPaused?: boolean;
   }) => {
     snapshot: () => Record<string, unknown> | null;
+    restore: () => void;
     pause: () => void;
     resume: () => void;
   };
@@ -122,10 +123,38 @@ describe("collector snapshot (DX-11)", () => {
     expect(first.events.map((e) => e.message)).toEqual(["boom"]);
     // Everything sent: no new events → skipped entirely.
     expect(driven.snapshot()).toBeNull();
+
+    // A repeat after the snapshot is new information for the next message,
+    // not a silent update of the already-sent event.
+    onError({ target: window, error: new Error("boom") });
+    const second = driven.snapshot() as { events: Array<{ message: string; count: number }> };
+    expect(second.events.map((e) => e.message)).toEqual(["boom"]);
+    expect(second.events[0].count).toBe(1);
   });
 
-  it("pause clears the buffer; resume collects again (DX-15 shape)", () => {
+  it("restore() gives a sent-but-unsent-failed snapshot back for the retry", () => {
     const listeners: Array<[string, (event: unknown) => void]> = [];
+    const window = {
+      ...fakeWindow(),
+      addEventListener: (type: string, handler: (event: unknown) => void) => {
+        listeners.push([type, handler]);
+      },
+    };
+    const api = collector.createCollector({ window, serviceOrigin: "https://support.test" });
+    const onError = listeners.find(([type]) => type === "error")?.[1];
+    if (!onError) throw new Error("error listener not installed");
+    onError({ target: window, error: new Error("boom") });
+
+    const first = api.snapshot() as { events: unknown[] };
+    expect(first.events).toHaveLength(1);
+    expect(api.snapshot()).toBeNull(); // all sent
+    // The message send failed — the panel asks the loader to restore.
+    api.restore();
+    const retry = api.snapshot() as { events: Array<{ message: string }> };
+    expect(retry.events.map((e) => e.message)).toEqual(["boom"]);
+  });
+
+  it("pause clears the buffer; resume collects again (DX-15 shape)", () => {    const listeners: Array<[string, (event: unknown) => void]> = [];
     const window = {
       ...fakeWindow(),
       addEventListener: (type: string, handler: (event: unknown) => void) => {

@@ -111,8 +111,8 @@ export function snapshotToText(snapshot: DiagSnapshotView): string {
       const name = event.name ? `${event.name}: ` : "";
       lines.push(`[${KIND_META[event.kind].label.toLowerCase()}] ${name}${event.message ?? ""}${repeat}`);
       if (event.frames && event.frames.length > 0) {
-        for (const frame of event.frames) {
-          lines.push(`    at ${frame.fn || "<anonymous>"} (${frame.file}:${frame.line}:${frame.col})`);
+        for (const line of stackText(event.frames).split("\n")) {
+          lines.push(`    ${line}`);
         }
       }
     }
@@ -171,17 +171,15 @@ function EnvironmentList({ snapshot }: { snapshot: DiagSnapshotView }) {
 
 export function SnapshotSheet({
   snapshot,
-  open,
   onOpenChange,
 }: {
   snapshot: DiagSnapshotView | null;
-  open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   if (!snapshot) return null;
   const events = [...snapshot.events].sort((a, b) => b.lastSeen - a.lastSeen);
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[28rem] gap-0 overflow-y-auto p-4">
         <SheetTitle>Diagnostics</SheetTitle>
         <SheetDescription className="text-xs text-muted">
@@ -190,10 +188,8 @@ export function SnapshotSheet({
         <div className="mt-3">
           <EnvironmentList snapshot={snapshot} />
           <p className="mt-3 text-xs text-muted">
-            {snapshot.errorCount} {snapshot.errorCount === 1 ? "error" : "errors"} ·{" "}
-            {snapshot.warningCount} {snapshot.warningCount === 1 ? "warning" : "warnings"} ·{" "}
-            {snapshot.networkFailureCount}{" "}
-            {snapshot.networkFailureCount === 1 ? "failed request" : "failed requests"}
+            {plural(snapshot.errorCount, "error")} · {plural(snapshot.warningCount, "warning")} ·{" "}
+            {plural(snapshot.networkFailureCount, "failed request")}
             {snapshot.droppedCount > 0
               ? ` · ${snapshot.droppedCount} more ${snapshot.droppedCount === 1 ? "event" : "events"} not included`
               : ""}
@@ -217,7 +213,8 @@ export function SnapshotSheet({
 
 function SnapshotEvent({ event, messageAt }: { event: DiagEventView; messageAt: string }) {
   const [stackOpen, setStackOpen] = useState(false);
-  const hasStack = event.frames !== undefined && event.frames.length > 0;
+  const frames = event.frames;
+  const hasStack = frames !== undefined && frames.length > 0;
   return (
     <li className="rounded-lg border border-border p-3">
       <div className="flex items-center gap-2">
@@ -250,7 +247,7 @@ function SnapshotEvent({ event, messageAt }: { event: DiagEventView; messageAt: 
           </button>
           {stackOpen ? (
             <pre className="mt-1.5 max-h-64 overflow-auto rounded-md border border-border bg-surface-2 p-2 font-mono text-xs text-body" tabIndex={0}>
-              {stackText(event.frames!)}
+              {stackText(frames)}
             </pre>
           ) : null}
         </>
@@ -272,7 +269,10 @@ export function DiagnosticsSection({
   hasExpired: boolean;
   onOpen: (snapshot: DiagSnapshotView) => void;
 }) {
-  const [latest, ...earlier] = snapshots;
+  // Snapshots arrive oldest-first: the latest is the last, earlier ones are
+  // listed newest-first below it.
+  const latest = snapshots[snapshots.length - 1];
+  const earlier = snapshots.slice(0, -1).reverse();
   return (
     <section>
       <h3 className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted">

@@ -277,6 +277,17 @@ export async function setProductDiagnostics(input: {
     return { ok: false, error: (error as Error).message };
   }
 
+  if (input.enabled) {
+    const product = await prisma.product.findFirst({
+      where: { id: input.productId, workspaceId: input.ctx.workspace.id },
+      select: { archivedAt: true },
+    });
+    if (!product) return { ok: false, error: "Product not found." };
+    if (product.archivedAt) {
+      return { ok: false, error: "This Product is archived; unarchive it first." };
+    }
+  }
+
   const updated = await prisma.product.updateMany({
     where: { id: input.productId, workspaceId: input.ctx.workspace.id },
     data: input.enabled

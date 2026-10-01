@@ -1,6 +1,6 @@
 import { notifyConversationEvent } from "@/lib/events";
 import { linkAttachmentToMessage } from "@/lib/attachments";
-import { attachSnapshotInTransaction } from "@/lib/diagnostics/store";
+import { attachSnapshotInTransaction, purgeExpiredForProduct } from "@/lib/diagnostics/store";
 import type { NormalizedSnapshot } from "@/lib/diagnostics/snapshot";
 import { prisma } from "@/lib/prisma";
 import { notifyAllowanceInBackground } from "@/lib/usage-notifications";
@@ -132,11 +132,12 @@ export async function addCustomerMessage(input: {
         body,
       },
     });
-    if (input.diagnostics) {
+    const snapshot = input.diagnostics;
+    if (snapshot) {
       // Same transaction as the Message it belongs to; the per-Conversation
       // cap can still reject (limit) without failing the message.
       const attach = await attachSnapshotInTransaction(tx, {
-        snapshot: input.diagnostics!,
+        snapshot,
         messageId: message.id,
         conversationId: conversation.id,
         productId: conversation.productId,
@@ -169,6 +170,17 @@ export async function addCustomerMessage(input: {
     workspaceId: conversation.workspaceId,
     kind: "message",
   });
+  if (diagnostics?.status === "attached") {
+    // Bounded purge, outside the message transaction (see store.ts): a
+    // purge failure must never roll back the visitor's message, but it is
+    // surfaced, not swallowed.
+    await purgeExpiredForProduct(conversation.productId).catch((error: unknown) => {
+      console.warn(
+        `[diagnostics] purge failed product=${conversation.productId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    });
+  }
   return { ok: true, ...(diagnostics ? { diagnostics } : {}) };
 }
 

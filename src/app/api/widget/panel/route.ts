@@ -306,6 +306,13 @@ const PANEL_HTML = `<!doctype html>
     });
   }
 
+  // When the message itself fails to send, hand the snapshot's events back
+  // so the visitor's retry carries them (never on server-side rejections —
+  // the message was stored there).
+  function restoreDiagnostics() {
+    if (config && config.diagnostics) parent.postMessage({ type: 'ss:diag-restore' }, '*');
+  }
+
   // One muted disclosure line above the composer and on the away form while
   // the Product has diagnostics enabled. Placeholder copy pending legal.
   function renderDiagNotice() {
@@ -347,7 +354,10 @@ const PANEL_HTML = `<!doctype html>
       awayList.id = 'awayDiagList';
       if (awayToggle) awayToggle.addEventListener('click', function () {
         var openNow = awayList.classList.toggle('open');
-        if (awayToggle) awayToggle.setAttribute('aria-expanded', openNow ? 'true' : 'false');
+        if (awayToggle) {
+          awayToggle.setAttribute('aria-expanded', openNow ? 'true' : 'false');
+          awayToggle.textContent = openNow ? 'Hide details' : "What's collected";
+        }
       });
       away.insertBefore(awayList, away.firstChild);
       away.insertBefore(awayNotice, away.firstChild);
@@ -589,6 +599,7 @@ const PANEL_HTML = `<!doctype html>
           if (!streamActive && !previewMode) startStream();
         } else {
           input.value = body;
+          restoreDiagnostics();
           if (result.data.error === 'rate_limited') {
             var hint = document.createElement('p');
             hint.className = 'sysline';
@@ -603,6 +614,7 @@ const PANEL_HTML = `<!doctype html>
       .catch(function () {
         sendBtn.disabled = false;
         input.value = body;
+        restoreDiagnostics();
         document.getElementById('banner').style.display = 'block';
       });
   }
@@ -643,6 +655,7 @@ const PANEL_HTML = `<!doctype html>
       }).then(function (r) { return r.json(); }).then(function (data) {
         document.getElementById('awaySend').disabled = false;
         if (data.thread) { state.messages = data.thread.messages || []; render(); }
+        else restoreDiagnostics();
         if (!streamActive && !previewMode) startStream();
       });
     });
