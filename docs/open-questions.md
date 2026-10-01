@@ -69,6 +69,20 @@ defaults" and "Open questions".
 | Q3 | Capture "warnings" via a narrow `console.warn`/`console.error` wrapper, or drop warnings from the slice? | **Default:** narrow wrapper; primitives as text, an `Error` as `name: message`, anything else as `[object]` |
 | Q4 | Add a scheduled purge job (new infrastructure) or accept hidden-until-purged expired rows? | **Default:** read-time expiry filter plus bounded purge on ingest; no new job |
 
+## Product branding (V2 design, 2026-10-01)
+
+Raised by [design/branding.md](design/branding.md#open-questions). This is a
+design for a later build, not a change to V1 or a record of Pete's approval.
+
+| # | Question | Default or unresolved boundary |
+| --- | --- | --- |
+| BQ1 | Logo formats, budgets and no-logo fallback | **Default:** static PNG/JPEG/WebP, 2 MiB input, bounded dimensions, sanitised WebP ≤100 KiB; contained square mark with Product initial/colour fallback |
+| BQ2 | Hosted/self-hosted storage and public vs signed delivery | **Default:** existing local persistent storage and public app route, five-minute cache; CDN/provider unselected, private delivery requires revised design |
+| BQ3 | Launcher corners | **Default:** bottom-right initially, bottom-left optional; no top corners/free offsets |
+| BQ4 | Greeting length, placement and i18n | **Default:** one plain-text value, 240 Unicode code points / three lines / 1,024 UTF-8 bytes, shown before messages in Live/Away; no translation; blank restores V1 behaviour |
+| BQ5 | Image decoder dependency and deployment support | **Unresolved:** later build must propose a maintained decoder and obtain the normal dependency checkpoint before adding it |
+| BQ6 | Crash recovery and failed asset deletion | **Default:** immediate compensating cleanup and observable failures; **unresolved:** concrete recovery procedure/retry ownership before shipping, with explicit approval if new infrastructure is needed |
+
 ## 1. V1 scope: marketing site, analytics, legal drafts, demo data
 
 Initial.md requires for V1/launch: the marketing site (§26, §62 "marketing
