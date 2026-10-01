@@ -99,6 +99,22 @@ resolved decisions or additions to V1. None blocks the scoped design.
 | AP-Q5 | Allow Agents to reassign anyone's work/change priority? | Yes; same triage rights as Admins |
 | AP-Q6 | Include bulk assignment/priority? | Defer; header controls only in the first slice |
 | AP-Q7 | Default to Priority first sorting? | No; retain Latest activity, offer Priority first |dab2f79 (docs: design V2 conversation assignment and priority)
+||||||| parent of 7370a49 (docs: design V2 accessibility requirements)
+||||||| parent of c9226d3 (docs: design V2 accessibility requirements)
+## Accessibility (V2 design, 2026-10-01)
+
+Raised by [design/accessibility.md](design/accessibility.md). Its `AX-*`
+criteria define the later build; **Defaults** are working choices, not
+recorded approvals or a claim of conformance. The build can proceed with
+WCAG 2.2 AA as its target, standard Tab navigation, opt-in inbox shortcuts
+and the documented manual test matrix. Agent avatars, presence and typing
+indicators remain outside this slice.
+
+| # | Question | Working position |
+| --- | --- | --- |
+| AQ1 | Require an independent audit or published conformance report before a public AA claim? | Undecided. No external audit commissioned or public claim authorised; internal implementation and verification can proceed. |
+| AQ2 | Additional customer-required assistive technology/browser/email-client coverage? | **Default:** the design's NVDA/Firefox, VoiceOver/Safari, TalkBack/Chrome and email-client matrix; record gaps, do not promise untested contractual coverage. |
+| AQ3 | Publish an accessibility statement and dedicated feedback contact? | **Default:** existing support/contact routes; Pete decides ownership/contact and any public commitment. No invented address or SLA. |c9226d3 (docs: design V2 accessibility requirements)7370a49 (docs: design V2 accessibility requirements)
 
 ## 1. V1 scope: marketing site, analytics, legal drafts, demo data
 
