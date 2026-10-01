@@ -115,6 +115,22 @@ indicators remain outside this slice.
 | AQ1 | Require an independent audit or published conformance report before a public AA claim? | Undecided. No external audit commissioned or public claim authorised; internal implementation and verification can proceed. |
 | AQ2 | Additional customer-required assistive technology/browser/email-client coverage? | **Default:** the design's NVDA/Firefox, VoiceOver/Safari, TalkBack/Chrome and email-client matrix; record gaps, do not promise untested contractual coverage. |
 | AQ3 | Publish an accessibility statement and dedicated feedback contact? | **Default:** existing support/contact routes; Pete decides ownership/contact and any public commitment. No invented address or SLA. |c9226d3 (docs: design V2 accessibility requirements)7370a49 (docs: design V2 accessibility requirements)
+||||||| parent of 86bfbb0 (docs: design V2 product analytics)
+||||||| parent of abcc996 (docs: design V2 product analytics)
+||||||| parent of 6b296c9 (docs: design V2 product analytics)
+## Product analytics (V2 design, 2026-10-01)
+
+Raised by [design/analytics.md](design/analytics.md), the PRD's later product
+analytics slice, separate from hosted marketing Umami. Defaults are working
+choices, not Pete's answers; full definitions and acceptance criteria live in
+the design. No V1 usage or billing behaviour changes.
+
+| # | Question | **Default** (if any) |
+| --- | --- | --- |
+| A1 | Staff activity visibility and disclosure | **Default:** Admins see team activity; Agents see their own activity plus operational Workspace/Product summaries. Pete owns the policy and release disclosure review. |
+| A2 | Reporting horizon | **Default:** 90 UTC calendar dates, with a 30-day initial view, in both hosting modes; annual history needs further retention/performance design. |
+| A3 | Guaranteed physical purge of expired analytics data | **Default:** read-time expiry plus bounded opportunistic cleanup; inactive installations may retain hidden rows. A guaranteed deadline requires an infrastructure decision. |
+| A4 | Hosted billing audit after source deletion | No new policy decided. Analytics preserves existing usage behaviour and reconciles against current source records; any durable post-deletion billing ledger is separate usage work. |6b296c9 (docs: design V2 product analytics)abcc996 (docs: design V2 product analytics)86bfbb0 (docs: design V2 product analytics)
 
 ## 1. V1 scope: marketing site, analytics, legal drafts, demo data
 
