@@ -104,6 +104,11 @@ const PANEL_HTML = `<!doctype html>
   #send { border: none; border-radius: 10px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   #send svg { width: 18px; height: 18px; }
   .banner { padding: 8px 16px; font-size: 12px; background: #EFF4F2; color: #43544D; display: none; }
+  .diagnotice { padding: 6px 16px; font-size: 12px; color: #5F6F69; background: #F6F9F8; border-bottom: 1px solid #DCE5E1; }
+  .diagnotice button, .diaglist button { background: none; border: none; color: #5F6F69; text-decoration: underline; cursor: pointer; font-size: 12px; padding: 0; }
+  .diaglist { display: none; padding: 6px 16px 8px; font-size: 11px; line-height: 1.5; color: #5F6F69; background: #F6F9F8; border-bottom: 1px solid #DCE5E1; }
+  .diaglist.open { display: block; }
+  #away .diagnotice { border: none; background: none; padding: 0; }
 </style>
 </head>
 <body>
@@ -274,6 +279,91 @@ const PANEL_HTML = `<!doctype html>
     try { return new URL(hostOrigin).origin + hostPath; } catch (e) { return hostOrigin + hostPath; }
   }
 
+  // Diagnostics transport (docs/design/diagnostics.md): when the visitor
+  // sends a message, ask the loader for a snapshot and wait at most 250 ms.
+  // No reply or an empty buffer sends the message without diagnostics —
+  // diagnostics never block a message beyond that wait.
+  function requestDiagnostics() {
+    if (!config || !config.diagnostics) return Promise.resolve(null);
+    return new Promise(function (resolve) {
+      var settled = false;
+      function onMessage(event) {
+        if (event.source !== window.parent) return;
+        var data = event.data || {};
+        if (data.type !== 'ss:diag-snapshot') return;
+        finish(data.snapshot || null);
+      }
+      function finish(value) {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener('message', onMessage);
+        clearTimeout(timer);
+        resolve(value);
+      }
+      var timer = setTimeout(function () { finish(null); }, 250);
+      window.addEventListener('message', onMessage);
+      parent.postMessage({ type: 'ss:diag-request' }, '*');
+    });
+  }
+
+  // When the message itself fails to send, hand the snapshot's events back
+  // so the visitor's retry carries them (never on server-side rejections —
+  // the message was stored there).
+  function restoreDiagnostics() {
+    if (config && config.diagnostics) parent.postMessage({ type: 'ss:diag-restore' }, '*');
+  }
+
+  // One muted disclosure line above the composer and on the away form while
+  // the Product has diagnostics enabled. Placeholder copy pending legal.
+  function renderDiagNotice() {
+    if (document.getElementById('diagNotice')) return;
+    var notice = document.createElement('div');
+    notice.className = 'diagnotice';
+    notice.id = 'diagNotice';
+    var text = document.createElement('span');
+    text.textContent = 'Technical details from this page are shared with ' + (config ? config.name : 'this') + ' support. ';
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.textContent = "What's collected";
+    notice.appendChild(text);
+    notice.appendChild(toggle);
+    var list = document.createElement('div');
+    list.className = 'diaglist';
+    list.id = 'diagList';
+    var collected = document.createElement('p');
+    collected.textContent = 'Collected when you send a message: JavaScript errors, warnings and failed network requests, this page\\u2019s address, and your browser and screen size.';
+    var never = document.createElement('p');
+    never.textContent = 'Never collected: passwords, payment details, cookies, form contents, anything you type, or anything from other sites.';
+    list.appendChild(collected);
+    list.appendChild(never);
+    toggle.addEventListener('click', function () {
+      var openNow = list.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', openNow ? 'true' : 'false');
+      toggle.textContent = openNow ? 'Hide details' : "What's collected";
+    });
+    var composer = document.getElementById('composer');
+    if (composer && composer.parentNode) composer.parentNode.insertBefore(notice, composer);
+    if (composer && composer.parentNode) composer.parentNode.insertBefore(list, composer);
+    var away = document.getElementById('away');
+    if (away) {
+      var awayNotice = notice.cloneNode(true);
+      awayNotice.id = 'awayDiagNotice';
+      var awayToggle = awayNotice.querySelector('button');
+      var awayList = list.cloneNode(true);
+      awayList.id = 'awayDiagList';
+      if (awayToggle) awayToggle.addEventListener('click', function () {
+        var openNow = awayList.classList.toggle('open');
+        if (awayToggle) {
+          awayToggle.setAttribute('aria-expanded', openNow ? 'true' : 'false');
+          awayToggle.textContent = openNow ? 'Hide details' : "What's collected";
+        }
+      });
+      away.insertBefore(awayList, away.firstChild);
+      away.insertBefore(awayNotice, away.firstChild);
+    }
+  }
+
   function applyConfig(data) {
     config = data;
     accent = data.color || accent;
@@ -291,6 +381,7 @@ const PANEL_HTML = `<!doctype html>
       var h = new URL(hostOrigin).hostname;
       if (h === 'localhost' || h === '127.0.0.1') document.getElementById('testmode').style.display = 'inline-block';
     } catch (e) {}
+    if (data.diagnostics) renderDiagNotice();
   }
 
   function render() {
@@ -488,10 +579,14 @@ const PANEL_HTML = `<!doctype html>
       }, 900);
       return;
     }
-    apiFetch('/api/widget/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: body, pageUrl: pageUrl(), attachmentIds: attachmentIds })
+    requestDiagnostics().then(function (diagnostics) {
+      var payload = { body: body, pageUrl: pageUrl(), attachmentIds: attachmentIds };
+      if (diagnostics) payload.diagnostics = diagnostics;
+      return apiFetch('/api/widget/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
     })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
       .then(function (result) {
@@ -504,6 +599,7 @@ const PANEL_HTML = `<!doctype html>
           if (!streamActive && !previewMode) startStream();
         } else {
           input.value = body;
+          restoreDiagnostics();
           if (result.data.error === 'rate_limited') {
             var hint = document.createElement('p');
             hint.className = 'sysline';
@@ -518,6 +614,7 @@ const PANEL_HTML = `<!doctype html>
       .catch(function () {
         sendBtn.disabled = false;
         input.value = body;
+        restoreDiagnostics();
         document.getElementById('banner').style.display = 'block';
       });
   }
@@ -547,13 +644,18 @@ const PANEL_HTML = `<!doctype html>
         return;
       }
       input.dataset.awayMessage = '';
-      return apiFetch('/api/widget/messages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ body: message, pageUrl: pageUrl() })
+      return requestDiagnostics().then(function (diagnostics) {
+        var payload = { body: message, pageUrl: pageUrl() };
+        if (diagnostics) payload.diagnostics = diagnostics;
+        return apiFetch('/api/widget/messages', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
       }).then(function (r) { return r.json(); }).then(function (data) {
         document.getElementById('awaySend').disabled = false;
         if (data.thread) { state.messages = data.thread.messages || []; render(); }
+        else restoreDiagnostics();
         if (!streamActive && !previewMode) startStream();
       });
     });

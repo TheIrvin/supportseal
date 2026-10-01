@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = (await request.json().catch(() => null)) as
-    | { body?: string; pageUrl?: string; attachmentIds?: string[] }
+    | { body?: string; pageUrl?: string; attachmentIds?: string[]; diagnostics?: unknown }
     | null;
   if (!payload?.body) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 
@@ -82,11 +82,15 @@ export async function POST(request: NextRequest) {
     body: payload.body,
     pageUrl: payload.pageUrl ?? null,
     attachmentIds: payload.attachmentIds,
+    // Optional browser-diagnostics snapshot (docs/design/diagnostics.md):
+    // validated and bounded server-side; never rejects the message.
+    diagnostics: payload.diagnostics,
+    userAgent: request.headers.get("user-agent") ?? "",
   });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 
   const thread = await visitorListMessages({ product, visitor: { ...visitor, conversationId: result.conversationId } });
-  return NextResponse.json({ thread });
+  return NextResponse.json({ thread, ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}) });
 }
 
 /** Poll the thread (cursor-free V1 polling; SSE arrives with ADR-0003). */

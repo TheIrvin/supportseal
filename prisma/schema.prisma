@@ -23,6 +23,7 @@ model User {
   accounts    Account[]
   invitesSent Invite[]    @relation("InviteSentBy")
   messages    Message[]   @relation("MessageAuthor")
+  diagnosticsEnabledFor Product[] @relation("DiagnosticsEnabledBy")
 
   @@map("users")
 }
@@ -109,6 +110,7 @@ model Workspace {
   attachments Attachment[]
   emailDeliveries EmailDelivery[]
   usageNotifications UsageNotification[]
+  diagnosticSnapshots DiagnosticSnapshot[]
 
   @@map("workspaces")
 }
@@ -163,6 +165,10 @@ model Product {
   inboundEmail         String?
   inboundEmailVerified DateTime?
   archivedAt           DateTime?
+  /// Browser diagnostics (docs/design/diagnostics.md): null = off. A
+  /// timestamp rather than a boolean records when disclosure duties began.
+  diagnosticsEnabledAt   DateTime?
+  diagnosticsEnabledById String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -172,6 +178,8 @@ model Product {
   chatVisitors ChatVisitor[]
   attachments Attachment[]
   emailDeliveries EmailDelivery[]
+  diagnosticSnapshots DiagnosticSnapshot[]
+  diagnosticsEnabledBy User? @relation("DiagnosticsEnabledBy", fields: [diagnosticsEnabledById], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
   @@map("products")
@@ -270,6 +278,7 @@ model Conversation {
   messages  Message[]
   tags      ConversationTag[]
   chatVisitors ChatVisitor[]
+  diagnosticSnapshots DiagnosticSnapshot[]
 
   @@index([workspaceId, status, lastMessageAt])
   @@index([workspaceId, productId])
@@ -289,9 +298,40 @@ model Message {
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   author       User?        @relation("MessageAuthor", fields: [agentUserId], references: [id], onDelete: SetNull)
   attachments  Attachment[]
+  diagnosticSnapshot DiagnosticSnapshot?
 
   @@index([conversationId, createdAt])
   @@map("messages")
+}
+
+/// One redacted browser-diagnostics snapshot per customer Message
+/// (docs/design/diagnostics.md). Owned by the Message; cascades from
+/// Message/Conversation/Product/Workspace. Internal only: never returned to
+/// visitors, email or transcripts; hidden once expired.
+model DiagnosticSnapshot {
+  id                   String   @id @default(uuid())
+  workspaceId          String
+  productId            String
+  conversationId       String
+  messageId            String   @unique
+  schemaVersion        Int
+  environment          Json
+  events               Json
+  errorCount           Int
+  warningCount         Int
+  networkFailureCount  Int
+  droppedCount         Int
+  createdAt            DateTime @default(now())
+  expiresAt            DateTime
+
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message      Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, conversationId])
+  @@index([productId, expiresAt])
+  @@map("diagnostic_snapshots")
 }
 
 model Tag {

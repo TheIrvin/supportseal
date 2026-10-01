@@ -120,6 +120,32 @@ export function widgetFrame(page: Page): FrameLocator {
   return page.frameLocator("#supportseal-widget-host iframe");
 }
 
+/** Diagnostics host page: canary secrets plus __triggerDiag() (DX-03/DX-04). */
+export function diagHostPageFor(appOrigin: string): string {
+  return `${SUPPORT_ORIGIN}/?diag=1&app=${encodeURIComponent(appOrigin)}`;
+}
+
+/**
+ * Enable browser diagnostics for a Product through the settings UI
+ * (Developer tab switch + confirm dialog).
+ */
+export async function enableDiagnostics(page: Page, productId: string): Promise<void> {
+  await page.goto(`/settings/products/${productId}?tab=developer`);
+  await page.getByRole("switch", { name: "Browser diagnostics" }).click();
+  await page.getByRole("button", { name: "Enable diagnostics" }).click();
+  await expect(page.getByText(/^Enabled by /u)).toBeVisible();
+}
+
+/** Disable through the UI (no dialog, saves immediately). */
+export async function disableDiagnostics(page: Page, productId: string): Promise<void> {
+  await page.goto(`/settings/products/${productId}?tab=developer`);
+  await page.getByRole("switch", { name: "Browser diagnostics" }).click();
+  await expect(page.getByRole("switch", { name: "Browser diagnostics" })).toHaveAttribute(
+    "data-state",
+    "unchecked",
+  );
+}
+
 /**
  * Open the embedded widget. `status` is the status-line text to wait for
  * ("Online" or "Away") — it only appears once the session boot resolved, so

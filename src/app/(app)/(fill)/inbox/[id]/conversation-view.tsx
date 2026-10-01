@@ -27,6 +27,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover
 import { Spinner } from "@/components/ui/spinner";
 
 import { ContextSection } from "./context-section";
+import {
+  DiagnosticsChip,
+  DiagnosticsSection,
+  SnapshotSheet,
+  type DiagSnapshotView,
+} from "./diagnostics-panel";
 import { toast } from "sonner";
 import { formatFileSize } from "@/lib/format";
 import { visitorLabel } from "../list-pane";
@@ -59,6 +65,12 @@ export type DevContextProp = {
   entries: Array<{ key: string; value: string; updatedAt: string | null }>;
 };
 
+export type DiagnosticsProp = {
+  enabled: boolean;
+  snapshots: DiagSnapshotView[];
+  hasExpired: boolean;
+};
+
 const STATUS_META = {
   OPEN: { label: "Open", color: "primary" as const },
   PENDING: { label: "Pending", color: "warning" as const },
@@ -80,12 +92,14 @@ export function ConversationView({
   availableTags,
   savedReplies,
   devContext,
+  diagnostics,
   failedDeliveryCount = 0,
 }: {
   conversation: ConversationViewData;
   availableTags: { id: string; name: string }[];
   savedReplies: { id: string; name: string; body: string }[];
   devContext: DevContextProp;
+  diagnostics: DiagnosticsProp;
   failedDeliveryCount?: number;
 }) {
   const router = useRouter();
@@ -99,6 +113,7 @@ export function ConversationView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
+  const [openSnapshot, setOpenSnapshot] = useState<DiagSnapshotView | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const lastLength = conversation.messages.length;
 
@@ -282,7 +297,13 @@ export function ConversationView({
             return (
               <div key={message.id}>
                 {showDay ? <DaySeparator date={message.createdAt} /> : null}
-                <MessageBubble message={message} />
+                <MessageBubble
+                  message={message}
+                  snapshot={
+                    diagnostics.snapshots.find((s) => s.messageId === message.id) ?? null
+                  }
+                  onOpenSnapshot={setOpenSnapshot}
+                />
               </div>
             );
           })}
@@ -444,6 +465,8 @@ export function ConversationView({
           contactLabel={contactLabel}
           availableTags={availableTags}
           devContext={devContext}
+          diagnostics={diagnostics}
+          onOpenSnapshot={setOpenSnapshot}
         />
       </aside>
 
@@ -463,15 +486,32 @@ export function ConversationView({
               contactLabel={contactLabel}
               availableTags={availableTags}
               devContext={devContext}
+              diagnostics={diagnostics}
+              onOpenSnapshot={setOpenSnapshot}
             />
           </div>
         </div>
       ) : null}
+
+      <SnapshotSheet
+        snapshot={openSnapshot}
+        onOpenChange={(open) => {
+          if (!open) setOpenSnapshot(null);
+        }}
+      />
     </div>
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  snapshot,
+  onOpenSnapshot,
+}: {
+  message: Message;
+  snapshot: DiagSnapshotView | null;
+  onOpenSnapshot: (snapshot: DiagSnapshotView) => void;
+}) {
   if (message.kind === "NOTE") {
     return (
       <article
@@ -542,6 +582,11 @@ function MessageBubble({ message }: { message: Message }) {
         <p className="mt-1 text-right text-[0.6875rem] text-muted">
           {format(new Date(message.createdAt), "p")}
         </p>
+        {!isAgent && snapshot ? (
+          <div className="mt-1 flex justify-start">
+            <DiagnosticsChip snapshot={snapshot} onOpen={onOpenSnapshot} />
+          </div>
+        ) : null}
       </div>
     </article>
   );
@@ -552,11 +597,15 @@ function ContextPanel({
   contactLabel,
   availableTags,
   devContext,
+  diagnostics,
+  onOpenSnapshot,
 }: {
   conversation: ConversationViewData;
   contactLabel: string;
   availableTags: { id: string; name: string }[];
   devContext: DevContextProp;
+  diagnostics: DiagnosticsProp;
+  onOpenSnapshot: (snapshot: DiagSnapshotView) => void;
 }) {
   const router = useRouter();
   const [tagName, setTagName] = useState("");
@@ -593,6 +642,14 @@ function ContextPanel({
         productName={conversation.product.name}
         entries={devContext.entries}
       />
+
+      {diagnostics.enabled ? (
+        <DiagnosticsSection
+          snapshots={diagnostics.snapshots}
+          hasExpired={diagnostics.hasExpired}
+          onOpen={onOpenSnapshot}
+        />
+      ) : null}
 
       <section>
         <h3 className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted">Tags</h3>

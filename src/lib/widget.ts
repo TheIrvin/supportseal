@@ -16,7 +16,9 @@ import {
   addCustomerMessage,
   getConversationDetail,
   upsertContact,
+  type CustomerMessageDiagnosticsOutcome,
 } from "@/lib/conversations";
+import { normalizeSnapshot, type NormalizedSnapshot } from "@/lib/diagnostics/snapshot";
 
 export type WidgetProduct = {
   id: string;
@@ -25,6 +27,7 @@ export type WidgetProduct = {
   widgetPublicKey: string;
   workspaceId: string;
   domains: string[];
+  diagnosticsEnabledAt: Date | null;
 };
 
 export async function loadWidgetProduct(widgetKey: string): Promise<WidgetProduct | null> {
@@ -41,6 +44,7 @@ export async function loadWidgetProduct(widgetKey: string): Promise<WidgetProduc
     widgetPublicKey: product.widgetPublicKey,
     workspaceId: product.workspaceId,
     domains: product.domains.map((d) => d.domain),
+    diagnosticsEnabledAt: product.diagnosticsEnabledAt,
   };
 }
 
@@ -298,6 +302,10 @@ export async function setVisitorEmail(input: {
  * A visitor message. Creates the Conversation (and Workspace contact) on the
  * first message; a closed Conversation reopens (Pete, 2026-09-25). The page
  * URL is recorded automatically by the widget (origin + path only).
+ *
+ * `diagnostics` is the optional browser-diagnostics snapshot from the widget
+ * (docs/design/diagnostics.md): validated, re-redacted and bounded here —
+ * invalid or oversized diagnostics never reject the message.
  */
 export async function visitorSendMessage(input: {
   product: WidgetProduct;
@@ -305,9 +313,43 @@ export async function visitorSendMessage(input: {
   body: string;
   pageUrl?: string | null;
   attachmentIds?: string[];
-}): Promise<{ ok: true; conversationId: string } | { ok: false; error: string }> {
+  diagnostics?: unknown;
+  userAgent?: string;
+}): Promise<
+  | { ok: true; conversationId: string; diagnostics?: CustomerMessageDiagnosticsOutcome }
+  | { ok: false; error: string }
+> {
   const body = input.body.trim().slice(0, 5000);
   if (!body) return { ok: false, error: "Message is empty." };
+
+  // Diagnostics gate: the Product must have diagnostics enabled *now*.
+  let snapshot: NormalizedSnapshot | null = null;
+  let diagnosticsOutcome: CustomerMessageDiagnosticsOutcome | undefined;
+  if (input.diagnostics !== undefined) {
+    if (input.product.diagnosticsEnabledAt === null) {
+      diagnosticsOutcome = { status: "rejected", reason: "disabled" };
+    } else {
+      const visitorRow = await prisma.chatVisitor.findUnique({
+        where: { id: input.visitor.visitorId },
+        select: { devContext: true },
+      });
+      const normalized = normalizeSnapshot(input.diagnostics, {
+        userAgent: input.userAgent ?? "",
+        devContext: visitorRow?.devContext,
+      });
+      if (normalized.ok) {
+        snapshot = normalized.snapshot;
+      } else {
+        diagnosticsOutcome = { status: "rejected", reason: normalized.reason };
+      }
+    }
+    // Log the reason code and Product ID only, never snapshot content.
+    if (diagnosticsOutcome && diagnosticsOutcome.status === "rejected") {
+      console.warn(
+        `[diagnostics] snapshot rejected product=${input.product.id} reason=${diagnosticsOutcome.reason}`,
+      );
+    }
+  }
 
   let conversationId = input.visitor.conversationId;
   if (conversationId) {
@@ -351,8 +393,10 @@ export async function visitorSendMessage(input: {
     body,
     source: { kind: "visitor", visitorId: input.visitor.visitorId },
     attachmentIds: input.attachmentIds,
+    diagnostics: snapshot ?? undefined,
   });
   if (!message.ok) return message;
+  if (message.diagnostics && !diagnosticsOutcome) diagnosticsOutcome = message.diagnostics;
 
   if (input.pageUrl) {
     // Merge the recorded page URL into the stored context without clobbering
@@ -372,7 +416,11 @@ export async function visitorSendMessage(input: {
   }
 
   await touchVisitor(input.visitor.visitorId);
-  return { ok: true, conversationId };
+  return {
+    ok: true,
+    conversationId,
+    ...(diagnosticsOutcome ? { diagnostics: diagnosticsOutcome } : {}),
+  };
 }
 
 export type VisitorMessage = {

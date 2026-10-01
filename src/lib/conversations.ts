@@ -1,5 +1,7 @@
 import { notifyConversationEvent } from "@/lib/events";
 import { linkAttachmentToMessage } from "@/lib/attachments";
+import { attachSnapshotInTransaction, purgeExpiredForProduct } from "@/lib/diagnostics/store";
+import type { NormalizedSnapshot } from "@/lib/diagnostics/snapshot";
 import { prisma } from "@/lib/prisma";
 import { notifyAllowanceInBackground } from "@/lib/usage-notifications";
 import type { WorkspaceContext } from "@/lib/workspace";
@@ -9,6 +11,11 @@ export type ConversationChannel = "CHAT" | "EMAIL";
 export type MessageKind = "CUSTOMER" | "AGENT" | "NOTE";
 
 const MAX_BODY_LENGTH = 20_000;
+
+/** Why a diagnostics snapshot was not stored (docs/design/diagnostics.md). */
+export type CustomerMessageDiagnosticsOutcome =
+  | { status: "attached" }
+  | { status: "rejected"; reason: string };
 
 export type ConversationListItem = {
   id: string;
@@ -104,7 +111,11 @@ export async function addCustomerMessage(input: {
   body: string;
   source: CustomerMessageSource;
   attachmentIds?: string[];
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+  diagnostics?: NormalizedSnapshot;
+}): Promise<
+  | { ok: true; diagnostics?: CustomerMessageDiagnosticsOutcome }
+  | { ok: false; error: string }
+> {
   const body = input.body.trim();
   if (!body || body.length > MAX_BODY_LENGTH) {
     return { ok: false, error: "Message body is empty or too long." };
@@ -112,6 +123,7 @@ export async function addCustomerMessage(input: {
   const conversation = await loadConversationForWorkspace(input.workspaceId, input.conversationId);
   if (!conversation) return { ok: false, error: "Conversation not found." };
 
+  let diagnostics: CustomerMessageDiagnosticsOutcome | undefined;
   const messageId = await prisma.$transaction(async (tx) => {
     const message = await tx.message.create({
       data: {
@@ -120,6 +132,21 @@ export async function addCustomerMessage(input: {
         body,
       },
     });
+    const snapshot = input.diagnostics;
+    if (snapshot) {
+      // Same transaction as the Message it belongs to; the per-Conversation
+      // cap can still reject (limit) without failing the message.
+      const attach = await attachSnapshotInTransaction(tx, {
+        snapshot,
+        messageId: message.id,
+        conversationId: conversation.id,
+        productId: conversation.productId,
+        workspaceId: input.workspaceId,
+      });
+      diagnostics = attach.attached
+        ? { status: "attached" }
+        : { status: "rejected", reason: attach.reason };
+    }
     await tx.conversation.update({
       where: { id: conversation.id },
       data: {
@@ -143,7 +170,18 @@ export async function addCustomerMessage(input: {
     workspaceId: conversation.workspaceId,
     kind: "message",
   });
-  return { ok: true };
+  if (diagnostics?.status === "attached") {
+    // Bounded purge, outside the message transaction (see store.ts): a
+    // purge failure must never roll back the visitor's message, but it is
+    // surfaced, not swallowed.
+    await purgeExpiredForProduct(conversation.productId).catch((error: unknown) => {
+      console.warn(
+        `[diagnostics] purge failed product=${conversation.productId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    });
+  }
+  return { ok: true, ...(diagnostics ? { diagnostics } : {}) };
 }
 
 /** Agent reply (agents + admins). Sets status PENDING awaiting the customer. */
@@ -311,7 +349,15 @@ export async function getConversationDetail(input: {
   const conversation = await prisma.conversation.findFirst({
     where: { id: input.conversationId, workspaceId: input.workspaceId },
     include: {
-      product: { select: { id: true, name: true, primaryColor: true, archivedAt: true } },
+      product: {
+        select: {
+          id: true,
+          name: true,
+          primaryColor: true,
+          archivedAt: true,
+          diagnosticsEnabledAt: true,
+        },
+      },
       contact: true,
       tags: { include: { tag: true } },
       chatVisitors: {

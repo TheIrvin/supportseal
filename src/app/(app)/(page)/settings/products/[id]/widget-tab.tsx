@@ -83,36 +83,6 @@ export function WidgetTab({ product }: { product: PreviewProduct }) {
       </Card>
 
       <WidgetSnippet snippet={embedSnippet} widgetKey={product.widgetPublicKey} />
-
-      <Card>
-        <CardContent className="p-6 space-y-3">
-          <h3 className="text-lg font-medium text-heading">Developer context</h3>
-          <p className="text-sm text-muted">
-            Call <code className="rounded bg-surface-2 px-1 font-mono text-xs">SupportSealWidget.identify()</code>{" "}
-            and{" "}
-            <code className="rounded bg-surface-2 px-1 font-mono text-xs">SupportSealWidget.context()</code>{" "}
-            from your app to attach account details and custom metadata to the conversation.
-          </p>
-          <pre className="overflow-x-auto rounded-md border border-border bg-surface-2 p-3 text-xs leading-relaxed">
-{`<script>
-  window.SupportSealWidget = window.SupportSealWidget || { q: [] };
-  // Async-safety queue — works before the widget loads:
-  window.SupportSealWidget.q.push(["identify", {
-    id: user.id, email: user.email, name: user.name
-  }]);
-  window.SupportSealWidget.q.push(["context", {
-    plan: account.plan,
-    appVersion: APP_VERSION,
-    adminUrl: \`https://admin.yourapp.com/users/\${user.id}\`
-  }]);
-</script>`}
-          </pre>
-          <p className="text-xs text-muted">
-            Context is validated, size- and depth-bounded, and rendered as untrusted text in the
-            inbox. The widget never reads cookies, storage or form values.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
