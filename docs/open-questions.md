@@ -82,6 +82,23 @@ design for a later build, not a change to V1 or a record of Pete's approval.
 | BQ4 | Greeting length, placement and i18n | **Default:** one plain-text value, 240 Unicode code points / three lines / 1,024 UTF-8 bytes, shown before messages in Live/Away; no translation; blank restores V1 behaviour |
 | BQ5 | Image decoder dependency and deployment support | **Unresolved:** later build must propose a maintained decoder and obtain the normal dependency checkpoint before adding it |
 | BQ6 | Crash recovery and failed asset deletion | **Default:** immediate compensating cleanup and observable failures; **unresolved:** concrete recovery procedure/retry ownership before shipping, with explicit approval if new infrastructure is needed |
+||||||| parent of dab2f79 (docs: design V2 conversation assignment and priority)
+## Assignment and priority (V2 design, 2026-10-01)
+
+Proposed build contract: [design/assignment-priority.md](design/assignment-priority.md).
+Its “Defaults and open questions” section owns AP-Q1–AP-Q7 and the associated
+acceptance criteria. These are working defaults Pete can override, not
+resolved decisions or additions to V1. None blocks the scoped design.
+
+| ID | Question | **Default** |
+| --- | --- | --- |
+| AP-Q1 | Auto-assign on first agent reply? | No; explicit assignment only |
+| AP-Q2 | Notify an assignee whose dashboard is inactive? | No; active-dashboard notices, Mine and private history only |
+| AP-Q3 | Require an explicit priority choice? | No; required stored value defaults to Normal |
+| AP-Q4 | Keep assignee and priority on reopen? | Yes, while the assignee remains a member |
+| AP-Q5 | Allow Agents to reassign anyone's work/change priority? | Yes; same triage rights as Admins |
+| AP-Q6 | Include bulk assignment/priority? | Defer; header controls only in the first slice |
+| AP-Q7 | Default to Priority first sorting? | No; retain Latest activity, offer Priority first |dab2f79 (docs: design V2 conversation assignment and priority)
 
 ## 1. V1 scope: marketing site, analytics, legal drafts, demo data
 
