@@ -19,7 +19,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { siteConfig } from "@/config/site";
-import { isHostedMode } from "@/lib/hosting";
 import { setDiagnosticsAction, deleteDiagnosticsAction } from "../actions";
 
 type DeveloperProduct = {
@@ -31,6 +30,7 @@ type DeveloperProduct = {
   diagnosticsEnabled: boolean;
   diagnosticsEnabledBy: { name: string; at: Date } | null;
   snapshotCount: number;
+  hosted: boolean;
 };
 
 const COLLECTED = [
@@ -57,7 +57,7 @@ const NEVER_COLLECTED = [
  * enable. Values that look like secrets are redacted before storage.
  */
 export function DeveloperTab({ product }: { product: DeveloperProduct }) {
-  const hosted = isHostedMode();
+  const hosted = product.hosted;
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, startTransition] = useTransition();

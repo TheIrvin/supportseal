@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getProductForWorkspace, getDiagnosticsEnabler } from "@/lib/products";
 import { countSnapshotsForProduct } from "@/lib/diagnostics/store";
+import { isHostedMode } from "@/lib/hosting";
 import { requireWorkspace } from "@/lib/workspace";
 import { ArchiveForm } from "./archive-form";
 import { DeveloperTab } from "./developer-tab";
@@ -116,6 +117,7 @@ export default async function ProductPage({
             diagnosticsEnabled: product.diagnosticsEnabledAt !== null,
             diagnosticsEnabledBy: diagnosticsEnabler,
             snapshotCount,
+            hosted: isHostedMode(),
           }}
         />
       )}
