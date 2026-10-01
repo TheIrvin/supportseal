@@ -40,6 +40,7 @@ export const COLLECTOR_JS = String.raw`
    if(UUID.test(g)||hot(g))seg[i]='[token]';}
   return head+seg.join('/');
  }
+ function rt(s,n){return redactText(String(s||'')).slice(0,n);}
  function kvPass(t){
   var out='',copied=0,m;
   KK.lastIndex=0;
@@ -61,17 +62,16 @@ export const COLLECTOR_JS = String.raw`
    .replace(URL_RE,scrub);
   return t.replace(CTRL,'');
  }
- // stack parsing: at most 20 frames of fn, file, line, col
  var F2=/^(.*):(\d+):(\d+)$/, F1=/^(.*):(\d+)$/;
  function frame(line){
-  var r=line,fn='';
+  var r=line,fn='',loc='';
   var a=/^at\s+/.exec(r);if(a)r=r.slice(a[0].length);
-  var o=r.lastIndexOf('('),c=r.lastIndexOf(')'),loc='';
+  var o=r.lastIndexOf('('),c=r.lastIndexOf(')');
   if(o!==-1&&c>o){fn=r.slice(0,o).trim();loc=r.slice(o+1,c);}
-  else{var s=r.indexOf('@');if(s!==-1){fn=r.slice(0,s).trim();loc=r.slice(s+1);}else loc=r;}
+  else if((o=r.indexOf('@'))!==-1){fn=r.slice(0,o).trim();loc=r.slice(o+1);}
+  else loc=r;
   var m=F2.exec(loc)||F1.exec(loc);
-  return {fn:redactText(fn).slice(0,100),file:redactText(m?m[1]:loc).slice(0,300),
-   line:m&&+m[2]>0?+m[2]:0,col:m&&m[3]&&+m[3]>0?+m[3]:0};
+  return {fn:rt(fn,100),file:rt(m?m[1]:loc,300),line:m?+m[2]||0:0,col:m&&m[3]?+m[3]||0:0};
  }
  function parseStack(st){
   var out=[],ls=String(st||'').split('\n');
@@ -81,15 +81,13 @@ export const COLLECTOR_JS = String.raw`
   }
   return out;
  }
- // escape-aware size estimate (the client may not serialise)
  function est(s){var n=2;for(var i=0;i<s.length;i++){var c=s.charCodeAt(i);n+=c===34||c===92?2:1;}return n;}
  function estEv(e){
-  var t=128;function add(v){if(typeof v==='string')t+=est(v);}
-  add(e.name);add(e.message);add(e.pagePath);add(e.method);add(e.url);
-  if(e.frames)for(var i=0;i<e.frames.length;i++){add(e.frames[i].fn);add(e.frames[i].file);}
+  var t=128,ks=['name','message','pagePath','method','url'],i;
+  for(i=0;i<ks.length;i++)if(typeof e[ks[i]]==='string')t+=est(e[ks[i]]);
+  if(e.frames)for(i=0;i<e.frames.length;i++)t+=est(e.frames[i].fn)+est(e.frames[i].file);
   return t;
  }
- // ring buffer: last 50 distinct events, dedupe by kind+message+top frame
  var LIMIT=50, WIN=1800000, EST_MAX=24576;
  function key(e){
   var top=e.frames&&e.frames.length?e.frames[0].file+':'+e.frames[0].line:'';
@@ -120,14 +118,14 @@ export const COLLECTOR_JS = String.raw`
  function createCollector(opts){
   var w=opts.window,so=opts.serviceOrigin||'',buf=createBuffer(LIMIT),paused=!!opts.startPaused,dead=false;
   function fail(e){dead=true;try{if(opts.onError)opts.onError(e);}catch(x){}}
-  function path(){try{return redactText(w.location.pathname).slice(0,300);}catch(e){return '';}}
+  function path(){try{return rt(w.location.pathname,300);}catch(e){return '';}}
   function rec(e){if(dead||paused)return;var n=Date.now();e.firstSeen=n;e.lastSeen=n;e.count=1;try{buf.push(e);}catch(x){fail(x);}}
   function recErr(kind,name,msg,stack){
-   rec({kind:kind,name:redactText(String(name||'Error')).slice(0,200),message:redactText(String(msg||'')).slice(0,500),
+   rec({kind:kind,name:rt(name,200)||'Error',message:rt(msg,500),
     frames:parseStack(stack),pagePath:path()});
   }
   function recNet(method,url,status){
-   rec({kind:'network',method:String(method||'GET').toUpperCase().slice(0,10),url:redactText(String(url||'')).slice(0,300),status:status|0});
+   rec({kind:'network',method:String(method||'GET').toUpperCase().slice(0,10),url:rt(url,300),status:status|0});
   }
   function svc(url){if(!so)return false;try{return new URL(url,w.location.href).origin===so;}catch(e){return false;}}
   function abort(e){return !!(e&&typeof e==='object'&&e.name==='AbortError');}
@@ -146,8 +144,7 @@ export const COLLECTOR_JS = String.raw`
      try{
       var r=ev.reason;
       if(r&&typeof r==='object'&&typeof r.message==='string')recErr('promise_rejection',r.name||'UnhandledRejection',r.message,r.stack);
-      else if(typeof r==='string')recErr('promise_rejection','UnhandledRejection',r,'');
-      else recErr('promise_rejection','UnhandledRejection','[non-error rejection: '+typeof r+']','');
+      else recErr('promise_rejection','UnhandledRejection',typeof r==='string'?r:'[non-error rejection: '+typeof r+']','');
      }catch(x){fail(x);}
     });
     var con=w.console;
@@ -156,36 +153,29 @@ export const COLLECTOR_JS = String.raw`
      var f=function(){
       try{
        if(!dead&&!paused){
-        var parts=[];
+        var p=[];
         for(var i=0;i<arguments.length&&i<5;i++){
          var a=arguments[i];
-         if(typeof a==='string'||typeof a==='number'||typeof a==='boolean')parts.push(String(a));
-         else if(a&&typeof a==='object'&&typeof a.name==='string'&&typeof a.message==='string')parts.push(a.name+': '+a.message);
-         else parts.push('[object]');
+         p.push(typeof a==='string'||typeof a==='number'||typeof a==='boolean'?String(a):a&&typeof a==='object'&&typeof a.name==='string'&&typeof a.message==='string'?a.name+': '+a.message:'[object]');
         }
-        rec({kind:'warning',message:redactText(parts.join(' ')).slice(0,500),pagePath:path()});
+        rec({kind:'warning',message:rt(p.join(' '),500)});
        }
       }catch(x){fail(x);}
       return o.apply(con,arguments);
      };
      mark(f);con[lv]=f;
     });
+    function note(m,u,s){try{if(u&&!svc(u))recNet(m,u,s);}catch(x){fail(x);}}
     var of=w.fetch;
     if(typeof of==='function'&&!of.__ss){
      var wf=function(){
-      var m='GET',u='';
-      try{
-       var i=arguments[0],n=arguments[1];
-       u=typeof i==='string'?i:(i&&i.url)?i.url:'';
-       m=(n&&n.method)||(i&&i.method)||'GET';
-      }catch(e){}
+      var m='GET',u='',i=arguments[0],n=arguments[1];
+      try{u=typeof i==='string'?i:(i&&i.url)||'';m=(n&&n.method)||(i&&i.method)||'GET';}catch(e){}
       var p;
       try{p=of.apply(this,arguments);}
-      catch(err){try{if(!abort(err)&&u&&!svc(u))recNet(m,u,0);}catch(x){fail(x);}throw err;}
-      return p.then(
-       function(r){try{if(u&&!svc(u)&&(r.status===0||r.status>=400))recNet(m,u,r.status);}catch(x){fail(x);}return r;},
-       function(err){try{if(!abort(err)&&u&&!svc(u))recNet(m,u,0);}catch(x){fail(x);}throw err;}
-      );
+      catch(err){if(!abort(err))note(m,u,0);throw err;}
+      return p.then(function(r){if(r.status===0||r.status>=400)note(m,u,r.status);return r;},
+       function(err){if(!abort(err))note(m,u,0);throw err;});
      };
      mark(wf);w.fetch=wf;
     }
@@ -219,17 +209,11 @@ export const COLLECTOR_JS = String.raw`
      var l=w.location;
      return {
       schemaVersion:1,
-      environment:{pageUrl:redactText(l.origin+l.pathname).slice(0,300),viewportWidth:w.innerWidth|0,
+      environment:{pageUrl:rt(l.origin+l.pathname,300),viewportWidth:w.innerWidth|0,
        viewportHeight:w.innerHeight|0,devicePixelRatio:w.devicePixelRatio||1},
       events:evs.map(function(e){
-       var o={kind:e.kind,firstSeen:e.firstSeen,lastSeen:e.lastSeen,count:e.count};
-       if(e.name!==undefined)o.name=e.name;
-       if(e.message!==undefined)o.message=e.message;
-       if(e.frames)o.frames=e.frames;
-       if(e.pagePath!==undefined)o.pagePath=e.pagePath;
-       if(e.method!==undefined)o.method=e.method;
-       if(e.url!==undefined)o.url=e.url;
-       if(e.status!==undefined)o.status=e.status;
+       var o={kind:e.kind,firstSeen:e.firstSeen,lastSeen:e.lastSeen,count:e.count},ks=['name','message','frames','pagePath','method','url','status'];
+       for(var j=0;j<ks.length;j++)if(e[ks[j]]!==undefined)o[ks[j]]=e[ks[j]];
        return o;
       }),
       droppedCount:dropped

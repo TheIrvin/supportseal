@@ -112,7 +112,7 @@ test.describe.serial("self-hosted diagnostics parity", () => {
     });
 
     await page.goto(`${diagHostPageFor(APP)}&key=${encodeURIComponent(productKey)}`);
-    await page.waitForFunction(() => Boolean((window as { __ssDiag?: unknown }).__ssDiag), null, {
+    await page.waitForFunction(() => Boolean((window as { __ssDiag?: unknown }).__ssDiag), undefined, {
       timeout: 15_000,
     });
     await page.evaluate(() => (window as { __triggerDiag?: () => void }).__triggerDiag?.());

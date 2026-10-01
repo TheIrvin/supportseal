@@ -130,7 +130,7 @@ function normalizeFrames(input: unknown): DiagFrame[] | null {
   return frames;
 }
 
-function normalizeEvent(raw: unknown, now: number): DiagEvent | null {
+function normalizeEvent(raw: unknown, now: number, pageBaseUrl: string): DiagEvent | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const event = raw as Record<string, unknown>;
   const kind = event.kind;
@@ -143,9 +143,16 @@ function normalizeEvent(raw: unknown, now: number): DiagEvent | null {
   const base = { firstSeen, lastSeen, count };
   if (kind === "network") {
     const methodRaw = boundedString(event.method, REDACTION_LIMITS.method);
-    const url = boundedString(event.url, REDACTION_LIMITS.url);
+    const urlRaw = boundedString(event.url, REDACTION_LIMITS.url);
     const status = boundedInt(event.status, 0, 599);
-    if (methodRaw === null || url === null || status === null) return null;
+    if (methodRaw === null || urlRaw === null || status === null) return null;
+    // Relative URLs are resolved against the page before redaction.
+    let url = urlRaw;
+    try {
+      url = new URL(urlRaw, pageBaseUrl).href;
+    } catch {
+      // keep as-is; redaction still applies
+    }
     return {
       kind,
       method: redactString(methodRaw).toUpperCase().slice(0, REDACTION_LIMITS.method),
@@ -232,7 +239,7 @@ export function normalizeSnapshot(
 
   const events: DiagEvent[] = [];
   for (const raw of considered) {
-    const event = normalizeEvent(raw, now);
+    const event = normalizeEvent(raw, now, environment.pageUrl);
     if (!event) {
       dropped++;
       continue;

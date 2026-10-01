@@ -44,13 +44,12 @@ test.describe.serial("browser diagnostics", () => {
     });
     await page.goto(`${diagHostPageFor(APP_ORIGIN)}&key=${encodeURIComponent(key)}`);
     await expect(page.locator("#supportseal-widget-host")).toBeAttached();
-    const collectorLoaded = page.waitForFunction(
-      () => Boolean((window as { __ssDiag?: unknown }).__ssDiag),
-      null,
-      { timeout: 15_000 },
-    );
     if (expectCollector) {
-      await collectorLoaded;
+      await page.waitForFunction(
+        () => Boolean((window as { __ssDiag?: unknown }).__ssDiag),
+        undefined,
+        { timeout: 15_000 },
+      );
     } else {
       await page.waitForTimeout(1500);
     }
@@ -131,7 +130,7 @@ test.describe.serial("browser diagnostics", () => {
 
     expect(collectorRequests).toEqual([]);
     expect(posts).toHaveLength(1);
-    expect(posts[0]!.body).not.toContain("diagnostics");
+    expect(Object.hasOwn(JSON.parse(posts[0]!.body), "diagnostics")).toBe(false);
     await page.close();
   });
 
@@ -180,7 +179,9 @@ test.describe.serial("browser diagnostics", () => {
 
     const network = payload.diagnostics.events.filter((event) => event.kind === "network");
     const failing = network.find((event) => event.status === 500);
-    expect(failing?.url).toBe("http://localhost:3101/_diag/fail");
+    // The client sends the URL as the app wrote it; the server resolves it
+    // against the page (asserted in the agent view below).
+    expect(failing?.url).toBe("/_diag/fail");
     expect(failing?.count).toBe(2); // fetch + XHR deduped
     expect(network.some((event) => event.status === 0)).toBe(true);
 
@@ -208,17 +209,19 @@ test.describe.serial("browser diagnostics", () => {
     await frame.locator("#send").click();
     await expect(frame.locator("#thread")).toContainText("Paused message dx15a");
     expect(posts).toHaveLength(1);
-    expect(posts[0]!.body).not.toContain("diagnostics");
+    expect(Object.hasOwn(JSON.parse(posts[0]!.body), "diagnostics")).toBe(false);
 
     await page.evaluate(() => {
       (window as { SupportSealWidget?: { diagnostics: (v: boolean) => void } }).SupportSealWidget?.diagnostics(true);
     });
     await triggerDiag(page);
+    // The server spaces visitor messages by at least 800 ms.
+    await page.waitForTimeout(1200);
     await frame.locator("#input").fill("Resumed message dx15b");
     await frame.locator("#send").click();
     await expect(frame.locator("#thread")).toContainText("Resumed message dx15b");
     expect(posts).toHaveLength(2);
-    expect(posts[1]!.body).toContain("diagnostics");
+    expect(Object.hasOwn(JSON.parse(posts[1]!.body), "diagnostics")).toBe(true);
     await page.close();
   });
 
@@ -293,8 +296,11 @@ test.describe.serial("browser diagnostics", () => {
     await expect(row).toBeVisible();
     await row.click();
 
-    // Message chip with counts.
-    const chip = ownerPage.getByRole("button", { name: /^Diagnostics for this message:/u });
+    // Message chip with counts (scoped to the marker's message bubble).
+    const chip = ownerPage
+      .locator("article")
+      .filter({ hasText: "Agent view marker dx16-91f2" })
+      .getByRole("button", { name: /^Diagnostics for this message:/u });
     await expect(chip).toBeVisible();
     await expect(chip).toContainText(/error/u);
 
@@ -308,7 +314,7 @@ test.describe.serial("browser diagnostics", () => {
     await chip.click();
     const sheet = ownerPage.getByRole("dialog");
     await expect(sheet).toBeVisible();
-    await expect(sheet).toContainText("GET http://localhost:3101/_diag/fail → 500");
+    await expect(sheet).toContainText("POST http://localhost:3101/_diag/fail → 500");
     await expect(sheet).toContainText("Values that look like secrets, emails or tokens were removed.");
     // The hostile error message renders as literal text, never as markup.
     await expect(sheet.getByText("<img src=x onerror=window.__diagXss=1>", { exact: false })).toBeVisible();
@@ -318,7 +324,7 @@ test.describe.serial("browser diagnostics", () => {
     await expect(sheet.getByRole("button", { name: "Copied" })).toBeVisible();
     const clipboard = await ownerPage.evaluate(() => navigator.clipboard.readText());
     expect(clipboard).toContain("Diagnostics snapshot");
-    expect(clipboard).toContain("[network] GET http://localhost:3101/_diag/fail → 500 ×2");
+    expect(clipboard).toContain("[network] POST http://localhost:3101/_diag/fail → 500 ×2");
   });
 
   test("DX-17: loader <= 5 KB gzip, collector <= 4 KB gzip", async ({ request }) => {

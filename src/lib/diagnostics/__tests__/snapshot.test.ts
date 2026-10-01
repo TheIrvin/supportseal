@@ -68,6 +68,29 @@ describe("normalizeSnapshot", () => {
     expect(snapshot.warningCount).toBe(0);
   });
 
+  it("resolves relative network URLs against the page before redaction", () => {
+    const now = NOW_MS;
+    const result = normalizeSnapshot(
+      clientSnapshot({
+        events: [
+          {
+            kind: "network",
+            method: "GET",
+            url: "/reports?token=abc",
+            status: 500,
+            firstSeen: now,
+            lastSeen: now,
+            count: 1,
+          },
+        ],
+      }),
+      OPTIONS,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.snapshot.events[0].url).toBe("https://app.example.com/reports");
+  });
+
   it("ignores client-supplied browser/os and unknown environment fields", () => {
     const result = normalizeSnapshot(
       clientSnapshot({
