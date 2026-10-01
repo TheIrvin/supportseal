@@ -47,11 +47,74 @@ const HOST_PAGE = `<!doctype html>
 </body>
 </html>`;
 
+/**
+ * Diagnostics host page (?diag=1): plants canary secrets in every banned
+ * location (DX-04) and exposes __triggerDiag() which fires one event of each
+ * capture kind (DX-03). The widget loads against ?app= like HOST_PAGE.
+ */
+const DIAG_PAGE = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>E2E diagnostics host page</title>
+</head>
+<body>
+<h1>Customer site (diagnostics)</h1>
+<p id="marker">diag-page-marker</p>
+<input type="password" id="pw" value="CANARY_PASSWORD" aria-label="Password">
+<script>
+  document.cookie = "ss_canary=CANARY_COOKIE; path=/";
+  try {
+    localStorage.setItem("canary", "CANARY_STORAGE");
+    sessionStorage.setItem("canary", "CANARY_SESSION");
+  } catch (e) {}
+</script>
+<script>
+  window.__triggerDiag = function () {
+    console.log("secret log CANARY_LOG");
+    console.warn("SupportSeal diag warn 4f2a");
+    console.error("SupportSeal diag console error 9b1c");
+    fetch("/_diag/fail", {
+      method: "POST",
+      headers: { Authorization: "Bearer CANARY_AUTH" },
+      body: JSON.stringify({ secret: "CANARY_BODY" })
+    }).then(function (r) { window.__fetchStatus = r.status; }, function () { window.__fetchStatus = 0; });
+    fetch("http://127.0.0.1:9/unreachable").catch(function () { window.__unreachableFailed = true; });
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/_diag/fail");
+    xhr.onloadend = function () { window.__xhrStatus = xhr.status; };
+    xhr.send(JSON.stringify({ secret: "CANARY_BODY" }));
+    setTimeout(function () {
+      window.__threw = true;
+      throw new Error("<img src=x onerror=window.__diagXss=1> CANARY_THROW");
+    }, 0);
+    Promise.reject(new Error("diag rejection 77e5 password=CANARY_BODY"));
+  };
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var app = params.get("app") || "http://localhost:3000";
+    var key = params.get("key");
+    if (!key) return;
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = app + "/widget.js";
+    s.dataset.key = key;
+    document.body.appendChild(s);
+  })();
+</script>
+</body>
+</html>`;
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url || "/", `http://localhost:${HTTP_PORT}`);
   if (url.pathname === "/healthz") {
     res.writeHead(200, { "content-type": "text/plain" });
     res.end("ok");
+    return;
+  }
+  if (url.pathname === "/_diag/fail") {
+    res.writeHead(500, { "content-type": "text/plain" });
+    res.end("server error");
     return;
   }
   if (url.pathname === "/_smtp" && req.method === "GET") {
@@ -67,7 +130,7 @@ const server = http.createServer((req, res) => {
   }
   if (url.pathname === "/" && req.method === "GET") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    res.end(HOST_PAGE);
+    res.end(url.searchParams.get("diag") === "1" ? DIAG_PAGE : HOST_PAGE);
     return;
   }
   res.writeHead(404);

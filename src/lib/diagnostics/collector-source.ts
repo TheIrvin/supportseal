@@ -22,10 +22,10 @@ export const COLLECTOR_JS = String.raw`
 
  var URL_RE=/https?:\/\/[^\s"'\x60<>]+/g, EMAIL_RE=/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
   EMAIL_TEST=/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/, JWT_RE=/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-  AUTH1=/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, AUTH2=/\bAuthorization\s*:\s*[^\s,;]+/gi,
-  CARD=/(?:\d[ -]?){12,18}\d/g, HEX=/(?<![0-9A-Za-z])[0-9A-Fa-f]{32,}(?![0-9A-Za-z])/g, MIXED=/(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{24,}(?![A-Za-z0-9_-])/g,
+  AUTH2=/\bAuthorization\s*:\s*\S+(?:\s+[A-Za-z0-9._~+/=-]+)?/gi, AUTH1=/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi,
+  CARD=/(?:\d[ -]?){12,18}\d/g, HEX=/(?<![0-9A-Za-z_-])[0-9A-Fa-f]{32,}(?![0-9A-Za-z_-])/g, MIXED=/(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{24,}(?![A-Za-z0-9_-])/g,
   UUID=/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
-  KV=/(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]{1,64})(\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,;}\]]+)?/g,
+  KK=/(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]{1,64})(\s*[:=]\s*)/g, KV=/^("[^"]*"|'[^']*'|\[[^\]\s]*\]?|[^\s,;{}[\]"']+)/,
   JKV=/"([A-Za-z0-9_.-]{1,64})"(\s*:\s*)"([^"]*)"/g, CTRL=/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,
   SENS=/(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|auth|session|cookie|card|cvv|cvc|iban|ssn)/i;
  function luhn(d){var s=0,x=false;for(var i=d.length-1;i>=0;i--){var v=d.charCodeAt(i)-48;if(x){v*=2;if(v>9)v-=9;}s+=v;x=!x;}return s%10===0;}
@@ -40,10 +40,22 @@ export const COLLECTOR_JS = String.raw`
    if(UUID.test(g)||hot(g))seg[i]='[token]';}
   return head+seg.join('/');
  }
+ function kvPass(t){
+  var out='',copied=0,m;
+  KK.lastIndex=0;
+  while((m=KK.exec(t))!==null){
+   if(!SENS.test(m[1]))continue;
+   var vs=m.index+m[0].length;
+   var v=KV.exec(t.slice(vs));
+   out+=t.slice(copied,m.index)+m[1]+m[2]+'[redacted]';
+   copied=vs+(v?v[0].length:0);
+  }
+  return copied===0?t:out+t.slice(copied);
+ }
  function redactText(t){
-  t=String(t).replace(URL_RE,shrink).replace(AUTH1,'Bearer [redacted]').replace(AUTH2,'Bearer [redacted]').replace(JWT_RE,'[token]');
+  t=String(t).replace(URL_RE,shrink).replace(AUTH2,'Bearer [redacted]').replace(AUTH1,'Bearer [redacted]').replace(JWT_RE,'[token]');
   t=t.replace(JKV,function(w,k,s){return SENS.test(k)?'"'+k+'"'+s+'"[redacted]"':w;});
-  t=t.replace(KV,function(w,k,s,v){return SENS.test(k)&&v!==undefined?k+s+'[redacted]':w;});
+  t=kvPass(t);
   t=t.replace(EMAIL_RE,'[email]').replace(CARD,function(c){var d=c.replace(/\D/g,'');return d.length>=13&&d.length<=19&&luhn(d)?'[card]':c;})
    .replace(HEX,'[token]').replace(MIXED,function(c){return /[A-Za-z]/.test(c)&&/\d/.test(c)?'[token]':c;})
    .replace(URL_RE,scrub);
@@ -63,7 +75,10 @@ export const COLLECTOR_JS = String.raw`
  }
  function parseStack(st){
   var out=[],ls=String(st||'').split('\n');
-  for(var i=0;i<ls.length&&out.length<20;i++){var l=ls[i].trim();if(l)out.push(frame(l));}
+  for(var i=0;i<ls.length&&out.length<20;i++){
+   var l=ls[i].trim();
+   if(l&&(/^at\s/.test(l)||l.indexOf('@')!==-1))out.push(frame(l));
+  }
   return out;
  }
  // escape-aware size estimate (the client may not serialise)
@@ -82,6 +97,7 @@ export const COLLECTOR_JS = String.raw`
   return e.kind+'|'+(e.message||'')+'|'+top;
  }
  function createBuffer(limit){
+  limit=limit||LIMIT;
   var evs=[],dropped=0,sent=0;
   return {
    push:function(e){
@@ -97,7 +113,8 @@ export const COLLECTOR_JS = String.raw`
    },
    markAllSent:function(){sent=evs.length;},
    takeDropped:function(){var d=dropped;dropped=0;return d;},
-   clear:function(){evs=[];sent=0;}
+   clear:function(){evs=[];sent=0;},
+   size:function(){return evs.length;}
   };
  }
  function createCollector(opts){

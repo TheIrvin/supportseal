@@ -34,17 +34,22 @@ const SENSITIVE_KEY_RE =
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const EMAIL_TEST_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/u;
 const JWT_RE = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
+// "Authorization: Basic dXNlcjpwYXNz" — scheme plus credentials, both dropped.
+// Runs before the scheme rule so its own output is never re-redacted.
+const AUTH_HEADER_RE = /\bAuthorization\s*:\s*\S+(?:\s+[A-Za-z0-9._~+/=-]+)?/gi;
 const AUTH_SCHEME_RE = /\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi;
-const AUTH_HEADER_RE = /\bAuthorization\s*:\s*[^\s,;]+/gi;
 const CARD_CANDIDATE_RE = /(?:\d[ -]?){12,18}\d/g;
-const HEX_TOKEN_RE = /(?<![0-9A-Za-z])[0-9A-Fa-f]{32,}(?![0-9A-Za-z])/g;
+const HEX_TOKEN_RE = /(?<![0-9A-Za-z_-])[0-9A-Fa-f]{32,}(?![0-9A-Za-z_-])/g;
 const HEX_TOKEN_TEST_RE = /^[0-9A-Fa-f]{32,}$/u;
 const MIXED_TOKEN_RE = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{24,}(?![A-Za-z0-9_-])/g;
 const UUID_RE =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u;
-// key=value / key: value, with an optional quoted value.
-const KV_RE =
-  /(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]{1,64})(\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,;}\]]+)?/g;
+// key + separator only; the value is measured separately so a preceding
+// non-sensitive pair can never consume an inner sensitive one
+// ("error: password=hunter2") and our own "[redacted]" output is
+// re-redacted idempotently.
+const KV_KEY_RE = /(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]{1,64})(\s*[:=]\s*)/g;
+const KV_VALUE_RE = /^("[^"]*"|'[^']*'|\[[^\]\s]*\]?|[^\s,;{}[\]"']+)/;
 const JSON_KV_RE = /"([A-Za-z0-9_.-]{1,64})"(\s*:\s*)"([^"]*)"/g;
 const CONTROL_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
@@ -96,22 +101,43 @@ function scrubUrlPathSegments(match: string): string {
 }
 
 /**
+ * Rule 4, key=value / key: value: scan key+separator pairs; measure the
+ * value separately and only a sensitive key's value is replaced. Because a
+ * non-sensitive pair's value is never consumed, an inner pair
+ * ("error: password=hunter2") is still found, and re-redacting our own
+ * "[redacted]" output stays idempotent.
+ */
+function redactKeyValuePairs(text: string): string {
+  let out = "";
+  let copied = 0;
+  KV_KEY_RE.lastIndex = 0;
+  for (const match of text.matchAll(KV_KEY_RE)) {
+    const [whole, key, sep] = match;
+    if (!SENSITIVE_KEY_RE.test(key)) continue;
+    const valueStart = (match.index ?? 0) + whole.length;
+    const value = KV_VALUE_RE.exec(text.slice(valueStart));
+    const valueEnd = valueStart + (value?.[0].length ?? 0);
+    out += text.slice(copied, match.index) + key + sep + "[redacted]";
+    copied = valueEnd;
+  }
+  return copied === 0 ? text : out + text.slice(copied);
+}
+
+/**
  * The full rule pipeline, order per the design doc. Exported for the parity
  * test; field code paths go through the bounded helpers below.
  */
 export function redactString(input: string): string {
   let text = input
     .replace(URL_RE, reduceUrl)
-    .replace(AUTH_SCHEME_RE, "Bearer [redacted]")
     .replace(AUTH_HEADER_RE, "Bearer [redacted]")
+    .replace(AUTH_SCHEME_RE, "Bearer [redacted]")
     .replace(JWT_RE, "[token]");
 
   text = text.replace(JSON_KV_RE, (whole, key: string, sep: string) =>
     SENSITIVE_KEY_RE.test(key) ? `"${key}"${sep}"[redacted]"` : whole,
   );
-  text = text.replace(KV_RE, (whole, key: string, sep: string, value?: string) =>
-    SENSITIVE_KEY_RE.test(key) && value !== undefined ? `${key}${sep}[redacted]` : whole,
-  );
+  text = redactKeyValuePairs(text);
 
   text = text
     .replace(EMAIL_RE, "[email]")
