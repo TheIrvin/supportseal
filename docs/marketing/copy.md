@@ -98,9 +98,9 @@ insert a saved reply and edit it before sending.
 
 Editorial note: this is a live-deployment fact, not a feature claim. The
 evidence is the hosted workspace at supportseal.app (Seal Labs · IndieDevTest:
-real chat, email and context conversations) and the widget integration in
-IndieDevTest's public repository (pietervw/indiedevtest). Keep the wording
-true of the live state — tighten it only when the widget is embedded on
+real chat, email and context conversations) and the widget integration merged
+into IndieDevTest's public repository (pietervw/indiedevtest). Keep the
+wording true of the live state — tighten it only when the widget is served on
 indiedevtest.com itself.
 
 **Heading:** Customer zero: IndieDevTest
@@ -108,7 +108,7 @@ indiedevtest.com itself.
 IndieDevTest — a community where indie mobile developers test each other's
 apps — is the first product running on {siteConfig.name}. Its support chat,
 developer context and support email land in one workspace, and the
-conversations in the screenshots above are the real ones.
+conversations in the screenshots on this page are real ones from its setup.
 
 **CTA:** Visit IndieDevTest (external, https://indiedevtest.com)
 

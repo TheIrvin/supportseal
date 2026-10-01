@@ -50,37 +50,37 @@ const SECTIONS: FeatureSection[] = [
     id: "products",
     title: "Give every product a place to reach you",
     body: "Set each Product's name, colour and allowed domains, then embed its chat widget. Customers can start a live chat without an account or email address.",
-    shot: { id: "S2", alt: "A product's chat widget panel with one live exchange" },
+    shot: { id: "S2", alt: "The product's chat widget panel with one live exchange" },
   },
   {
     id: "email",
     title: "Answer email where you answer chat",
     body: "Forward your support addresses to their Product inbox addresses. Read and reply in the shared inbox, with the Product identified in the email sender name.",
-    shot: { id: "S6", alt: "Email reply arriving in the same conversation as an earlier chat" },
+    shot: { id: "S6", alt: "Support email conversation with a question and the reply sent from the shared inbox" },
   },
   {
     id: "away",
     title: "Keep support open when you step away",
     body: "Set the Workspace to Away so new chat visitors leave a message and reply address. Continue by email when a visitor has left an address and is no longer connected.",
-    shot: { id: "S7", alt: "Chat widget in away mode, asking for a message and an email address" },
+    shot: { id: "S7", alt: "Chat widget in away mode, inviting a message that continues by email" },
   },
   {
     id: "inbox",
     title: "Find the thread you need",
     body: "Filter by Product or status. Search message text, subjects, customer names and email addresses across your Workspace.",
-    shot: { id: "S4", alt: "Inbox filtered to one product with a shortened conversation list" },
+    shot: { id: "S4", alt: "Inbox scoped to the IndieDevTest product with its conversation list" },
   },
   {
     id: "context",
     title: "See the details your app can provide",
     body: "Use identify() and context() to send customer and app details into the Conversation panel. Include an account, plan, version or admin link where it helps you answer.",
-    shot: { id: "S5", alt: "Context panel beside a conversation showing account, plan, version and admin link", withCode: true },
+    shot: { id: "S5", alt: "Context panel beside a conversation showing the identified customer and the app context sent with their message", withCode: true },
   },
   {
     id: "statuses",
     title: "Keep track of the work",
     body: "Use Open, Pending and Closed states. Add internal notes for your team and tags for the topics you handle.",
-    shot: { id: "S1", alt: "Inbox with conversations at different statuses across products" },
+    shot: { id: "S1", alt: "Inbox with the conversation list, a selected thread and the customer context panel" },
   },
   {
     id: "saved-replies",
@@ -92,19 +92,19 @@ const SECTIONS: FeatureSection[] = [
     id: "attachments",
     title: "Keep files with the question",
     body: "Share supported attachments through chat and email. See them alongside the messages they belong to.",
-    shot: { id: "S-attachments", alt: "Conversation showing a shared file attachment" },
+    shot: { id: "S-attachments", alt: "Reply in a conversation carrying an attached file with its name and size" },
   },
   {
     id: "team",
     title: "Bring your team into the same Workspace",
     body: "Invite teammates as Admins or Agents. Admins manage Products and invitations; Agents work in the inbox.",
-    shot: { id: "S9", alt: "Team settings listing members with Admin and Agent roles" },
+    shot: { id: "S9", alt: "Team settings listing the workspace Admin and the invite form for Agents" },
   },
   {
     id: "onboarding",
     title: "Start with a real exchange",
     body: "Follow onboarding to add a Product, allow its domain and install the widget. Send a test message, answer it and add your next Product.",
-    shot: { id: "S8", alt: "Widget settings with the embed snippet, copy button and test-page link" },
+    shot: { id: "S8", alt: "Widget settings showing the embed snippet with its copy button" },
   },
 ];
 
@@ -118,7 +118,10 @@ const NOT_YET = [
   "A built-in mail server",
 ];
 
-const NAV_ITEMS: FeaturesNavItem[] = SECTIONS.map((section) => ({ id: section.id, label: section.title }));
+const NAV_ITEMS: FeaturesNavItem[] = [
+  ...SECTIONS.map((section) => ({ id: section.id, label: section.title })),
+  { id: "not-yet", label: "Not yet — and not pretended" },
+];
 
 export default function FeaturesPage() {
   return (
@@ -184,21 +187,23 @@ export default function FeaturesPage() {
 
       {/* Not yet — and not pretended (docs/marketing/copy.md, features). */}
       <Section band="surface" className="pb-16 lg:pb-20">
-        <SectionHeading title="Not yet — and not pretended" />
-        <p className="mt-4 max-w-[40rem] text-[1.067rem] leading-[1.65] text-body">
-          {siteConfig.name} deliberately does not yet ship the things below. If you need
-          them, {siteConfig.name} is not the right desk today.
-        </p>
-        <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {NOT_YET.map((item) => (
-            <li
-              key={item}
-              className="rounded-lg border border-border bg-surface px-4 py-3 text-[1rem] text-muted"
-            >
-              {item}
-            </li>
-          ))}
-        </ul>
+        <div id="not-yet" className="scroll-mt-20">
+          <SectionHeading title="Not yet — and not pretended" />
+          <p className="mt-4 max-w-[40rem] text-[1.067rem] leading-[1.65] text-body">
+            {siteConfig.name} deliberately does not yet ship the things below. If you need
+            them, {siteConfig.name} is not the right desk today.
+          </p>
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {NOT_YET.map((item) => (
+              <li
+                key={item}
+                className="rounded-lg border border-border bg-surface px-4 py-3 text-[1rem] text-muted"
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
       </Section>
 
       <CtaBand

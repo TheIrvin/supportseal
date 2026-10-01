@@ -62,8 +62,7 @@ export function ScreenshotFrame({
           />
           <Image
             src={`/marketing/${shot.id}-dark.png`}
-            alt=""
-            aria-hidden
+            alt={alt}
             fill
             sizes="(max-width: 1024px) 100vw, 60vw"
             loading="lazy"

@@ -32,7 +32,7 @@ function shot(
 export const MARKETING_SHOTS: Record<string, MarketingShot> = {
   S1: shot(
     "S1",
-    "Inbox, All Products scope: sidebar with the first Product; conversation list with chat and email Conversations; context panel filled",
+    "Inbox, All Products scope: sidebar with the Product; conversation list with chat and email Conversations; context panel filled",
     1440,
     900,
   ),
@@ -41,18 +41,18 @@ export const MARKETING_SHOTS: Record<string, MarketingShot> = {
   // Pending a second real Product: a pink widget capture cannot be truthful yet.
   S3: shot("S3", "Chat widget panel, second Product (pink), one live exchange", 384, 600, false),
   S2m: shot("S2m", "Chat widget open on a 390px viewport", 390, 844, false),
-  S4: shot("S4", "Inbox scoped to IndieDevTest with filtered list", 1440, 900),
-  S5: shot("S5", "Context panel: identified member, plan, membership year, page URL", 384, 560),
-  S6: shot("S6", "Conversation continued from chat to email with an email reply", 1440, 900),
-  S7: shot("S7", "Widget in away mode: message form with email field", 384, 600),
-  S8: shot("S8", "Widget settings: embed snippet with copy button, live preview and test-page link", 1440, 900),
-  S9: shot("S9", "Team settings with the Admin role and the invite form", 1440, 900),
+  S4: shot("S4", "Inbox scoped to IndieDevTest with its conversation list and open thread", 1440, 900),
+  S5: shot("S5", "Context panel: identified member, their email and user id, app context and recorded page", 384, 560),
+  S6: shot("S6", "Support email Conversation with a question and the reply sent from the inbox", 1440, 900),
+  S7: shot("S7", "Widget in away mode, inviting a message that continues by email", 384, 600),
+  S8: shot("S8", "Widget settings: embed snippet with its copy button", 1440, 900),
+  S9: shot("S9", "Team settings: the workspace Admin and the invite form for Agents", 1440, 900),
   S10: shot("S10", "Hosted billing page: usage meter for the current period", 1440, 900),
   S11: shot("S11", "Conversation with note, tag and saved-reply picker open", 1440, 900),
   // The design shot list leaves the attachments crop unnamed ("crop of a
   // Conversation with a file"); it gets a manifest entry so the frame can
   // render a pending slot like every other capture.
-  "S-attachments": shot("S-attachments", "Conversation crop showing a shared file attachment", 900, 640),
+  "S-attachments": shot("S-attachments", "Reply carrying an attached file with its name and size", 900, 640),
 };
 
 /** Full shot-list ids from the design doc, for completeness tests. */

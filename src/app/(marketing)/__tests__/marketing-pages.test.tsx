@@ -55,7 +55,7 @@ describe("marketing home page", () => {
     // still emit a srcSet plus a preload link.
     expect(html).toContain("url=%2Fmarketing%2FS1-light.png");
     expect(html).toContain("url=%2Fmarketing%2FS1m-light.png");
-    expect(html).toContain('alt="Inbox showing conversations from all products');
+    expect(html).toContain("alt=\"Inbox with the product&#x27;s conversations in the list");
   });
 
   it("names customer zero with the live showcase section", () => {
