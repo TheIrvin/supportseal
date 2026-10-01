@@ -69,6 +69,21 @@ defaults" and "Open questions".
 | Q3 | Capture "warnings" via a narrow `console.warn`/`console.error` wrapper, or drop warnings from the slice? | **Default:** narrow wrapper; primitives as text, an `Error` as `name: message`, anything else as `[object]` |
 | Q4 | Add a scheduled purge job (new infrastructure) or accept hidden-until-purged expired rows? | **Default:** read-time expiry filter plus bounded purge on ingest; no new job |
 
+## Presence (V2 design, 2026-10-01)
+
+Raised by [design/presence.md](design/presence.md), the deferred presence
+half of richer branding and presence; independent of branding PR #37.
+See its [Open questions](design/presence.md#open-questions) for trade-offs.
+These are working defaults, not resolved policy approvals.
+
+| # | Question | **Default** (if any) |
+| --- | --- | --- |
+| PQ1 | Internal staff identity only, or visitor-facing names/photos per Product? | **Default:** team-only membership photos; retain D4 “{Product} Support” and generic public typing. Public identity needs separate consent/alias/visibility rules. |
+| PQ2 | Informational activity, or personal availability/automatic Live/Away? | **Default:** automatic team-only activity; manual Workspace-wide Live/Away stays authoritative. |
+| PQ3 | Visitor typing on by default, Product opt-in or visitor opt-out? | **Default:** on for established chat Conversations; no pre-message/away-form collection or draft contents. Review disclosure and any required consent/opt-out before shipping. |
+| PQ4 | Avatar decoder and recovery for interrupted file/database operations? | **Unresolved:** a concrete dependency and cleanup/retry ownership proposal is required before uploads are built; coordinate with branding where available. No new service/job approved. |
+| PQ5 | Opportunistic deletion or a strict physical presence-data purge deadline? | **Default:** hide expired leases immediately, delete opportunistically in bounded batches; inactive installations/backups may retain expired rows. Strict deadlines need an approved operating procedure. |
+
 ## 1. V1 scope: marketing site, analytics, legal drafts, demo data
 
 Initial.md requires for V1/launch: the marketing site (§26, §62 "marketing
