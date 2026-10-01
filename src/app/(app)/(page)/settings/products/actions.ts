@@ -7,6 +7,7 @@ import {
   addProductDomain,
   archiveProduct,
   createProduct,
+  ensureProductInboundEmail,
   removeProductDomain,
   setProductDiagnostics,
   updateProduct,
@@ -37,6 +38,19 @@ export async function createProductAction(
   if (!result.ok) return { error: result.error };
   revalidatePath("/settings/products");
   redirect(`/settings/products/${result.product.id}`);
+}
+
+/** Allocate the inbound address for a legacy Product (issue #45): Admin-only. */
+export async function generateInboundEmailAction(
+  _prev: ProductFormState,
+  formData: FormData,
+): Promise<ProductFormState> {
+  const ctx = await requireWorkspace("/settings/products");
+  const productId = String(formData.get("productId") ?? "");
+  const result = await ensureProductInboundEmail({ ctx, productId });
+  if (!result.ok) return { error: result.error };
+  revalidatePath(`/settings/products/${productId}`);
+  return {};
 }
 
 export async function updateProductAction(

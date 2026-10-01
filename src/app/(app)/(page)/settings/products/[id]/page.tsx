@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getProductForWorkspace, getDiagnosticsEnabler } from "@/lib/products";
+import { countFailedReplies, lastInboundReceived } from "@/lib/email/delivery";
+import { managedSender } from "@/lib/email/outbound";
 import { countSnapshotsForProduct } from "@/lib/diagnostics/store";
 import { isHostedMode } from "@/lib/hosting";
 import { requireWorkspace } from "@/lib/workspace";
@@ -11,6 +13,7 @@ import { ArchiveForm } from "./archive-form";
 import { DeveloperTab } from "./developer-tab";
 import { DomainsCard } from "./domains-card";
 import { EditProductForm } from "./edit-product-form";
+import { EmailTab } from "./email-tab";
 import { WidgetTab } from "./widget-tab";
 
 export const metadata = { title: "Product settings" };
@@ -27,10 +30,19 @@ export default async function ProductPage({
   const product = await getProductForWorkspace(ctx.workspace.id, id);
   if (!product) notFound();
 
-  const activeTab = tab === "widget" ? "widget" : tab === "developer" ? "developer" : "general";
-  const [diagnosticsEnabler, snapshotCount] = await Promise.all([
+  const activeTab =
+    tab === "widget"
+      ? "widget"
+      : tab === "email"
+        ? "email"
+        : tab === "developer"
+          ? "developer"
+          : "general";
+  const [diagnosticsEnabler, snapshotCount, lastReceived, failedReplies] = await Promise.all([
     getDiagnosticsEnabler({ workspaceId: ctx.workspace.id, productId: product.id }),
     countSnapshotsForProduct(ctx.workspace.id, product.id),
+    lastInboundReceived(ctx.workspace.id, product.id),
+    countFailedReplies(ctx.workspace.id, product.id),
   ]);
 
   return (
@@ -59,6 +71,11 @@ export default async function ProductPage({
             id: "widget",
             label: "Widget",
             href: `/settings/products/${product.id}?tab=widget`,
+          },
+          {
+            id: "email",
+            label: "Email",
+            href: `/settings/products/${product.id}?tab=email`,
           },
           {
             id: "developer",
@@ -96,6 +113,19 @@ export default async function ProductPage({
         ) : (
           <p className="text-sm text-muted">Only Workspace admins can edit Product settings.</p>
         )
+      ) : activeTab === "email" ? (
+        <EmailTab
+          product={{
+            id: product.id,
+            name: product.name,
+            inboundEmail: product.inboundEmail,
+            archived: product.archivedAt !== null,
+            isAdmin: ctx.role === "ADMIN",
+          }}
+          managedSender={managedSender()}
+          lastReceived={lastReceived}
+          failedReplies={failedReplies}
+        />
       ) : activeTab === "widget" ? (
         <WidgetTab
           product={{

@@ -170,11 +170,15 @@ export async function openWidget(
   return frame;
 }
 
-/** Create a Product from settings and return its id plus public widget key. */
+/**
+ * Create a Product from settings and return its id, public widget key and
+ * generated inbound address. Visits the Email tab so every creation also
+ * smoke-checks the inbound surface (issue #45).
+ */
 export async function createProduct(
   page: Page,
   product: { name: string; colour?: string; domain?: string },
-): Promise<{ id: string; key: string }> {
+): Promise<{ id: string; key: string; inboundEmail: string }> {
   await page.goto("/settings/products");
   await page.locator("#name").fill(product.name);
   if (product.colour !== undefined) await page.locator("#primaryColor").fill(product.colour);
@@ -187,7 +191,17 @@ export async function createProduct(
   await page.goto(`/settings/products/${id}?tab=widget`);
   const key = ((await page.getByText(/^pk_\S+$/u).textContent()) ?? "").trim();
   expect(key).toMatch(/^pk_/u);
-  return { id, key };
+
+  const inboundEmail = await readInboundEmail(page, id);
+  return { id, key, inboundEmail };
+}
+
+/** The Product's generated inbound address as shown on its Email tab. */
+export async function readInboundEmail(page: Page, productId: string): Promise<string> {
+  await page.goto(`/settings/products/${productId}?tab=email`);
+  const address = ((await page.getByText(/^product_\S+@\S+$/u).textContent()) ?? "").trim();
+  expect(address).toMatch(/^product_[a-z0-9_-]+@/u);
+  return address;
 }
 
 /**

@@ -1,6 +1,13 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { createProduct, openWidget, registerAccount, uniqueAccount, widgetFrame } from "./helpers";
+import {
+  createProduct,
+  openWidget,
+  readInboundEmail,
+  registerAccount,
+  uniqueAccount,
+  widgetFrame,
+} from "./helpers";
 
 /**
  * The condensed V1 acceptance flow (docs/FRD.md "Acceptance path", Initial.md
@@ -19,6 +26,7 @@ test.describe.serial("V1 acceptance flow", () => {
   let customerPage: Page;
   let productAId = "";
   let productAKey = "";
+  let productAInbound = "";
   let productBKey = "";
   let conversationAId = "";
 
@@ -72,6 +80,16 @@ test.describe.serial("V1 acceptance flow", () => {
 
     await agentPage.goto(`/settings/products/${productAId}?tab=widget`);
     await expect(agentPage.getByText(/^pk_\S+$/u)).toHaveText(productAKey);
+  });
+
+  test("product creation generated a copyable inbound email (issue #45)", async () => {
+    productAInbound = await readInboundEmail(agentPage, productAId);
+    expect(productAInbound).toMatch(/^product_[a-z0-9_-]+@inbound\.localhost$/u);
+    await expect(
+      agentPage.getByRole("button", { name: "Copy address" }),
+    ).toBeVisible();
+    await expect(agentPage.getByText(/forward your support address/iu).first()).toBeVisible();
+    await expect(agentPage.getByText("Waiting for the first email")).toBeVisible();
   });
 
   test("visitor starts an anonymous chat from a real embedded widget", async () => {
@@ -160,7 +178,11 @@ test.describe.serial("V1 acceptance flow", () => {
   });
 
   test("create Product B and start a conversation on it", async () => {
-    productBKey = (await createProduct(agentPage, productB)).key;
+    const createdB = await createProduct(agentPage, productB);
+    productBKey = createdB.key;
+    // Every Product gets its own distinct inbound address.
+    expect(createdB.inboundEmail).toMatch(/^product_[a-z0-9_-]+@inbound\.localhost$/u);
+    expect(createdB.inboundEmail).not.toBe(productAInbound);
 
     const frame = await openWidget(customerPage, productBKey, { status: "Online" });
     await frame.locator("#input").fill("Hi Beacon team, how do I embed the form?");

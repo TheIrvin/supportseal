@@ -50,7 +50,7 @@ export type ChecklistState = {
 
 /** The six "Get set up" items, each derived from real data. */
 export async function computeChecklist(workspaceId: string): Promise<ChecklistState> {
-  const [firstConversation, firstAgentReply, firstInboundEmail, productCount, inviteCount, domainCount] =
+  const [firstConversation, firstAgentReply, firstInboundEmail, productCount, inviteCount, domainCount, firstActiveProduct] =
     await Promise.all([
       prisma.conversation.findFirst({ where: { workspaceId }, select: { id: true } }),
       prisma.message.findFirst({
@@ -64,6 +64,11 @@ export async function computeChecklist(workspaceId: string): Promise<ChecklistSt
       prisma.product.count({ where: { workspaceId } }),
       prisma.invite.count({ where: { workspaceId } }),
       prisma.productDomain.count({ where: { product: { workspaceId } } }),
+      prisma.product.findFirst({
+        where: { workspaceId, archivedAt: null },
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      }),
     ]);
 
   const tested = Boolean(firstConversation);
@@ -95,9 +100,11 @@ export async function computeChecklist(workspaceId: string): Promise<ChecklistSt
     {
       id: "email",
       title: "Set up support email",
-      hint: "Forward your support address and receive the first email.",
-      actionLabel: "Product settings",
-      actionHref: "/settings/products",
+      hint: "Forward your support address to the Product's inbound address and receive the first email.",
+      actionLabel: "Product settings → Email",
+      actionHref: firstActiveProduct
+        ? `/settings/products/${firstActiveProduct.id}?tab=email`
+        : "/settings/products",
       done: Boolean(firstInboundEmail),
     },
     {

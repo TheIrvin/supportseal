@@ -38,6 +38,7 @@ design review list.
 | D11 | Archive before delete | **Default:** a Product must be archived before it can be deleted (Admins only, typed-name confirmation). Conversation deletion needs only a confirmation dialog | Two deliberate steps for the most destructive action | `design/product-settings.md` |
 | D2a | Replying in an archived Product's Conversations | **Default:** read-only until the Product is unarchived (notes, tags and status still work) | Customer replies would bounce and the widget no longer loads, so replies could not continue | `design/conversation-view.md`, `support-inbox.md`, `product-settings.md` |
 | D9a | Which part of the page URL | **Default:** origin plus path; query string and fragment stripped; developers may send a full URL via `context()` | Query strings often carry tokens or emails (FR-SEC-02) | `design/chat-widget.md`, `conversation-view.md` |
+| D13 | Generated inbound address and `inboundEmailVerified` semantics | **Default:** every new Product gets an auto-generated `product_<random>@<inbound domain>` address (unique, allocated at create); `inboundEmailVerified` stays null in V1 because generation is not verification — "receiving" status derives from inbound deliveries (issue [#45](https://github.com/pietervw/supportseal/issues/45); a provider verification ping can stamp it later) | Keeps the checklist's "first inbound email received" proof honest without inventing a provider flow (Initial.md §13; `design/onboarding.md` open point) | `design/product-settings.md`, `design/onboarding.md` |
 
 ## Marketing site (2026-09-25)
 

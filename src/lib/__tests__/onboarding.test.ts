@@ -66,6 +66,11 @@ describe("checklist derivation", () => {
     expect(state.items.find((i) => i.id === "test-message")?.done).toBe(false);
     expect(state.doneCount).toBe(1);
 
+    // Issue #45: the email item deep-links to the Product's Email tab.
+    const emailItem = state.items.find((i) => i.id === "email");
+    expect(emailItem?.actionHref).toBe(`/settings/products/${product.id}?tab=email`);
+    expect(emailItem?.done).toBe(false);
+
     const contact = await prisma.contact.create({ data: { workspaceId: workspace.id, email: null } });
     const conversation = await prisma.conversation.create({
       data: { workspaceId: workspace.id, productId: product.id, contactId: contact.id, channel: "CHAT" },
@@ -87,6 +92,15 @@ describe("checklist derivation", () => {
 
     state = await computeChecklist(workspace.id);
     expect(state.doneCount).toBe(state.total);
+  });
+
+  it("falls back to the Products list when no product exists yet", async () => {
+    const user = await createTestUser(db.prisma, { email: "solo@example.com" });
+    const workspace = await db.prisma.workspace.create({
+      data: { name: "Empty", memberships: { create: { userId: user.id, role: "ADMIN" } } },
+    });
+    const state = await computeChecklist(workspace.id);
+    expect(state.items.find((i) => i.id === "email")?.actionHref).toBe("/settings/products");
   });
 });
 

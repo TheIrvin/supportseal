@@ -2,10 +2,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createTestUser, startTestDb, stopTestDb, type TestDb } from "@/test/integration-db";
 import { createWorkspace, type WorkspaceContext } from "@/lib/workspace";
+import { inboundDomain } from "@/lib/email/outbound";
 import {
   addProductDomain,
   archiveProduct,
   createProduct,
+  ensureProductInboundEmail,
   getActiveProductByWidgetKey,
   getProductForWorkspace,
   listProducts,
@@ -85,6 +87,44 @@ describe("products", () => {
 
     const byKey = await getActiveProductByWidgetKey(result.product.widgetPublicKey);
     expect(byKey?.name).toBe("Alpha SaaS");
+  });
+
+  it("generates a unique inbound email per product, unverified (issue #45, D13)", async () => {
+    const { alphaCtx } = await seedTwoWorkspaces();
+    const first = await createProduct({ ctx: alphaCtx, name: "One" });
+    const second = await createProduct({ ctx: alphaCtx, name: "Two" });
+    if (!first.ok) throw new Error(first.error);
+    if (!second.ok) throw new Error(second.error);
+
+    const expected = new RegExp(`^product_[a-z0-9_-]+@${inboundDomain().replace(/\./gu, "\\.")}$`, "u");
+    expect(first.product.inboundEmail).toMatch(expected);
+    expect(second.product.inboundEmail).toMatch(expected);
+    expect(first.product.inboundEmail).not.toBe(second.product.inboundEmail);
+    // Generation is not verification: the timestamp stays unset in V1.
+    expect(first.product.inboundEmailVerified).toBeNull();
+
+    const stored = await getProductForWorkspace(alphaCtx.workspace.id, first.product.id);
+    expect(stored?.inboundEmail).toBe(first.product.inboundEmail);
+  });
+
+  it("backfills a missing inbound address for legacy products, admin-only", async () => {
+    const { alphaCtx } = await seedTwoWorkspaces();
+    const legacy = await db.prisma.product.create({
+      data: { workspaceId: alphaCtx.workspace.id, name: "Legacy", widgetPublicKey: "pk_legacy" },
+    });
+    expect(legacy.inboundEmail).toBeNull();
+
+    const agentCtx: WorkspaceContext = { ...alphaCtx, role: "AGENT" };
+    expect((await ensureProductInboundEmail({ ctx: agentCtx, productId: legacy.id })).ok).toBe(false);
+    expect((await ensureProductInboundEmail({ ctx: alphaCtx, productId: "missing" })).ok).toBe(false);
+
+    const generated = await ensureProductInboundEmail({ ctx: alphaCtx, productId: legacy.id });
+    if (!generated.ok) throw new Error(generated.error);
+    expect(generated.inboundEmail).toMatch(/^product_[a-z0-9_-]+@/u);
+
+    // Idempotent: a second call returns the same address unchanged.
+    const again = await ensureProductInboundEmail({ ctx: alphaCtx, productId: legacy.id });
+    expect(again.ok && again.inboundEmail).toBe(generated.inboundEmail);
   });
 
   it("validates name, colour and domains", async () => {

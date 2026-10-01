@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
+import { generateInboundLocalPart } from "@/lib/email/inbound";
+import { inboundDomain } from "@/lib/email/outbound";
 import type { WorkspaceContext } from "@/lib/workspace";
 
 export type ProductWithDomains = {
@@ -22,6 +24,25 @@ const HOSTNAME = /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2
 
 export function generateWidgetPublicKey(): string {
   return `pk_${randomBytes(24).toString("base64url")}`;
+}
+
+/**
+ * Fresh inbound support address for a new Product (FR-EMAIL-01): the local
+ * part carries ~72 bits of entropy, so collisions are practically
+ * impossible; the re-check makes uniqueness a guarantee rather than a
+ * probability. `inboundEmailVerified` stays null: generation is not
+ * verification, and "receiving" is derived from inbound deliveries.
+ */
+async function generateUniqueInboundEmail(): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const address = `${generateInboundLocalPart()}@${inboundDomain()}`.toLowerCase();
+    const clash = await prisma.product.findFirst({
+      where: { inboundEmail: { equals: address, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (!clash) return address;
+  }
+  throw new ProductActionError("Could not allocate a unique inbound email address.");
 }
 
 export function isValidHexColor(value: string): boolean {
@@ -148,17 +169,63 @@ export async function createProduct(input: {
     if (!normalizedDomains.includes(domain)) normalizedDomains.push(domain);
   }
 
+  let inboundEmail: string;
+  try {
+    inboundEmail = await generateUniqueInboundEmail();
+  } catch (error) {
+    if (error instanceof ProductActionError) return { ok: false, error: error.message };
+    throw error;
+  }
+
   const product = await prisma.product.create({
     data: {
       workspaceId: input.ctx.workspace.id,
       name,
       primaryColor,
       widgetPublicKey: generateWidgetPublicKey(),
+      inboundEmail,
       domains: { create: normalizedDomains.map((domain) => ({ domain })) },
     },
     include: { domains: true },
   });
   return { ok: true, product: toProductWithDomains(product) };
+}
+
+/**
+ * Allocate the inbound address for a Product that predates generation
+ * (issue #45): sets one only when missing, so it is safe to expose as a
+ * "Generate address" affordance for legacy Products.
+ */
+export async function ensureProductInboundEmail(input: {
+  ctx: WorkspaceContext;
+  productId: string;
+}): Promise<{ ok: true; inboundEmail: string } | { ok: false; error: string }> {
+  try {
+    assertAdmin(input.ctx);
+  } catch (error) {
+    return { ok: false, error: (error as Error).message };
+  }
+
+  const product = await getProductForWorkspace(input.ctx.workspace.id, input.productId);
+  if (!product) return { ok: false, error: "Product not found." };
+  if (product.inboundEmail) return { ok: true, inboundEmail: product.inboundEmail };
+
+  let inboundEmail: string;
+  try {
+    inboundEmail = await generateUniqueInboundEmail();
+  } catch (error) {
+    if (error instanceof ProductActionError) return { ok: false, error: error.message };
+    throw error;
+  }
+  // The `inboundEmail: null` guard keeps a concurrent call from overwriting.
+  await prisma.product.updateMany({
+    where: { id: product.id, workspaceId: input.ctx.workspace.id, inboundEmail: null },
+    data: { inboundEmail },
+  });
+
+  const after = await getProductForWorkspace(input.ctx.workspace.id, product.id);
+  if (!after?.inboundEmail) return { ok: false, error: "Could not allocate the inbound address." };
+  return { ok: true, inboundEmail: after.inboundEmail };
 }
 
 export async function updateProduct(input: {
