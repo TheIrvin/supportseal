@@ -42,8 +42,10 @@ and owns routing via Traefik labels (`supportseal.app` + `www`,
 Let's Encrypt) — Coolify Cloud's API cannot set service domains.
 
 What the Cloud API **cannot** do: clone a private Git repository
-(application creation uses anonymous clones) or store environment
-variables. So the one-time manual steps are:
+(application creation uses anonymous clones). Environment variables **can**
+be managed via `/api/v1/applications/{uuid}/envs` (verified 2026-10-01) —
+but only with a read-write API token; the vault's inspection token gets 401
+on writes. So the one-time manual steps are:
 
 1. Create the compose resource in the panel (project **SupportSeal** →
    New Resource → Docker Compose → GitHub `pietervw/supportseal` @
@@ -77,11 +79,9 @@ scheduled backup on `supportseal-db` (Coolify S3 backup or off-box cron
 | `DATABASE_URL` | internal Postgres URL (UTC) |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` (never reuse the dev value) |
 | `INBOUND_WEBHOOK_SECRET` | `openssl rand -hex 32` (embedded in the Postmark webhook URL) |
-| `INBOUND_EMAIL_DOMAIN` | the inbound mail domain chosen with Postmark ([issue #4]) |
-| `POSTMARK_SERVER_TOKEN` | when email lands |
+| `INBOUND_EMAIL_DOMAIN` | `supportseal.app` (single-origin decision — same domain as the app) |
+| `POSTMARK_SERVER_TOKEN` | Postmark Server API token (see "Postmark (email)" below) |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRO_PRICE_ID` | when billing lands |
-
-[issue #4]: https://github.com/pietervw/supportseal/issues/4
 
 better-auth `trustedOrigins` needs no domain-specific config: it trusts
 `NEXT_PUBLIC_APP_URL` plus the request's own host (src/lib/auth.ts), so
@@ -102,3 +102,32 @@ tracked in [issue #23] is resolved by this deployment value.
 - Postmark and Stripe webhook URLs (when configured) point at
   `https://supportseal.app/api/...` and are reachable (DNS-only or
   proxied — both pass webhooks).
+
+## Postmark (email)
+
+Live since 2026-10-01 ([issue #4]). The Postmark **account** is the
+cross-project Seal Labs login (vault keys `POSTMARK_API_KEY` /
+`POSTMARK_SERVER_ID` / `POSTMARK_INBOUND_WEBHOOK_SECRET` /
+`POSTMARK_ACCOUNT_EMAIL`); the SupportSeal sending identity lives in the
+dedicated Postmark **server** `supportseal.app` (ID 21062307) — the account
+login email is never customer-visible.
+
+- **Outbound**: domain `supportseal.app` verified via DKIM + Return-Path.
+  Cloudflare zone records (all DNS-only): DKIM TXT
+  `20261001035150pm._domainkey`, CNAME `pm-bounces` → `pm.mtasv.net`,
+  monitor-only DMARC (`p=none`, rua → `support@seallabs.io`). Sending uses
+  `POSTMARK_SERVER_TOKEN` against the `/email` API, default message stream
+  `outbound` (no `POSTMARK_MESSAGE_STREAM` override needed).
+- **Inbound**: MX `10 inbound.postmarkapp.com` / `20 inbound2.postmarkapp.com`
+  on the apex route `product_xxx@` / `reply+token@supportseal.app` to
+  Postmark. The inbound webhook URL embeds the shared secret as Basic-auth
+  userinfo (Postmark cannot set headers):
+  `https://<INBOUND_WEBHOOK_SECRET>@supportseal.app/api/email/inbound/postmark`
+  (the Postmark-specific JSON route, not the SendGrid-shaped
+  `/api/email/inbound`).
+- **Account approval**: new Postmark accounts start in test mode — recipients
+  must be on `supportseal.app` (or the signup domain) until Postmark approves
+  the account. Inbound processing is not restricted. Request approval from
+  the Postmark console before inviting real customers.
+
+[issue #4]: https://github.com/pietervw/supportseal/issues/4
