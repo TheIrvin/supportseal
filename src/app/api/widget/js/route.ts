@@ -88,6 +88,9 @@ const LOADER_JS = String.raw`
         config = data;
         retryIndex = 0;
         render();
+        // Starts after config loads (design "Start timing"); disabled
+        // Products (flag absent) never fetch the collector bundle.
+        loadCollector();
       })
       .catch(function () {
         if (retryIndex < retries.length) {
@@ -193,6 +196,16 @@ const LOADER_JS = String.raw`
     if (event.data.type === 'ss:navigate' && frame && frame.contentWindow) {
       frame.contentWindow.postMessage({ type: 'ss:page', path: event.data.path }, serviceOrigin);
     }
+    // Panel asks for a diagnostics snapshot when the visitor sends a message
+    // (docs/design/diagnostics.md "Transport"). Only the panel (service
+    // origin) can reach this branch; the reply goes only to the panel.
+    if (event.data.type === 'ss:diag-request') {
+      var snapshot = null;
+      try { if (window.__ssDiag) snapshot = window.__ssDiag.snapshot(); } catch (e) { snapshot = null; }
+      if (frame && frame.contentWindow) {
+        frame.contentWindow.postMessage({ type: 'ss:diag-snapshot', snapshot: snapshot }, serviceOrigin);
+      }
+    }
   });
 
   window.addEventListener('resize', positionPanel);
@@ -238,15 +251,41 @@ const LOADER_JS = String.raw`
       frame.contentWindow.postMessage({ type: 'ss:' + item.type, payload: item.payload }, serviceOrigin);
     }
   }
+  // --- Diagnostics (docs/design/diagnostics.md) ---------------------------
+  // The collector bundle loads only when the Product enabled it; the
+  // developer switch can only narrow (pause), never widen.
+  var diagUserEnabled = true;
+  var diagLoaded = false;
+  function setDiagnostics(enabled) {
+    diagUserEnabled = !!enabled;
+    try {
+      if (!enabled && window.__ssDiag) window.__ssDiag.pause();
+      if (enabled && window.__ssDiag) window.__ssDiag.resume();
+    } catch (e) { /* collector issues never surface on the host page */ }
+  }
+  function loadCollector() {
+    if (diagLoaded || previewMode || !config.diagnostics) return;
+    diagLoaded = true;
+    try {
+      window.__ssDiagConfig = { serviceOrigin: serviceOrigin, startPaused: !diagUserEnabled };
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = serviceOrigin + '/widget-diagnostics.js';
+      s.setAttribute('data-service-origin', serviceOrigin);
+      (document.body || document.head).appendChild(s);
+    } catch (e) { /* no diagnostics rather than a broken page */ }
+  }
   function dispatch(entry) {
     try {
       var type = entry && entry[0];
       if (type === 'identify' || type === 'context') enqueue(type, entry[1] || {});
+      if (type === 'diagnostics') setDiagnostics(entry[1] !== false);
     } catch (e) { /* untrusted queue entries never break the widget */ }
   }
   var publicApi = {
     identify: function (payload) { enqueue('identify', payload || {}); },
     context: function (payload) { enqueue('context', payload || {}); },
+    diagnostics: function (enabled) { setDiagnostics(enabled !== false); },
     // Keep the documented async-safety queue usable after the loader takes
     // over window.SupportSealWidget: q.push(['identify', {...}]) keeps working.
     q: {

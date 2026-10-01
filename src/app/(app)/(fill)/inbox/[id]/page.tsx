@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { countFailedOutboundDeliveries, getConversationDetail, listTags } from "@/lib/conversations";
 import { orderContextForDisplay } from "@/lib/dev-context";
+import { hasExpiredSnapshotsForConversation, listSnapshotsForConversation } from "@/lib/diagnostics/store";
 import { listSavedReplies } from "@/lib/saved-replies";
 import { requireWorkspace } from "@/lib/workspace";
 import { ConversationView } from "./conversation-view";
@@ -23,6 +24,12 @@ export default async function ConversationPage({
     countFailedOutboundDeliveries(id),
   ]);
   if (!conversation) notFound();
+
+  const [snapshots, hasExpired] = await Promise.all([
+    listSnapshotsForConversation(ctx.workspace.id, conversation.id),
+    hasExpiredSnapshotsForConversation(ctx.workspace.id, conversation.id),
+  ]);
+  const snapshotsByMessage = new Map(snapshots.map((snapshot) => [snapshot.messageId, snapshot]));
 
   return (
     <ConversationView
@@ -56,6 +63,16 @@ export default async function ConversationPage({
             contentType: a.contentType,
             size: a.size,
           })),
+          diagnostics: snapshotsByMessage.has(message.id)
+            ? (() => {
+                const snapshot = snapshotsByMessage.get(message.id)!;
+                return {
+                  errorCount: snapshot.errorCount,
+                  warningCount: snapshot.warningCount,
+                  networkFailureCount: snapshot.networkFailureCount,
+                };
+              })()
+            : null,
         })),
       }}
       availableTags={tags}
@@ -73,6 +90,21 @@ export default async function ConversationPage({
               : String(entry.value ?? ""),
           updatedAt: ((conversation.chatVisitors[0]?.devContext as Record<string, unknown> | null)
             ?.updatedAt as string | undefined) ?? null,
+        })),
+      }}
+      diagnostics={{
+        enabled: conversation.product.diagnosticsEnabledAt !== null,
+        hasExpired,
+        snapshots: snapshots.map((snapshot) => ({
+          id: snapshot.id,
+          messageId: snapshot.messageId,
+          createdAt: snapshot.createdAt.toISOString(),
+          errorCount: snapshot.errorCount,
+          warningCount: snapshot.warningCount,
+          networkFailureCount: snapshot.networkFailureCount,
+          droppedCount: snapshot.droppedCount,
+          environment: snapshot.environment,
+          events: snapshot.events,
         })),
       }}
     />

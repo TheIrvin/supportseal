@@ -8,8 +8,10 @@ import {
   archiveProduct,
   createProduct,
   removeProductDomain,
+  setProductDiagnostics,
   updateProduct,
 } from "@/lib/products";
+import { deleteAllSnapshotsForProduct } from "@/lib/diagnostics/store";
 import { requireWorkspace } from "@/lib/workspace";
 
 export type ProductFormState = { error?: string };
@@ -88,5 +90,21 @@ export async function archiveAction(formData: FormData): Promise<void> {
   const archived = String(formData.get("archived") ?? "") === "true";
   await archiveProduct({ ctx, productId, archived });
   revalidatePath("/settings/products");
+  revalidatePath(`/settings/products/${productId}`);
+}
+
+/** Browser diagnostics switch (docs/design/diagnostics.md): Admin-only. */
+export async function setDiagnosticsAction(productId: string, enabled: boolean): Promise<void> {
+  const ctx = await requireWorkspace("/settings/products");
+  await setProductDiagnostics({ ctx, productId, enabled });
+  revalidatePath(`/settings/products/${productId}`);
+  revalidatePath("/inbox");
+}
+
+/** Admin "Delete collected diagnostics": removes every snapshot for a Product. */
+export async function deleteDiagnosticsAction(productId: string): Promise<void> {
+  const ctx = await requireWorkspace("/settings/products");
+  if (ctx.role !== "ADMIN") return;
+  await deleteAllSnapshotsForProduct(ctx.workspace.id, productId);
   revalidatePath(`/settings/products/${productId}`);
 }

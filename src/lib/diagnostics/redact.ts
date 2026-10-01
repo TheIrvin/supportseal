@@ -106,7 +106,7 @@ export function redactString(input: string): string {
     .replace(AUTH_HEADER_RE, "Bearer [redacted]")
     .replace(JWT_RE, "[token]");
 
-  text = text.replace(JSON_KV_RE, (whole, key: string, sep: string, _value: string) =>
+  text = text.replace(JSON_KV_RE, (whole, key: string, sep: string) =>
     SENSITIVE_KEY_RE.test(key) ? `"${key}"${sep}"[redacted]"` : whole,
   );
   text = text.replace(KV_RE, (whole, key: string, sep: string, value?: string) =>

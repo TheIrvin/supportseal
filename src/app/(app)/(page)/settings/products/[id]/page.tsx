@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getProductForWorkspace } from "@/lib/products";
+import { getProductForWorkspace, getDiagnosticsEnabler } from "@/lib/products";
+import { countSnapshotsForProduct } from "@/lib/diagnostics/store";
 import { requireWorkspace } from "@/lib/workspace";
 import { ArchiveForm } from "./archive-form";
+import { DeveloperTab } from "./developer-tab";
 import { DomainsCard } from "./domains-card";
 import { EditProductForm } from "./edit-product-form";
 import { WidgetTab } from "./widget-tab";
@@ -24,7 +26,11 @@ export default async function ProductPage({
   const product = await getProductForWorkspace(ctx.workspace.id, id);
   if (!product) notFound();
 
-  const activeTab = tab === "widget" ? "widget" : "general";
+  const activeTab = tab === "widget" ? "widget" : tab === "developer" ? "developer" : "general";
+  const [diagnosticsEnabler, snapshotCount] = await Promise.all([
+    getDiagnosticsEnabler({ workspaceId: ctx.workspace.id, productId: product.id }),
+    countSnapshotsForProduct(ctx.workspace.id, product.id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -52,6 +58,11 @@ export default async function ProductPage({
             id: "widget",
             label: "Widget",
             href: `/settings/products/${product.id}?tab=widget`,
+          },
+          {
+            id: "developer",
+            label: "Developer",
+            href: `/settings/products/${product.id}?tab=developer`,
           },
         ].map((item) => (
           <Link
@@ -84,7 +95,7 @@ export default async function ProductPage({
         ) : (
           <p className="text-sm text-muted">Only Workspace admins can edit Product settings.</p>
         )
-      ) : (
+      ) : activeTab === "widget" ? (
         <WidgetTab
           product={{
             id: product.id,
@@ -92,6 +103,19 @@ export default async function ProductPage({
             primaryColor: product.primaryColor,
             widgetPublicKey: product.widgetPublicKey,
             archived: product.archivedAt !== null,
+          }}
+        />
+      ) : (
+        <DeveloperTab
+          product={{
+            id: product.id,
+            name: product.name,
+            widgetPublicKey: product.widgetPublicKey,
+            archived: product.archivedAt !== null,
+            isAdmin: ctx.role === "ADMIN",
+            diagnosticsEnabled: product.diagnosticsEnabledAt !== null,
+            diagnosticsEnabledBy: diagnosticsEnabler,
+            snapshotCount,
           }}
         />
       )}
