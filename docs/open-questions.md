@@ -203,3 +203,18 @@ provider-neutral per [ADR-0004](adr/0004-email-boundary.md) — the ADR
 records the selection only. Self-hosted deployments remain
 provider-independent ([self-hosting.md](self-hosting.md)). The hosted
 subprocessor row for #14 is "Postmark (ActiveCampaign LLC)".
+
+## V2 sender-domain design
+
+The [verified custom sending domains design](design/sender-domains.md) proposes
+V2 behaviour; it does not change V1 or resolve Pete's product decisions.
+Working defaults SD1–SD6 cover one active sender per Product, `support` as the
+local-part, no composer From overrides, 30-day failed-setup retention, explicit
+managed fallback, and required DNS checks with a 24-hour freshness limit.
+See its [defaults and open questions](design/sender-domains.md#defaults-and-open-questions)
+for trade-offs and override points.
+
+**Open before hosted rollout:** Pete/operator must confirm Postmark account and
+stream suitability for multi-tenant customer-domain sending and choose resource
+isolation based on actual provider constraints. No account limit, reputation
+isolation guarantee or pricing/plan restriction is decided by this design.
