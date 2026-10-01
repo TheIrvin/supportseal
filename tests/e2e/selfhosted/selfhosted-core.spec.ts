@@ -1,6 +1,13 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { hostPageFor, openWidget, registerAccount, uniqueAccount } from "../helpers";
+import {
+  diagHostPageFor,
+  enableDiagnostics,
+  hostPageFor,
+  openWidget,
+  registerAccount,
+  uniqueAccount,
+} from "../helpers";
 
 /**
  * Self-hosted core flows (FR-HOST-01): the default deployment mode runs the
@@ -107,5 +114,106 @@ test.describe.serial("self-hosted mode core flows", () => {
 
     await agentPage.goto("/settings/team");
     await expect(agentPage.getByRole("tab", { name: "Billing" })).toHaveCount(0);
+  });
+
+  const CANARIES = [
+    "CANARY_COOKIE",
+    "CANARY_STORAGE",
+    "CANARY_SESSION",
+    "CANARY_PASSWORD",
+    "CANARY_AUTH",
+    "CANARY_BODY",
+    "CANARY_LOG",
+  ];
+
+  test("diagnostics work self-hosted and never leave the installation", async () => {
+    // Reuse the core suite's Solo Desk product (self-hosted serves exactly
+    // one Workspace; registration is closed).
+    test.skip(!productKey, "core onboarding did not run");
+    await agentPage.goto("/settings/products");
+    await agentPage
+      .locator('a[href^="/settings/products/"]')
+      .filter({ hasText: "Solo Desk" })
+      .first()
+      .click();
+    await expect(agentPage).toHaveURL(/\/settings\/products\/[^/]+/u);
+    const productId = agentPage.url().match(/\/settings\/products\/([^/?]+)/u)?.[1] ?? "";
+    expect(productId).not.toBe("");
+    await enableDiagnostics(agentPage, productId);
+
+    const page = await customerContext.newPage();
+    const widgetHosts = new Set<string>();
+    const otherHosts = new Set<string>();
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      const isWidgetSurface =
+        url.pathname.startsWith("/api/widget") ||
+        url.pathname === "/widget.js" ||
+        url.pathname === "/widget-diagnostics.js" ||
+        url.pathname === "/widget";
+      if (isWidgetSurface) widgetHosts.add(url.origin);
+      // 127.0.0.1:9 is the diag page's own deliberately-unreachable request.
+      else if (url.origin !== "http://localhost:3101" && url.origin !== APP && url.origin !== "http://127.0.0.1:9")
+        otherHosts.add(url.origin);
+    });
+    const posts: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/widget/messages") && request.method() === "POST") {
+        posts.push(request.postData() ?? "");
+      }
+    });
+
+    await page.goto(`${diagHostPageFor(APP)}&key=${encodeURIComponent(productKey)}`);
+    await page.waitForFunction(() => Boolean((window as { __ssDiag?: unknown }).__ssDiag), undefined, {
+      timeout: 15_000,
+    });
+    await page.evaluate(() => (window as { __triggerDiag?: () => void }).__triggerDiag?.());
+    await page.waitForFunction(
+      () =>
+        (window as unknown as Record<string, unknown>).__fetchStatus === 500 &&
+        (window as unknown as Record<string, unknown>).__xhrStatus === 500 &&
+        (window as unknown as Record<string, unknown>).__unreachableFailed === true &&
+        (window as unknown as Record<string, unknown>).__threw === true,
+    );
+    await page.waitForTimeout(150);
+
+    const frame = page.frameLocator("#supportseal-widget-host iframe");
+    await page.locator("#supportseal-widget-host button").first().click();
+    await expect(frame.locator("#statusline")).toContainText("Online");
+    await expect(frame.locator("#diagNotice")).toContainText(/Technical details from this page/u);
+    await frame.locator("#input").fill("Self-hosted diagnostics message 5ce9");
+    await frame.locator("#send").click();
+    await expect(frame.locator("#thread")).toContainText("Self-hosted diagnostics message 5ce9");
+
+    expect(posts).toHaveLength(1);
+    for (const canary of CANARIES) {
+      expect(posts[0], `canary leaked: ${canary}`).not.toContain(canary);
+    }
+    const payload = JSON.parse(posts[0]) as { diagnostics?: { events: Array<{ kind: string }> } };
+    expect(payload.diagnostics?.events?.map((event) => event.kind)).toContain("js_error");
+
+    // Every widget/diagnostics request targeted the installation itself.
+    expect([...widgetHosts]).toEqual([APP]);
+    expect([...otherHosts]).toEqual([]);
+    await page.close();
+  });
+
+  test("agent sees the diagnostics chip and sheet", async () => {
+    test.skip(!productKey, "core onboarding did not run");
+    await agentPage.goto("/inbox");
+    // The earlier agent reply left this visitor's conversation Pending.
+    await agentPage.getByRole("tab", { name: /^Pending/u }).click();
+    const row = agentPage
+      .locator("ul[aria-label='Conversations'] li a")
+      .filter({ hasText: "Self-hosted diagnostics message 5ce9" });
+    await expect(row).toBeVisible();
+    await row.click();
+    const chip = agentPage.getByRole("button", { name: /^Diagnostics for this message:/u });
+    await expect(chip).toBeVisible();
+    await chip.click();
+    const sheet = agentPage.getByRole("dialog");
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toContainText("Browser");
+    await expect(sheet).toContainText("Values that look like secrets, emails or tokens were removed.");
   });
 });
