@@ -13,9 +13,9 @@ export type ShotMarker = {
  * Figure for a real app screenshot (docs/design/marketing-site.md,
  * "ScreenshotFrame contract"). Renders light/dark variants via next/image.
  *
- * Until the demo seed and capture run exist (open-questions M6) every shot in
- * the manifest is `available: false` and this renders a clearly marked
- * placeholder slot matching the design shot list — never a fake mockup.
+ * Shots come from the live customer-zero workspace; any shot still
+ * `available: false` renders a clearly marked placeholder slot matching the
+ * design shot list — never a fake mockup.
  */
 export function ScreenshotFrame({
   shotId,
@@ -95,7 +95,7 @@ export function ScreenshotFrame({
           </span>
           <p className="max-w-[36rem] text-[0.933rem] text-muted">{shot.description}</p>
           <p className="text-[0.8125rem] text-muted">
-            Real capture pending (demo seed not scheduled yet) — no mockups on this site.
+            Real capture pending — no mockups on this site.
           </p>
         </div>
       )}

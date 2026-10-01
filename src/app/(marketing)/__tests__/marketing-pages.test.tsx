@@ -45,9 +45,22 @@ describe("marketing home page", () => {
     expect(html).toContain("context");
   });
 
-  it("includes hero screenshot slots (desktop + mobile art direction)", () => {
-    expect(html).toContain("Screenshot placeholder: S1 ");
-    expect(html).toContain("Screenshot placeholder: S1m");
+  it("renders the IndieDevTest integration as the documented example", () => {
+    expect(html).toContain("indiedevtest.com");
+    expect(html).toContain("memberSince");
+  });
+
+  it("includes the hero screenshots (desktop + mobile art direction)", () => {
+    // next/image routes sources through /_next/image; priority hero images
+    // still emit a srcSet plus a preload link.
+    expect(html).toContain("url=%2Fmarketing%2FS1-light.png");
+    expect(html).toContain("url=%2Fmarketing%2FS1m-light.png");
+    expect(html).toContain('alt="Inbox showing conversations from all products');
+  });
+
+  it("names customer zero with the live showcase section", () => {
+    expect(html).toContain("Customer zero: IndieDevTest");
+    expect(html).toContain("https://indiedevtest.com");
   });
 });
 
@@ -84,6 +97,13 @@ describe("marketing features page", () => {
     ]) {
       expect(html).toContain(heading);
     }
+  });
+
+  it("keeps the honest Not yet section from the PRD scope list", () => {
+    expect(html).toContain("Not yet — and not pretended");
+    expect(html).toContain("Knowledge bases");
+    expect(html).toContain("AI support agents");
+    expect(html).toContain("Enterprise SSO");
   });
 });
 

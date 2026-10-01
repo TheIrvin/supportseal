@@ -75,6 +75,11 @@ Send the customer's account, plan, app version or admin link through
 you answer. The widget also records the page origin and path, without the
 query string or fragment.
 
+Editorial note: the code sample beside this section mirrors IndieDevTest's
+real integration (pietervw/indiedevtest, `src/components/support-chat.tsx`):
+Clerk-signed members are identified, and the app context carries the site
+source and membership year.
+
 **Context-panel caption:** The app context you send, next to the customer's
 question.
 
@@ -88,6 +93,24 @@ topic and share files with the customer. For questions you answer often,
 insert a saved reply and edit it before sending.
 
 **CTA:** Explore the features
+
+### Section: Customer zero — IndieDevTest
+
+Editorial note: this is a live-deployment fact, not a feature claim. The
+evidence is the hosted workspace at supportseal.app (Seal Labs · IndieDevTest:
+real chat, email and context conversations) and the widget integration in
+IndieDevTest's public repository (pietervw/indiedevtest). Keep the wording
+true of the live state — tighten it only when the widget is embedded on
+indiedevtest.com itself.
+
+**Heading:** Customer zero: IndieDevTest
+
+IndieDevTest — a community where indie mobile developers test each other's
+apps — is the first product running on {siteConfig.name}. Its support chat,
+developer context and support email land in one workspace, and the
+conversations in the screenshots above are the real ones.
+
+**CTA:** Visit IndieDevTest (external, https://indiedevtest.com)
 
 ### Section: Choose how to run your support desk
 
@@ -143,6 +166,17 @@ context into one inbox.
 | Keep files with the question | Share supported attachments through chat and email. See them alongside the messages they belong to. | [SF-08](shipped-features.md#sf-08--attachments-in-chat-and-email) |
 | Bring your team into the same Workspace | Invite teammates as Admins or Agents. Admins manage Products and invitations; Agents work in the inbox. | [SF-09](shipped-features.md#sf-09--accounts-and-team-access) |
 | Start with a real exchange | Follow onboarding to add a Product, allow its domain and install the widget. Send a test message, answer it and add your next Product. | [SF-10](shipped-features.md#sf-10--guided-first-message) |
+
+### Not yet — and not pretended
+
+Editorial note: the honest "Not yet" section stays (open-questions M8,
+default: keep). Items come from the PRD's "Later and outside scope" list;
+never advertise anything on it.
+
+{siteConfig.name} deliberately does not yet ship knowledge bases, AI support
+agents, enterprise CRM or workflow tooling, social and phone channels,
+enterprise SSO, or a built-in mail server. If you need those, {siteConfig.name}
+is not the right desk today.
 
 ## Pricing — `/pricing`
 

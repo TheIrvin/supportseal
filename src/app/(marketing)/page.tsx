@@ -24,20 +24,21 @@ export const metadata: Metadata = {
 };
 
 /**
- * Async-safe developer-context snippet, matching the shipped widget API
- * exactly (src/app/api/widget/js/route.ts; docs/design/chat-widget.md
- * "Developer context API"). The copy pass never edits code.
+ * Async-safe developer-context snippet, mirroring IndieDevTest's real
+ * integration (pietervw/indiedevtest, src/components/support-chat.tsx):
+ * Clerk-signed members are identified and the app context carries the site
+ * source and membership year. The copy pass never edits code semantics.
  */
 const CONTEXT_SNIPPET = `<script>
   window.SupportSealWidget = window.SupportSealWidget || { q: [] };
   SupportSealWidget.q.push(["identify", {
-    userId: "u_1042",
-    email: "sam@example.com",
-    name: "Sam Field",
+    userId: "user_2VcJ4xQ7",
+    email: "pietervw@supportseal.app",
+    name: "Pete",
   }]);
   SupportSealWidget.q.push(["context", {
-    plan: "Pro",
-    appVersion: "2.4.1",
+    source: "indiedevtest.com",
+    memberSince: "2026",
   }]);
 </script>`;
 
@@ -180,6 +181,35 @@ export default function HomePage() {
             edit it before sending.
           </p>
         </FeatureRow>
+      </Section>
+
+      {/* Customer zero (live-deployment fact, docs/marketing/copy.md). */}
+      <Section>
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:gap-16">
+          <div>
+            <SectionHeading
+              title="Customer zero: IndieDevTest"
+              lead={`IndieDevTest — a community where indie mobile developers test each other's apps — is the first product running on ${siteConfig.name}. Its support chat, developer context and support email land in one workspace.`}
+            />
+            <p className="mt-4 max-w-[40rem] text-[1.067rem] leading-[1.65] text-body">
+              The Conversations in the screenshots on this page are the real ones: questions from
+              IndieDevTest members, answered from a live inbox, with the context their site sends.
+            </p>
+            <div className="mt-6">
+              <Button asChild variant="text" color="primary" size="md" className="px-0">
+                <a href="https://indiedevtest.com">
+                  Visit IndieDevTest
+                  <span className="sr-only"> (opens on indiedevtest.com)</span>
+                </a>
+              </Button>
+            </div>
+          </div>
+          <ScreenshotFrame
+            shotId="S2"
+            alt="IndieDevTest's chat widget with a live exchange between a member and support"
+            caption="A real IndieDevTest thread: a member's question, answered live."
+          />
+        </div>
       </Section>
 
       {/* Hosting choice. */}

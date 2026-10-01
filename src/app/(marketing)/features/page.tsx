@@ -22,15 +22,20 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Mirrors IndieDevTest's real integration (pietervw/indiedevtest,
+ * src/components/support-chat.tsx): Clerk-signed members are identified and
+ * the app context carries the site source and membership year.
+ */
 const CONTEXT_SNIPPET = `window.SupportSealWidget = window.SupportSealWidget || { q: [] };
 SupportSealWidget.q.push(["identify", {
-  userId: "u_1042",
-  email: "sam@example.com",
+  userId: "user_2VcJ4xQ7",
+  email: "pietervw@supportseal.app",
+  name: "Pete",
 }]);
 SupportSealWidget.q.push(["context", {
-  plan: "Pro",
-  appVersion: "2.4.1",
-  adminUrl: "https://admin.example.com/accounts/1042",
+  source: "indiedevtest.com",
+  memberSince: "2026",
 }]);`;
 
 type FeatureSection = {
@@ -99,8 +104,18 @@ const SECTIONS: FeatureSection[] = [
     id: "onboarding",
     title: "Start with a real exchange",
     body: "Follow onboarding to add a Product, allow its domain and install the widget. Send a test message, answer it and add your next Product.",
-    shot: { id: "S8", alt: "Onboarding install step with the embed snippet and a copy button" },
+    shot: { id: "S8", alt: "Widget settings with the embed snippet, copy button and test-page link" },
   },
+];
+
+/** Honest scope (PRD "Later and outside scope"; open-questions M8: keep). */
+const NOT_YET = [
+  "Knowledge bases",
+  "AI support agents",
+  "Enterprise CRM and workflow tooling",
+  "Social and phone channels",
+  "Enterprise SSO",
+  "A built-in mail server",
 ];
 
 const NAV_ITEMS: FeaturesNavItem[] = SECTIONS.map((section) => ({ id: section.id, label: section.title }));
@@ -166,6 +181,25 @@ export default function FeaturesPage() {
           </div>
         </div>
       </div>
+
+      {/* Not yet — and not pretended (docs/marketing/copy.md, features). */}
+      <Section band="surface" className="pb-16 lg:pb-20">
+        <SectionHeading title="Not yet — and not pretended" />
+        <p className="mt-4 max-w-[40rem] text-[1.067rem] leading-[1.65] text-body">
+          {siteConfig.name} deliberately does not yet ship the things below. If you need
+          them, {siteConfig.name} is not the right desk today.
+        </p>
+        <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {NOT_YET.map((item) => (
+            <li
+              key={item}
+              className="rounded-lg border border-border bg-surface px-4 py-3 text-[1rem] text-muted"
+            >
+              {item}
+            </li>
+          ))}
+        </ul>
+      </Section>
 
       <CtaBand
         title="Follow the Conversation from the first message to the next reply"
