@@ -9,17 +9,28 @@ import { UmamiScript } from "@/components/marketing/umami-script";
 import { PRICING_UNSET } from "@/config/pricing";
 
 describe("ScreenshotFrame", () => {
-  it("renders a clearly marked placeholder slot while captures are pending", () => {
+  it("renders the available capture with light and dark image variants", () => {
     const html = renderToStaticMarkup(
       <ScreenshotFrame shotId="S1" alt="Inbox with all products" />,
     );
-    expect(html).toContain("S1");
+    // next/image encodes non-priority sources through /_next/image.
+    expect(html).toContain("url=%2Fmarketing%2FS1-light.png");
+    expect(html).toContain("url=%2Fmarketing%2FS1-dark.png");
+    expect(html).toContain('alt="Inbox with all products"');
+    expect(html).not.toContain("Screenshot placeholder");
+  });
+
+  it("renders a clearly marked placeholder slot while a capture is pending", () => {
+    const html = renderToStaticMarkup(
+      <ScreenshotFrame shotId="S3" alt="Second product widget" />,
+    );
+    expect(html).toContain("S3");
     expect(html).toContain("Real capture pending");
-    expect(html).toContain('aria-label="Screenshot placeholder: S1');
+    expect(html).toContain('aria-label="Screenshot placeholder: S3');
   });
 
   it("describes the placeholder accessibly and never emits a fake image", () => {
-    const html = renderToStaticMarkup(<ScreenshotFrame shotId="S4" alt="Filtered inbox" />);
+    const html = renderToStaticMarkup(<ScreenshotFrame shotId="S2m" alt="Widget on mobile" />);
     expect(html).toContain('role="img"');
     expect(html).not.toContain("<img");
   });

@@ -24,20 +24,21 @@ export const metadata: Metadata = {
 };
 
 /**
- * Async-safe developer-context snippet, matching the shipped widget API
- * exactly (src/app/api/widget/js/route.ts; docs/design/chat-widget.md
- * "Developer context API"). The copy pass never edits code.
+ * Async-safe developer-context snippet, mirroring IndieDevTest's real
+ * integration (pietervw/indiedevtest, src/components/support-chat.tsx):
+ * Clerk-signed members are identified and the app context carries the site
+ * source and membership year.
  */
 const CONTEXT_SNIPPET = `<script>
   window.SupportSealWidget = window.SupportSealWidget || { q: [] };
   SupportSealWidget.q.push(["identify", {
-    userId: "u_1042",
-    email: "sam@example.com",
-    name: "Sam Field",
+    userId: "user_2VcJ4xQ7",
+    email: "pietervw@supportseal.app",
+    name: "Pete",
   }]);
   SupportSealWidget.q.push(["context", {
-    plan: "Pro",
-    appVersion: "2.4.1",
+    source: "indiedevtest.com",
+    memberSince: "2026",
   }]);
 </script>`;
 
@@ -73,14 +74,14 @@ export default function HomePage() {
             <ScreenshotFrame
               shotId="S1m"
               eager
-              alt="Mobile inbox listing conversations from several products"
+              alt="Mobile inbox listing the product's pending conversations"
             />
           </div>
           <div className="hidden lg:block">
             <ScreenshotFrame
               shotId="S1"
               eager
-              alt="Inbox showing conversations from all products, with the sidebar listing three products and a context panel beside the selected conversation"
+              alt="Inbox with the product's conversations in the list, a selected thread in the middle and the customer context panel beside it"
             />
           </div>
         </div>
@@ -94,7 +95,7 @@ export default function HomePage() {
           media={
             <ScreenshotFrame
               shotId="S4"
-              alt="Inbox scoped to one product with a filtered conversation list"
+              alt="Inbox scoped to the IndieDevTest product, with its conversation list and open thread"
               caption="Each product has its own name and colour. Your team shares the inbox."
             />
           }
@@ -115,7 +116,7 @@ export default function HomePage() {
           media={
             <ScreenshotFrame
               shotId="S6"
-              alt="Conversation that started as a chat and continued by email, with the email reply visible"
+              alt="Support email conversation with a question and the reply sent from the shared inbox"
             />
           }
         >
@@ -140,7 +141,7 @@ export default function HomePage() {
             <div className="flex flex-col gap-6">
               <ScreenshotFrame
                 shotId="S5"
-                alt="Context panel showing the identified user with their plan, app version, page URL and an admin link"
+                alt="Context panel showing the identified customer with their email, user id, the app context they sent and the page the widget recorded"
                 caption="The app context you send, next to the customer's question."
               />
               <CodeBlock code={CONTEXT_SNIPPET} label="Developer context snippet" />
@@ -180,6 +181,35 @@ export default function HomePage() {
             edit it before sending.
           </p>
         </FeatureRow>
+      </Section>
+
+      {/* Customer zero (live-deployment fact, docs/marketing/copy.md). */}
+      <Section>
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:gap-16">
+          <div>
+            <SectionHeading
+              title="Customer zero: IndieDevTest"
+              lead={`IndieDevTest — a community where indie mobile developers test each other's apps — is the first product running on ${siteConfig.name}. Its support chat, developer context and support email land in one workspace.`}
+            />
+            <p className="mt-4 max-w-[40rem] text-[1.067rem] leading-[1.65] text-body">
+              The Conversations in the screenshots on this page are real ones from its setup:
+              asked through the widget and by email, and answered from the live inbox.
+            </p>
+            <div className="mt-6">
+              <Button asChild variant="text" color="primary" size="md" className="px-0">
+                <a href="https://indiedevtest.com">
+                  Visit IndieDevTest
+                  <span className="sr-only"> (opens on indiedevtest.com)</span>
+                </a>
+              </Button>
+            </div>
+          </div>
+          <ScreenshotFrame
+            shotId="S2"
+            alt="IndieDevTest's chat widget with a live exchange between a visitor and support"
+            caption="A real IndieDevTest thread: a visitor's question, answered live."
+          />
+        </div>
       </Section>
 
       {/* Hosting choice. */}
