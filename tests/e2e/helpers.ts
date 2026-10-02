@@ -1,6 +1,7 @@
 import fs from "node:fs";
 
 import { expect, type FrameLocator, type Page } from "@playwright/test";
+import { E2E_SHARED_SECRET } from "./shared-secret.mjs";
 
 export const APP_ORIGIN = process.env.E2E_APP_URL || "http://localhost:3100";
 export const SUPPORT_ORIGIN = "http://localhost:3101";
@@ -26,7 +27,7 @@ export function loadFixtures(): Fixtures {
   ) as Fixtures;
 }
 
-export const INBOUND_SECRET = "e2e-shared-secret-0123456789abcdef";
+export const INBOUND_SECRET = E2E_SHARED_SECRET;
 
 export type CapturedEmail = {
   from: string;

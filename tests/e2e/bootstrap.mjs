@@ -17,13 +17,14 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { E2E_SHARED_SECRET } from "./shared-secret.mjs";
 
 const MODE = process.env.E2E_MODE === "selfhosted" ? "selfhosted" : "hosted";
 const PORT = process.env.E2E_PORT || (MODE === "selfhosted" ? "3200" : "3100");
 const RUN_DIR = path.join(process.cwd(), "tests", "e2e", ".runtime", MODE);
 const DATA_DIR = path.join(RUN_DIR, "data");
 const FIXTURES_FILE = path.join(RUN_DIR, "fixtures.json");
-const SHARED_SECRET = "e2e-shared-secret-0123456789abcdef";
+const SHARED_SECRET = E2E_SHARED_SECRET;
 
 const appEnv = {
   ...process.env,

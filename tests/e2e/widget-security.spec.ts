@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
+import { E2E_SHARED_SECRET } from "./shared-secret.mjs";
 import { createProduct, loadFixtures, openWidget, signIn } from "./helpers";
 
 /**
@@ -44,9 +45,7 @@ test.describe("widget security", () => {
 
   test("an expired widget test link shows recovery instructions", async ({ page }) => {
     const payload = `${fixtures.beta.product.id}|${Date.now() - 1_000}`;
-    const mac = createHmac("sha256", "e2e-shared-secret-0123456789abcdef")
-      .update(payload)
-      .digest("base64url");
+    const mac = createHmac("sha256", E2E_SHARED_SECRET).update(payload).digest("base64url");
     const token = `${Buffer.from(payload).toString("base64url")}.${mac}`;
 
     await page.goto(
