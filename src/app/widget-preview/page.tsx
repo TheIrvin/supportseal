@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
+import { verifyWidgetTestToken } from "@/lib/onboarding";
 import { loadWidgetProduct } from "@/lib/widget";
 
 export const metadata: Metadata = {
@@ -60,6 +62,21 @@ export default async function WidgetPreviewPage({
     );
   }
 
+  if (testToken && !verifyWidgetTestToken(testToken, product.id)) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-body-bg p-6">
+        <div className="w-full max-w-md rounded-lg border border-border bg-surface p-8 text-center shadow-card">
+          <h1 className="text-xl font-semibold text-heading">This test link expired</h1>
+          <p className="mt-2 text-sm text-muted">
+            Generate a fresh test link from the Install step.
+          </p>
+          <Link className="mt-4 inline-block text-sm font-medium" href="/onboarding/install">
+            Back to install
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main

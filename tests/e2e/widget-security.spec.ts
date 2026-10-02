@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { createProduct, loadFixtures, openWidget, signIn } from "./helpers";
@@ -38,6 +40,32 @@ test.describe("widget security", () => {
       `/api/widget/session?key=pk_definitely-not-a-real-key&host=${encodeURIComponent("http://localhost:3101")}`,
     );
     expect(session.status()).toBe(404);
+  });
+
+  test("an expired widget test link shows recovery instructions", async ({ page }) => {
+    const payload = `${fixtures.beta.product.id}|${Date.now() - 1_000}`;
+    const mac = createHmac("sha256", "e2e-shared-secret-0123456789abcdef")
+      .update(payload)
+      .digest("base64url");
+    const token = `${Buffer.from(payload).toString("base64url")}.${mac}`;
+
+    await page.goto(
+      `/widget-preview?key=${encodeURIComponent(betaKey)}&testToken=${encodeURIComponent(token)}`,
+    );
+
+    await expect(page.getByRole("heading", { name: "This test link expired" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to install" })).toHaveAttribute(
+      "href",
+      "/onboarding/install",
+    );
+    await expect(page.locator('script[src="/widget.js"]')).toHaveCount(0);
+  });
+
+  test("the unsigned wizard preview remains available", async ({ page }) => {
+    await page.goto("/widget-preview?previewOnly=1&name=Preview&color=%232563eb");
+
+    await expect(page.getByRole("heading", { name: "Preview" })).toBeVisible();
+    await expect(page.locator('script[src="/widget.js"][data-preview="1"]')).toBeAttached();
   });
 
   test("a non-allowlisted origin is refused even with a valid key", async ({ request }) => {
